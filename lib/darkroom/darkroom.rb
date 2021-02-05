@@ -159,9 +159,8 @@ class Darkroom
     asset = @manifest[path] or return nil
     prefix = @prefix if @prefix && !@pristine.include?(path)
 
-    if @hosts
-      if Thread.current[:darkroom_counter].nil? ||
-          Thread.current[:darkroom_counter] >= @hosts.size
+    if @hosts && !@hosts.empty?
+      if Thread.current[:darkroom_counter].nil? || Thread.current[:darkroom_counter] >= @hosts.size
         Thread.current[:darkroom_counter] = 0
       end
 
