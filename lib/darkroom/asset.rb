@@ -48,6 +48,7 @@ class Darkroom
     #
     # * +file+ - The path to the file on disk.
     # * +path+ - The path this asset will be referenced by (e.g. /js/app.js).
+    # * +manifest+ - Manifest hash from the Darkroom instance that the asset is a member of.
     # * +minify+ - Boolean specifying whether or not the asset should be minified when processed.
     # * +internal+ - Boolean indicating whether or not the asset is only accessible internally (i.e. as a
     #   dependency).
@@ -71,6 +72,8 @@ class Darkroom
     # read from disk, any dependencies are merged into its content (if spec for the asset type allows for
     # it), the content is compiled (if the asset type requires compilation), and minified (if specified for
     # this Asset).
+    #
+    # * +key+ - Unique value associated with the current round of processing.
     #
     def process(key)
       key == @process_key ? (return @modified) : (@process_key = key)
