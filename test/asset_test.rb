@@ -25,6 +25,43 @@ class AssetTest < Minitest::Test
           refute(asset.internal?)
         end
       end
+
+      describe('#headers') do
+        it('includes correct content type') do
+          Darkroom::Asset::SPECS.each do |extension, spec|
+            next if spec[:compile_lib]
+
+            asset = Darkroom::Asset.new("hello#{extension}", '', {})
+            assert_equal(spec[:content_type], asset.headers['Content-Type'])
+          end
+        end
+
+        it('includes Cache-Control header if :versioned is not specified') do
+          asset = Darkroom::Asset.new(@hello_path, @hello_file, {})
+          headers = asset.headers
+
+          assert_equal('public, max-age=31536000', headers['Cache-Control'])
+          assert_nil(headers['ETag'])
+        end
+
+        it('includes Cache-Control header if :versioned is true') do
+          asset = Darkroom::Asset.new(@hello_path, @hello_file, {})
+          headers = asset.headers(versioned: true)
+
+          assert_equal('public, max-age=31536000', headers['Cache-Control'])
+          assert_nil(headers['ETag'])
+        end
+
+        it('includes ETag header if :versioned is false') do
+          asset = Darkroom::Asset.new(@hello_path, @hello_file, {})
+          asset.process(Time.now.to_f)
+
+          headers = asset.headers(versioned: false)
+
+          assert_equal('"09f7e02f1290be211da707a266f153b3"', headers['ETag'])
+          assert_nil(headers['Cache-Control'])
+        end
+      end
     end
   end
 end
