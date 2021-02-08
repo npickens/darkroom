@@ -2,10 +2,6 @@
 
 require('set')
 
-require_relative('errors/duplicate_asset_error')
-require_relative('errors/asset_not_found_error')
-require_relative('errors/processing_error')
-
 ##
 # Main class providing fast, lightweight, and straightforward web asset management.
 #
