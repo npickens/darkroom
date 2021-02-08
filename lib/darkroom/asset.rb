@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require('digest')
+
 class Darkroom
   ##
   # Represents an asset.
