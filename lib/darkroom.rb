@@ -2,6 +2,7 @@
 
 require('darkroom/asset')
 require('darkroom/darkroom')
+require('darkroom/version')
 
 require('darkroom/errors/asset_not_found_error')
 require('darkroom/errors/duplicate_asset_error')
