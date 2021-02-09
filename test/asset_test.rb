@@ -10,6 +10,10 @@ class AssetTest < Minitest::Test
 
         HELLO_PATH = '/hello.txt'
         HELLO_FILE = File.join(ASSET_DIR, HELLO_PATH)
+
+        class AssetNoSpecLoad < Darkroom::Asset
+          def load_spec() true end
+        end
       end
 
       ######################################################################################################
@@ -19,9 +23,7 @@ class AssetTest < Minitest::Test
       describe('#headers') do
         it('includes correct content type') do
           Darkroom::Asset::SPECS.each do |extension, spec|
-            next if spec[:compile_lib]
-
-            asset = Darkroom::Asset.new("hello#{extension}", '', {})
+            asset = AssetNoSpecLoad.new("hello#{extension}", '', {})
             assert_equal(spec[:content_type], asset.headers['Content-Type'])
           end
         end
