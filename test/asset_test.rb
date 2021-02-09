@@ -93,6 +93,29 @@ class AssetTest < Minitest::Test
           refute(asset.internal?)
         end
       end
+
+      ######################################################################################################
+      ## Asset#error?                                                                                     ##
+      ######################################################################################################
+
+      describe('#error?') do
+        it('returns true if there were one or more errors during processing') do
+          path = '/bad-import.js'
+          asset = Darkroom::Asset.new(path, File.join(ASSET_DIR, path), {})
+
+          asset.process(Time.now.to_f)
+
+          assert(asset.error?)
+        end
+
+        it('returns false if there were no errors during processing') do
+          asset = Darkroom::Asset.new(HELLO_PATH, HELLO_FILE, {})
+
+          asset.process(Time.now.to_f)
+
+          refute(asset.error?)
+        end
+      end
     end
   end
 end
