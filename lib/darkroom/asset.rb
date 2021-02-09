@@ -108,14 +108,6 @@ class Darkroom
     end
 
     ##
-    # Returns boolean indicating whether or not an error was encountered the last time the asset was
-    # processed.
-    #
-    def error?
-      !!@error
-    end
-
-    ##
     # Returns the HTTP MIME type string.
     #
     def content_type
@@ -140,6 +132,14 @@ class Darkroom
     #
     def internal?
       @internal
+    end
+
+    ##
+    # Returns boolean indicating whether or not an error was encountered the last time the asset was
+    # processed.
+    #
+    def error?
+      !!@error
     end
 
     ##
