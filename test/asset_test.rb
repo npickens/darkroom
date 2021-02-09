@@ -17,6 +17,19 @@ class AssetTest < Minitest::Test
       end
 
       ######################################################################################################
+      ## Asset#content_type                                                                               ##
+      ######################################################################################################
+
+      describe('#content_type') do
+        it('returns the correct HTTP MIME string for the asset') do
+          Darkroom::Asset::SPECS.each do |extension, spec|
+            asset = AssetNoSpecLoad.new("hello#{extension}", '', {})
+            assert_equal(spec[:content_type], Darkroom::Asset::SPECS[extension][:content_type])
+          end
+        end
+      end
+
+      ######################################################################################################
       ## Asset#headers                                                                                    ##
       ######################################################################################################
 
