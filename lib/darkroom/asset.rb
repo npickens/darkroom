@@ -16,31 +16,31 @@ class Darkroom
         dependency_regex: /^ *@import +(?<quote>['"]) *(?<path>.*) *\g<quote> *; *$/.freeze,
         minify: -> (content) { CSSminify.compress(content) },
         minify_lib: 'cssminify',
-      },
+      }.freeze,
 
       '.htx' => {
         content_type: 'application/javascript',
-        compile: -> (path, content) { HTX.compile(path, content) },
+        compile: -> (path, content) { HTX.compile(path, content) }.freeze,
         compile_lib: 'htx',
-        minify: -> (content) { Uglifier.compile(content, harmony: true) },
+        minify: -> (content) { Uglifier.compile(content, harmony: true) }.freeze,
         minify_lib: 'uglifier',
-      },
+      }.freeze,
 
       '.js' => {
         content_type: 'application/javascript',
         dependency_regex: /^ *import +(?<quote>['"])(?<path>.*)\g<quote> *;? *$/.freeze,
-        minify: -> (content) { Uglifier.compile(content, harmony: true) },
+        minify: -> (content) { Uglifier.compile(content, harmony: true) }.freeze,
         minify_lib: 'uglifier',
-      },
+      }.freeze,
 
-      ['.htm', '.html'] => {content_type: 'text/html'},
-      '.ico' => {content_type: 'image/x-icon'},
-      ['.jpg', '.jpeg'] => {content_type: 'image/jpeg'},
-      '.png' => {content_type: 'image/png'},
-      '.svg' => {content_type: 'image/svg+xml'},
-      '.txt' => {content_type: 'text/plain'},
-      '.woff' => {content_type: 'font/woff'},
-      '.woff2' => {content_type: 'font/woff2'},
+      ['.htm', '.html'] => {content_type: 'text/html'}.freeze,
+      '.ico' => {content_type: 'image/x-icon'}.freeze,
+      ['.jpg', '.jpeg'] => {content_type: 'image/jpeg'}.freeze,
+      '.png' => {content_type: 'image/png'}.freeze,
+      '.svg' => {content_type: 'image/svg+xml'}.freeze,
+      '.txt' => {content_type: 'text/plain'}.freeze,
+      '.woff' => {content_type: 'font/woff'}.freeze,
+      '.woff2' => {content_type: 'font/woff2'}.freeze,
     }.map { |ext, spec| [ext].flatten.map { |ext| [ext, spec] } }.flatten].freeze
 
     attr_reader(:content, :error, :errors, :path, :path_versioned)
