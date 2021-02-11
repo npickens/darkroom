@@ -66,7 +66,7 @@ class Darkroom
       @spec = SPECS[@extension]
 
       clear
-      load_spec
+      require_libs
     end
 
     ##
@@ -250,8 +250,8 @@ class Darkroom
     # using Darkroom to specify any needed compilation and minification libraries as direct dependencies
     # (e.g. specify +gem('uglifier')+ in the app's Gemfile if JavaScript minification is desired).
     #
-    def load_spec
-      return true if @spec_loaded
+    def require_libs
+      return true if @libs_required
 
       begin
         require(@spec[:compile_lib]) if @spec[:compile_lib]
@@ -265,7 +265,7 @@ class Darkroom
         raise(MissingLibraryError.new(@spec[:minify_lib], 'minify', @extension))
       end
 
-      @spec_loaded = true
+      @libs_required = true
     end
   end
 end

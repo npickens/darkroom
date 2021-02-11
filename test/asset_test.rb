@@ -11,8 +11,8 @@ class AssetTest < Minitest::Test
         HELLO_PATH = '/hello.txt'
         HELLO_FILE = File.join(ASSET_DIR, HELLO_PATH)
 
-        class AssetNoSpecLoad < Darkroom::Asset
-          def load_spec() true end
+        class AssetRequireLibsStub < Darkroom::Asset
+          def require_libs() true end
         end
       end
 
@@ -23,7 +23,7 @@ class AssetTest < Minitest::Test
       describe('#content_type') do
         it('returns the correct HTTP MIME string for the asset') do
           Darkroom::Asset::SPECS.each do |extension, spec|
-            asset = AssetNoSpecLoad.new("hello#{extension}", '', {})
+            asset = AssetRequireLibsStub.new("hello#{extension}", '', {})
             assert_equal(spec[:content_type], Darkroom::Asset::SPECS[extension][:content_type])
           end
         end
@@ -36,7 +36,7 @@ class AssetTest < Minitest::Test
       describe('#headers') do
         it('includes correct content type') do
           Darkroom::Asset::SPECS.each do |extension, spec|
-            asset = AssetNoSpecLoad.new("hello#{extension}", '', {})
+            asset = AssetRequireLibsStub.new("hello#{extension}", '', {})
             assert_equal(spec[:content_type], asset.headers['Content-Type'])
           end
         end

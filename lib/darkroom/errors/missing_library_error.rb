@@ -2,7 +2,7 @@
 
 class Darkroom
   ##
-  # Error class used when a needed library cannot be loaded. See Asset#load_spec.
+  # Error class used when a needed library cannot be loaded. See Asset#require_libs.
   #
   class MissingLibraryError < StandardError
     ##
