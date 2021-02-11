@@ -42,7 +42,7 @@ class AssetTest < Minitest::Test
         end
 
         it('includes Cache-Control header if :versioned is not specified') do
-          asset = Darkroom::Asset.new(HELLO_PATH, HELLO_FILE, {})
+          asset = AssetRequireLibsStub.new(HELLO_PATH, HELLO_FILE, {})
           headers = asset.headers
 
           assert_equal('public, max-age=31536000', headers['Cache-Control'])
@@ -50,7 +50,7 @@ class AssetTest < Minitest::Test
         end
 
         it('includes Cache-Control header if :versioned is true') do
-          asset = Darkroom::Asset.new(HELLO_PATH, HELLO_FILE, {})
+          asset = AssetRequireLibsStub.new(HELLO_PATH, HELLO_FILE, {})
           asset.process(Time.now.to_f)
 
           headers = asset.headers(versioned: true)
@@ -60,7 +60,7 @@ class AssetTest < Minitest::Test
         end
 
         it('includes ETag header if :versioned is false') do
-          asset = Darkroom::Asset.new(HELLO_PATH, HELLO_FILE, {})
+          asset = AssetRequireLibsStub.new(HELLO_PATH, HELLO_FILE, {})
           asset.process(Time.now.to_f)
 
           headers = asset.headers(versioned: false)
@@ -76,19 +76,19 @@ class AssetTest < Minitest::Test
 
       describe('#internal?') do
         it('returns true if asset was initialized as internal') do
-          asset = Darkroom::Asset.new(HELLO_PATH, HELLO_FILE, {}, internal: true)
+          asset = AssetRequireLibsStub.new(HELLO_PATH, HELLO_FILE, {}, internal: true)
 
           assert(asset.internal?)
         end
 
         it('returns false if asset was initialized as non-internal') do
-          asset = Darkroom::Asset.new(HELLO_PATH, HELLO_FILE, {}, internal: false)
+          asset = AssetRequireLibsStub.new(HELLO_PATH, HELLO_FILE, {}, internal: false)
 
           refute(asset.internal?)
         end
 
         it('returns false if asset was initialized without specifying internal status') do
-          asset = Darkroom::Asset.new(HELLO_PATH, HELLO_FILE, {})
+          asset = AssetRequireLibsStub.new(HELLO_PATH, HELLO_FILE, {})
 
           refute(asset.internal?)
         end
@@ -101,7 +101,7 @@ class AssetTest < Minitest::Test
       describe('#error?') do
         it('returns true if there were one or more errors during processing') do
           path = '/bad-import.js'
-          asset = Darkroom::Asset.new(path, File.join(ASSET_DIR, path), {})
+          asset = AssetRequireLibsStub.new(path, File.join(ASSET_DIR, path), {})
 
           asset.process(Time.now.to_f)
 
@@ -109,7 +109,7 @@ class AssetTest < Minitest::Test
         end
 
         it('returns false if there were no errors during processing') do
-          asset = Darkroom::Asset.new(HELLO_PATH, HELLO_FILE, {})
+          asset = AssetRequireLibsStub.new(HELLO_PATH, HELLO_FILE, {})
 
           asset.process(Time.now.to_f)
 
