@@ -5,7 +5,7 @@ class Darkroom
   # Error class used when an asset exists in multiple load paths.
   #
   class DuplicateAssetError < StandardError
-    attr_reader(:path)
+    attr_reader(:path, :first_load_path, :second_load_path)
 
     ##
     # Creates a new instance.

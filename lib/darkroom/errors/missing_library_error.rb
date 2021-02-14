@@ -5,6 +5,8 @@ class Darkroom
   # Error class used when a needed library cannot be loaded. See Asset#require_libs.
   #
   class MissingLibraryError < StandardError
+    attr_reader(:library, :need, :extension)
+
     ##
     # Creates a new instance.
     #

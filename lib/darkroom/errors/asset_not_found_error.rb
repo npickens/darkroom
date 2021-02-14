@@ -6,7 +6,7 @@ class Darkroom
   # found.
   #
   class AssetNotFoundError < StandardError
-    attr_reader(:path)
+    attr_reader(:path, :referenced_from, :referenced_from_line)
 
     ##
     # Creates a new instance.
