@@ -10,7 +10,7 @@ Dir.chdir(File.expand_path('../..', __FILE__))
 Bundler.setup(:default, :development)
 
 require('darkroom')
-require('minitest/autorun')
+require('minitest/spec')
 
 ############################################################################################################
 ## Monkey Patch Minitest                                                                                  ##
@@ -29,3 +29,6 @@ end
 Dir[File.expand_path('test/**/*_test.rb')].each do |file|
   require(file)
 end
+
+ENV['MT_NO_PLUGINS'] = 'true'
+Minitest.autorun
