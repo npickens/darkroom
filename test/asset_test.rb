@@ -170,6 +170,64 @@ class AssetTest < Minitest::Test
       end
 
       ######################################################################################################
+      ## Asset#error                                                                                      ##
+      ######################################################################################################
+
+      describe('#error') do
+        it('returns nil if there were no errors during processing') do
+          asset = AssetRequireLibsStub.new(HELLO_PATH, HELLO_FILE, {}, internal: false)
+
+          assert_nil(asset.error)
+        end
+
+        it('returns ProcessingError instance if there were one or more errors during processing') do
+          path = '/bad-imports.js'
+          asset = AssetRequireLibsStub.new(path, File.join(ASSET_DIR, path), {})
+
+          asset.process(Time.now.to_f)
+
+          assert_instance_of(Darkroom::ProcessingError, asset.error)
+          assert_equal(2, asset.error.size)
+
+          assert_instance_of(Darkroom::AssetNotFoundError, asset.errors.first)
+          assert_includes(asset.error.inspect, asset.errors.first.to_s)
+          assert_includes(asset.error.first.inspect, '/does-not-exist.js')
+
+          assert_instance_of(Darkroom::AssetNotFoundError, asset.errors.last)
+          assert_includes(asset.error.inspect, asset.errors.last.to_s)
+          assert_includes(asset.error.last.inspect, '/also-does-not-exist.js')
+        end
+      end
+
+      ######################################################################################################
+      ## Asset#errors                                                                                     ##
+      ######################################################################################################
+
+      describe('#errors') do
+        it('returns empty array if there were no errors during processing') do
+          asset = AssetRequireLibsStub.new(HELLO_PATH, HELLO_FILE, {}, internal: false)
+
+          assert_empty(asset.errors)
+        end
+
+        it('returns array of errors if there were one or more errors during processing') do
+          path = '/bad-imports.js'
+          asset = AssetRequireLibsStub.new(path, File.join(ASSET_DIR, path), {})
+
+          asset.process(Time.now.to_f)
+
+          assert_instance_of(Array, asset.errors)
+          assert_equal(2, asset.errors.size)
+
+          assert_instance_of(Darkroom::AssetNotFoundError, asset.errors.first)
+          assert_includes(asset.errors.inspect, asset.errors.first.inspect)
+
+          assert_instance_of(Darkroom::AssetNotFoundError, asset.errors.last)
+          assert_includes(asset.errors.inspect, asset.errors.last.inspect)
+        end
+      end
+
+      ######################################################################################################
       ## Asset#error?                                                                                     ##
       ######################################################################################################
 
