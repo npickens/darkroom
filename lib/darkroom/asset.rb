@@ -146,13 +146,17 @@ class Darkroom
     # Returns high-level object info string.
     #
     def inspect
-      vars = instance_variables.map do |v|
-        "#{v}=#{
-          v == :@content || v == :@own_content ? '...' : instance_variable_get(v).inspect
-        }"
-      end
-
-      "#<#{self.class}:0x%016x #{vars.join(', ')}>" % (object_id * 2)
+      "#<#{self.class}: "\
+        "@extension=#{@extension.inspect}, "\
+        "@errors=#{@errors.inspect}, "\
+        "@file=#{@file.inspect}, "\
+        "@fingerprint=#{@fingerprint.inspect}, "\
+        "@internal=#{@internal.inspect}, "\
+        "@minify=#{@minify.inspect}, "\
+        "@mtime=#{@mtime.inspect}, "\
+        "@path=#{@path.inspect}, "\
+        "@path_versioned=#{@path_versioned.inspect}"\
+      '>'
     end
 
     protected

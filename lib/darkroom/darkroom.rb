@@ -202,4 +202,22 @@ class Darkroom
       written << asset.path
     end
   end
+
+  ##
+  # Returns high-level object info string.
+  #
+  def inspect
+    "#<#{self.class}: "\
+      "@errors=#{@errors.inspect}, "\
+      "@globs=#{@globs.inspect}, "\
+      "@hosts=#{@hosts.inspect}, "\
+      "@internal_pattern=#{@internal_pattern.inspect}, "\
+      "@last_processed_at=#{@last_processed_at.inspect}, "\
+      "@min_process_interval=#{@min_process_interval.inspect}, "\
+      "@minified_pattern=#{@minified_pattern.inspect}, "\
+      "@minify=#{@minify.inspect}, "\
+      "@prefix=#{@prefix.inspect}, "\
+      "@pristine=#{@pristine.inspect}"\
+    '>'
+  end
 end
