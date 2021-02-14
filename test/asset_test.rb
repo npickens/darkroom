@@ -75,15 +75,19 @@ class AssetTest < Minitest::Test
         end
 
         it('raises MissingLibraryError if compile library is not available') do
-          assert_raises(Darkroom::MissingLibraryError) do
+          error = assert_raises(Darkroom::MissingLibraryError) do
             Darkroom::Asset.new('/hello.bad-compile', '', {})
           end
+
+          assert_includes(error.inspect, Darkroom::Asset::SPECS['.bad-compile'][:compile_lib])
         end
 
         it('raises MissingLibraryError if minify library is not available and minification is enabled') do
-          assert_raises(Darkroom::MissingLibraryError) do
+          error = assert_raises(Darkroom::MissingLibraryError) do
             Darkroom::Asset.new('/hello.bad-minify', '', {}, minify: true)
           end
+
+          assert_includes(error.inspect, Darkroom::Asset::SPECS['.bad-minify'][:minify_lib])
         end
       end
 
