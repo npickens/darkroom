@@ -11,27 +11,21 @@ class Darkroom
     # * +errors+ - Error or array of errors.
     #
     def initialize(errors)
-      @errors = Array(errors).sort_by { |e| e.respond_to?(:path) ? e.path : '' }
-    end
-
-    ##
-    # Iterates over each error.
-    #
-    # * +&block+ - Block to execute for each error.
-    #
-    def each(&block)
-      @errors.each(&block)
+      @errors = Array(errors)
     end
 
     ##
     # Returns a string representation of the error.
     #
     def to_s
-      if @errors.size == 1
-        @errors.first.message
-      else
-        "Errors were encountered while processing assets:\n  #{@errors.map(&:message).join("\n  ")}"
-      end
+      "Errors were encountered while processing assets:\n  #{@errors.map(&:to_s).join("\n  ")}"
+    end
+
+    ##
+    # Passes any missing method call on to the @errors array.
+    #
+    def method_missing(m, *args, &block)
+      @errors.send(m, *args, &block)
     end
   end
 end

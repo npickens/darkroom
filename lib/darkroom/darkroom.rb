@@ -94,11 +94,7 @@ class Darkroom
       end
     ensure
       @last_processed_at = Time.now.to_f
-      @error =
-        if @errors.empty? then nil
-        elsif @errors.size == 1 then @errors.first
-        else ProcessingError.new(@errors)
-        end
+      @error = @errors.empty? ? nil : ProcessingError.new(@errors)
     end
   end
 
