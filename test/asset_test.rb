@@ -249,6 +249,33 @@ class AssetTest < Minitest::Test
           refute(asset.error?)
         end
       end
+
+      ######################################################################################################
+      ## Asset#inspect                                                                                    ##
+      ######################################################################################################
+
+      describe('#inspect') do
+        it('returns a high-level object info string') do
+          path = '/bad-import.js'
+          file = File.join(ASSET_DIR, path)
+          asset = Darkroom::Asset.new(path, file, {})
+
+          asset.process(Time.now.to_f)
+
+          assert_equal('#<Darkroom::Asset: '\
+            '@errors=[#<Darkroom::AssetNotFoundError: Asset not found (referenced from /bad-import.js:1): '\
+              '/does-not-exist.js>], '\
+            '@extension=".js", '\
+            "@file=\"#{file}\", "\
+            '@fingerprint="afa0a5ffe7423f4b568f19a39b53b122", '\
+            '@internal=false, '\
+            '@minify=false, '\
+            "@mtime=#{File.mtime(file).inspect}, "\
+            '@path="/bad-import.js", '\
+            '@path_versioned="/bad-import-afa0a5ffe7423f4b568f19a39b53b122.js"'\
+          '>', asset.inspect)
+        end
+      end
     end
   end
 end

@@ -143,8 +143,8 @@ class Darkroom
     #
     def inspect
       "#<#{self.class}: "\
-        "@extension=#{@extension.inspect}, "\
         "@errors=#{@errors.inspect}, "\
+        "@extension=#{@extension.inspect}, "\
         "@file=#{@file.inspect}, "\
         "@fingerprint=#{@fingerprint.inspect}, "\
         "@internal=#{@internal.inspect}, "\
