@@ -14,7 +14,7 @@ class Darkroom
       '.css' => {
         content_type: 'text/css',
         dependency_regex: /^ *@import +(?<quote>['"]) *(?<path>.*) *\g<quote> *; *$/.freeze,
-        minify: -> (content) { CSSminify.compress(content) },
+        minify: -> (content) { CSSminify.compress(content) }.freeze,
         minify_lib: 'cssminify',
       }.freeze,
 
