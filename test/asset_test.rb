@@ -10,35 +10,31 @@ class AssetTest < Minitest::Test
         ASSET_DIR = File.join(TEST_DIR, 'assets').freeze
         DUMMY_LIBS_DIR = File.join(TEST_DIR, 'dummy_libs').freeze
 
-        HELLO_PATH = '/hello.txt'
-        HELLO_FILE = File.join(ASSET_DIR, HELLO_PATH)
+        JS_ASSET_PATH = '/app.js'
+        JS_ASSET_FILE = File.join(ASSET_DIR, JS_ASSET_PATH)
 
-        specs = Darkroom::Asset::SPECS.dup.merge!(
-          '.dummy' => {
-            content_type: 'text/dummy',
-            compile_lib: File.join(DUMMY_LIBS_DIR, 'compile.rb').freeze,
-            minify_lib: File.join(DUMMY_LIBS_DIR, 'minify.rb').freeze,
-          }.freeze,
+        def get_asset(*args, **options)
+          path = args[0] || JS_ASSET_PATH
+          file = args[1] || File.join(ASSET_DIR, path)
+          manifest = args[2] || {}
 
-          '.bad-compile' => {
-            content_type: 'text/bad-compile',
-            compile_lib: File.join(DUMMY_LIBS_DIR, 'bad-compile.rb').freeze,
-            minify_lib: File.join(DUMMY_LIBS_DIR, 'minify.rb').freeze,
-          }.freeze,
-
-          '.bad-minify' => {
-            content_type: 'text/bad-minify',
-            compile_lib: File.join(DUMMY_LIBS_DIR, 'compile.rb').freeze,
-            minify_lib: File.join(DUMMY_LIBS_DIR, 'bad-minify.rb').freeze,
-          }.freeze,
-        ).freeze
-
-        Darkroom::Asset.send(:remove_const, :SPECS)
-        Darkroom::Asset.const_set(:SPECS, specs)
-
-        class AssetRequireLibsStub < Darkroom::Asset
-          def require_libs() true end
+          Darkroom::Asset.new(path, file, manifest, **options)
         end
+      end
+
+      before do
+        $:.unshift(DUMMY_LIBS_DIR)
+      end
+
+      after do
+        $:.delete(DUMMY_LIBS_DIR)
+        $".delete_if { |path| path.start_with?(DUMMY_LIBS_DIR) }
+
+        Darkroom.send(:remove_const, :HTX) if defined?(Darkroom::HTX)
+        Darkroom.send(:remove_const, :Uglifier) if defined?(Darkroom::Uglifier)
+
+        refute(defined?(Darkroom::HTX), 'Expected HTX to be undefined.')
+        refute(defined?(Darkroom::Uglifier), 'Expected Uglifier to be undefined.')
       end
 
       ######################################################################################################
@@ -46,48 +42,42 @@ class AssetTest < Minitest::Test
       ######################################################################################################
 
       describe('#initialize') do
-        before do
-          if defined?(Darkroom::DummyCompile)
-            $".delete(Darkroom::Asset::SPECS['.dummy'][:compile_lib])
-            Darkroom.send(:remove_const, :DummyCompile)
-          end
-
-          if defined?(Darkroom::DummyMinify)
-            $".delete(Darkroom::Asset::SPECS['.dummy'][:minify_lib])
-            Darkroom.send(:remove_const, :DummyMinify)
-          end
-        end
-
         it('requires compile library if spec has one') do
-          Darkroom::Asset.new('/hello.dummy', '', {})
+          get_asset('/some-template.htx')
 
-          assert(!!defined?(Darkroom::DummyCompile), 'Expected Darkroom::DummyCompile to be defined.')
+          assert(defined?(Darkroom::HTX), 'Expected HTX to be defined.')
         end
 
         it('requires minify library if spec has one and minification is enabled') do
-          Darkroom::Asset.new('/hello.dummy', '', {}, minify: true)
-          assert(!!defined?(Darkroom::DummyMinify), 'Expected Darkroom::DummyMinify to be defined.')
+          get_asset(minify: true)
+
+          assert(defined?(Darkroom::Uglifier), 'Expected Uglifier to be defined.')
         end
 
         it('does not require minify library if spec has one and minification is not enabled') do
-          Darkroom::Asset.new('/hello.dummy', '', {})
-          refute(!!defined?(Darkroom::DummyMinify), 'Expected Darkroom::DummyMinify to be undefined.')
+          get_asset
+
+          refute(defined?(Darkroom::Uglifier), 'Expected Uglifier to be undefined.')
         end
 
         it('raises MissingLibraryError if compile library is not available') do
+          $:.delete(DUMMY_LIBS_DIR)
+
           error = assert_raises(Darkroom::MissingLibraryError) do
-            Darkroom::Asset.new('/hello.bad-compile', '', {})
+            get_asset('/hello.htx')
           end
 
-          assert_includes(error.inspect, Darkroom::Asset::SPECS['.bad-compile'][:compile_lib])
+          assert_includes(error.inspect, Darkroom::Asset::SPECS['.htx'][:compile_lib])
         end
 
         it('raises MissingLibraryError if minify library is not available and minification is enabled') do
+          $:.delete(DUMMY_LIBS_DIR)
+
           error = assert_raises(Darkroom::MissingLibraryError) do
-            Darkroom::Asset.new('/hello.bad-minify', '', {}, minify: true)
+            get_asset(minify: true)
           end
 
-          assert_includes(error.inspect, Darkroom::Asset::SPECS['.bad-minify'][:minify_lib])
+          assert_includes(error.inspect, Darkroom::Asset::SPECS['.js'][:minify_lib])
         end
       end
 
@@ -98,7 +88,7 @@ class AssetTest < Minitest::Test
       describe('#content_type') do
         it('returns the correct HTTP MIME string for the asset') do
           Darkroom::Asset::SPECS.each do |extension, spec|
-            asset = AssetRequireLibsStub.new("hello#{extension}", '', {})
+            asset = get_asset("hello#{extension}")
             assert_equal(spec[:content_type], Darkroom::Asset::SPECS[extension][:content_type])
           end
         end
@@ -111,13 +101,13 @@ class AssetTest < Minitest::Test
       describe('#headers') do
         it('includes correct content type') do
           Darkroom::Asset::SPECS.each do |extension, spec|
-            asset = AssetRequireLibsStub.new("hello#{extension}", '', {})
+            asset = get_asset("hello#{extension}")
             assert_equal(spec[:content_type], asset.headers['Content-Type'])
           end
         end
 
         it('includes Cache-Control header if :versioned is not specified') do
-          asset = AssetRequireLibsStub.new(HELLO_PATH, HELLO_FILE, {})
+          asset = get_asset
           headers = asset.headers
 
           assert_equal('public, max-age=31536000', headers['Cache-Control'])
@@ -125,7 +115,7 @@ class AssetTest < Minitest::Test
         end
 
         it('includes Cache-Control header if :versioned is true') do
-          asset = AssetRequireLibsStub.new(HELLO_PATH, HELLO_FILE, {})
+          asset = get_asset
           asset.process(Time.now.to_f)
 
           headers = asset.headers(versioned: true)
@@ -135,12 +125,12 @@ class AssetTest < Minitest::Test
         end
 
         it('includes ETag header if :versioned is false') do
-          asset = AssetRequireLibsStub.new(HELLO_PATH, HELLO_FILE, {})
+          asset = get_asset
           asset.process(Time.now.to_f)
 
           headers = asset.headers(versioned: false)
 
-          assert_equal('"09f7e02f1290be211da707a266f153b3"', headers['ETag'])
+          assert_equal('"25f290825cb44d4cf57632abfa82c37e"', headers['ETag'])
           assert_nil(headers['Cache-Control'])
         end
       end
@@ -151,19 +141,19 @@ class AssetTest < Minitest::Test
 
       describe('#internal?') do
         it('returns true if asset was initialized as internal') do
-          asset = AssetRequireLibsStub.new(HELLO_PATH, HELLO_FILE, {}, internal: true)
+          asset = get_asset(internal: true)
 
           assert(asset.internal?)
         end
 
         it('returns false if asset was initialized as non-internal') do
-          asset = AssetRequireLibsStub.new(HELLO_PATH, HELLO_FILE, {}, internal: false)
+          asset = get_asset(internal: false)
 
           refute(asset.internal?)
         end
 
         it('returns false if asset was initialized without specifying internal status') do
-          asset = AssetRequireLibsStub.new(HELLO_PATH, HELLO_FILE, {})
+          asset = get_asset
 
           refute(asset.internal?)
         end
@@ -175,15 +165,14 @@ class AssetTest < Minitest::Test
 
       describe('#error') do
         it('returns nil if there were no errors during processing') do
-          asset = AssetRequireLibsStub.new(HELLO_PATH, HELLO_FILE, {}, internal: false)
+          asset = get_asset
+          asset.process(Time.now.to_f)
 
           assert_nil(asset.error)
         end
 
         it('returns ProcessingError instance if there were one or more errors during processing') do
-          path = '/bad-imports.js'
-          asset = AssetRequireLibsStub.new(path, File.join(ASSET_DIR, path), {})
-
+          asset = get_asset('/bad-imports.js')
           asset.process(Time.now.to_f)
 
           assert_instance_of(Darkroom::ProcessingError, asset.error)
@@ -205,15 +194,14 @@ class AssetTest < Minitest::Test
 
       describe('#errors') do
         it('returns empty array if there were no errors during processing') do
-          asset = AssetRequireLibsStub.new(HELLO_PATH, HELLO_FILE, {}, internal: false)
+          asset = get_asset
+          asset.process(Time.now.to_f)
 
           assert_empty(asset.errors)
         end
 
         it('returns array of errors if there were one or more errors during processing') do
-          path = '/bad-imports.js'
-          asset = AssetRequireLibsStub.new(path, File.join(ASSET_DIR, path), {})
-
+          asset = get_asset('/bad-imports.js')
           asset.process(Time.now.to_f)
 
           assert_instance_of(Array, asset.errors)
@@ -233,17 +221,14 @@ class AssetTest < Minitest::Test
 
       describe('#error?') do
         it('returns true if there were one or more errors during processing') do
-          path = '/bad-import.js'
-          asset = AssetRequireLibsStub.new(path, File.join(ASSET_DIR, path), {})
-
+          asset = get_asset('/bad-import.js')
           asset.process(Time.now.to_f)
 
           assert(asset.error?)
         end
 
         it('returns false if there were no errors during processing') do
-          asset = AssetRequireLibsStub.new(HELLO_PATH, HELLO_FILE, {})
-
+          asset = get_asset
           asset.process(Time.now.to_f)
 
           refute(asset.error?)
@@ -256,10 +241,8 @@ class AssetTest < Minitest::Test
 
       describe('#inspect') do
         it('returns a high-level object info string') do
-          path = '/bad-import.js'
-          file = File.join(ASSET_DIR, path)
-          asset = Darkroom::Asset.new(path, file, {})
-
+          file = File.join(ASSET_DIR, '/bad-import.js')
+          asset = get_asset('/bad-import.js', file)
           asset.process(Time.now.to_f)
 
           assert_equal('#<Darkroom::Asset: '\
