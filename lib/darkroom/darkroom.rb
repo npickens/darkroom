@@ -33,7 +33,7 @@ class Darkroom
       minified_pattern: DEFAULT_MINIFIED_PATTERN, internal_pattern: DEFAULT_INTERNAL_PATTERN,
       min_process_interval: MIN_PROCESS_INTERVAL)
     @globs = load_paths.each_with_object({}) do |path, globs|
-      globs[path.chomp('/')] = File.join(path, '**', "*{#{Asset::SPECS.keys.join(',')}}")
+      globs[path.chomp('/')] = File.join(path, '**', "*{#{Asset.extensions.join(',')}}")
     end
 
     @hosts = Array(host) + Array(hosts)

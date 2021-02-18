@@ -13,28 +13,19 @@ class AssetTest < Minitest::Test
         JS_ASSET_PATH = '/app.js'
         JS_ASSET_FILE = File.join(ASSET_DIR, JS_ASSET_PATH)
 
+        $:.unshift(DUMMY_LIBS_DIR)
+
         def get_asset(*args, **options)
           path = args[0] || JS_ASSET_PATH
-          file = args[1] || File.join(ASSET_DIR, path)
+          file = args[1] || file_for(path)
           manifest = args[2] || {}
 
           Darkroom::Asset.new(path, file, manifest, **options)
         end
-      end
 
-      before do
-        $:.unshift(DUMMY_LIBS_DIR)
-      end
-
-      after do
-        $:.delete(DUMMY_LIBS_DIR)
-        $".delete_if { |path| path.start_with?(DUMMY_LIBS_DIR) }
-
-        Darkroom.send(:remove_const, :HTX) if defined?(Darkroom::HTX)
-        Darkroom.send(:remove_const, :Uglifier) if defined?(Darkroom::Uglifier)
-
-        refute(defined?(Darkroom::HTX), 'Expected HTX to be undefined.')
-        refute(defined?(Darkroom::Uglifier), 'Expected Uglifier to be undefined.')
+        def file_for(path)
+          File.join(ASSET_DIR, path)
+        end
       end
 
       ######################################################################################################
@@ -42,42 +33,74 @@ class AssetTest < Minitest::Test
       ######################################################################################################
 
       describe('#initialize') do
-        it('requires compile library if spec has one') do
-          get_asset('/some-template.htx')
+        it('raises SpecNotDefinedError if no spec is defined for a file extension') do
+          path = '/app.undefined'
+          file = file_for(path)
 
-          assert(defined?(Darkroom::HTX), 'Expected HTX to be defined.')
+          error = assert_raises(Darkroom::SpecNotDefinedError) do
+            get_asset(path)
+          end
+
+          assert_includes(error.inspect, '.undefined')
+          assert_includes(error.inspect, file)
+        end
+
+        it('requires compile library if spec has one') do
+          Darkroom::Asset.add_spec('.dummy-compile', 'text/dummy-compile',
+            compile_lib: 'dummy_compile',
+            compile: -> (path, content) { DummyCompile.compile(path, content) },
+          )
+
+          refute(defined?(DummyCompile), 'Expected DummyCompile to be undefined when an asset of that '\
+            'type has not be initialized yet.')
+
+          get_asset('/app.dummy-compile')
+
+          assert(defined?(DummyCompile), 'Expected DummyCompile to be defined.')
         end
 
         it('requires minify library if spec has one and minification is enabled') do
-          get_asset(minify: true)
+          Darkroom::Asset.add_spec('.dummy-minify', 'text/dummy-minify',
+            minify: -> (content) { DummyMinify.minify(content) },
+            minify_lib: 'dummy_minify',
+          )
 
-          assert(defined?(Darkroom::Uglifier), 'Expected Uglifier to be defined.')
-        end
+          get_asset('/app.dummy-minify')
+          refute(defined?(DummyMinify), 'Expected DummyMinify to be undefined when minification is not '\
+            'enabled.')
 
-        it('does not require minify library if spec has one and minification is not enabled') do
-          get_asset
-
-          refute(defined?(Darkroom::Uglifier), 'Expected Uglifier to be undefined.')
+          get_asset('/app.dummy-minify', minify: true)
+          assert(defined?(DummyMinify), 'Expected DummyMinify to be defined.')
         end
 
         it('raises MissingLibraryError if compile library is not available') do
-          $:.delete(DUMMY_LIBS_DIR)
+          Darkroom::Asset.add_spec('.bad-compile', 'text/bad-compile', compile_lib: 'bad_compile')
 
           error = assert_raises(Darkroom::MissingLibraryError) do
-            get_asset('/hello.htx')
+            get_asset('/app.bad-compile')
           end
 
-          assert_includes(error.inspect, Darkroom::Asset::SPECS['.htx'][:compile_lib])
+          assert_includes(error.inspect, Darkroom::Asset.spec('.bad-compile').compile_lib)
+        ensure
+          Darkroom::Asset.class_variable_get(:@@specs).delete('.bad-compile')
         end
 
         it('raises MissingLibraryError if minify library is not available and minification is enabled') do
-          $:.delete(DUMMY_LIBS_DIR)
+          Darkroom::Asset.add_spec('.bad-minify', 'text/bad-minify', minify_lib: 'bad_minify')
 
-          error = assert_raises(Darkroom::MissingLibraryError) do
-            get_asset(minify: true)
+          begin
+            get_asset('/app.bad-minify')
+          rescue Darkroom::MissingLibraryError => e
+            assert(false, 'Expected minify library to not be required when minification is not enabled')
           end
 
-          assert_includes(error.inspect, Darkroom::Asset::SPECS['.js'][:minify_lib])
+          error = assert_raises(Darkroom::MissingLibraryError) do
+            get_asset('/app.bad-minify', minify: true)
+          end
+
+          assert_includes(error.inspect, Darkroom::Asset.spec('.bad-minify').minify_lib)
+        ensure
+          Darkroom::Asset.class_variable_get(:@@specs).delete('.bad-minify')
         end
       end
 
@@ -86,11 +109,18 @@ class AssetTest < Minitest::Test
       ######################################################################################################
 
       describe('#content_type') do
-        it('returns the correct HTTP MIME string for the asset') do
-          Darkroom::Asset::SPECS.each do |extension, spec|
-            asset = get_asset("hello#{extension}")
-            assert_equal(spec[:content_type], Darkroom::Asset::SPECS[extension][:content_type])
-          end
+        it('returns the HTTP MIME type string for the asset') do
+          assert_equal('text/css', get_asset('/app.css').content_type)
+          assert_equal('text/html', get_asset('/index.html').content_type)
+          assert_equal('application/javascript', get_asset('/template.htx').content_type)
+          assert_equal('image/x-icon', get_asset('/favicon.ico').content_type)
+          assert_equal('application/javascript', get_asset('/app.js').content_type)
+          assert_equal('image/jpeg', get_asset('/photo.jpg').content_type)
+          assert_equal('image/png', get_asset('/graphic.png').content_type)
+          assert_equal('image/svg+xml', get_asset('/graphic.svg').content_type)
+          assert_equal('text/plain', get_asset('/robots.txt').content_type)
+          assert_equal('font/woff', get_asset('/font.woff').content_type)
+          assert_equal('font/woff2', get_asset('/font.woff2').content_type)
         end
       end
 
@@ -99,10 +129,10 @@ class AssetTest < Minitest::Test
       ######################################################################################################
 
       describe('#headers') do
-        it('includes correct content type') do
-          Darkroom::Asset::SPECS.each do |extension, spec|
-            asset = get_asset("hello#{extension}")
-            assert_equal(spec[:content_type], asset.headers['Content-Type'])
+        it('includes Content-Type header') do
+          Darkroom::Asset.extensions.each do |extension|
+            asset = get_asset("/hello#{extension}")
+            assert_equal(asset.content_type, asset.headers['Content-Type'])
           end
         end
 
@@ -241,8 +271,9 @@ class AssetTest < Minitest::Test
 
       describe('#inspect') do
         it('returns a high-level object info string') do
-          file = File.join(ASSET_DIR, '/bad-import.js')
-          asset = get_asset('/bad-import.js', file)
+          asset = get_asset('/bad-import.js')
+          file = file_for(asset.path)
+
           asset.process(Time.now.to_f)
 
           assert_equal('#<Darkroom::Asset: '\
