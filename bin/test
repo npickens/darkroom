@@ -10,6 +10,7 @@ Dir.chdir(File.expand_path('../..', __FILE__))
 Bundler.setup(:default, :development)
 
 require('darkroom')
+require('minitest/mock')
 require('minitest/spec')
 
 ############################################################################################################

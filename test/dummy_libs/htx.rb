@@ -1,7 +1,5 @@
-class Darkroom
-  class HTX
-    def self.compile(*args)
-      # Dummy
-    end
+class HTX
+  def self.compile(path, content)
+    "[HTX.compile(#{path.inspect}, #{content.inspect})]"
   end
 end

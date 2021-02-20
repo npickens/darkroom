@@ -16,9 +16,9 @@ class AssetTest < Minitest::Test
         $:.unshift(DUMMY_LIBS_DIR)
 
         def get_asset(*args, **options)
-          path = args[0] || JS_ASSET_PATH
-          file = args[1] || file_for(path)
-          manifest = args[2] || {}
+          path = args.first.kind_of?(String) ? args.first : JS_ASSET_PATH
+          file = file_for(path)
+          manifest = args.last.kind_of?(Hash) ? args.last : {}
 
           Darkroom::Asset.new(path, file, manifest, **options)
         end
@@ -101,6 +101,131 @@ class AssetTest < Minitest::Test
           assert_includes(error.inspect, Darkroom::Asset.spec('.bad-minify').minify_lib)
         ensure
           Darkroom::Asset.class_variable_get(:@@specs).delete('.bad-minify')
+        end
+      end
+
+      ######################################################################################################
+      ## Asset#process                                                                                    ##
+      ######################################################################################################
+
+      describe('#process') do
+        it('compiles content if compilation is part of spec') do
+          path = '/template.htx'
+          file = file_for(path)
+          asset = get_asset(path)
+
+          asset.process(Time.now.to_f)
+
+          assert_equal("[HTX.compile(#{path.inspect}, #{File.read(file).inspect})]", asset.content)
+        end
+
+        it('minifies content if minification is part of spec and minification is enabled') do
+          [
+            ['/app.css', 'CSSminify.compress'],
+            ['/app.js', 'Uglifier.compile'],
+            ['/template.htx', 'Uglifier.compile'],
+          ].each do |path, meth|
+            asset = get_asset(path)
+            file = file_for(asset.path)
+
+            asset.process(Time.now.to_f)
+            content = asset.content
+
+            asset = get_asset(path, minify: true)
+            asset.process(Time.now.to_f)
+
+            assert_equal("[#{meth}(#{content.inspect})]", asset.content)
+          end
+        end
+
+        it('merges dependencies with own content') do
+          imported = get_asset('/app.js')
+          imported_own_content = imported.send(:own_content)
+
+          asset = get_asset('/good-import.js', {'/app.js' => imported})
+          asset_own_content = asset.send(:own_content)
+
+          asset.process(Time.now.to_f)
+
+          assert_equal(imported_own_content, asset.content[0...imported_own_content.size])
+          assert_equal(asset_own_content, asset.content[imported_own_content.size..-1])
+        end
+
+        it('gracefully handles asset file being deleted on disk') do
+          asset = get_asset('/deleted.js')
+          asset.process(Time.now.to_f)
+
+          assert_empty(asset.content)
+        end
+
+        it('does not register any errors if successful') do
+          asset = get_asset(minify: true)
+          asset.process(Time.now.to_f)
+
+          assert_nil(asset.error)
+          assert_empty(asset.errors)
+        end
+
+        it('registers an error when a dependency is not found') do
+          asset = get_asset('/bad-import.js')
+          asset.process(Time.now.to_f)
+
+          assert_equal(1, asset.errors.size)
+          assert_instance_of(Darkroom::AssetNotFoundError, asset.errors.first)
+          assert_includes(asset.errors.first.inspect, '/bad-import.js')
+          assert_includes(asset.errors.first.inspect, '/does-not-exist.js')
+
+          assert_instance_of(Darkroom::ProcessingError, asset.error)
+          assert_equal(1, asset.error.size)
+          assert_equal(asset.errors, asset.error.instance_variable_get(:@errors))
+        end
+
+        it('registers an error when compilation raises an exception') do
+          asset = get_asset('/template.htx')
+
+          HTX.stub(:compile, -> (*args) { raise('[HTX Error]') }) do
+            asset.process(Time.now.to_f)
+          end
+
+          assert(asset.error)
+          assert_includes(asset.error.message, '[HTX Error]')
+        end
+
+        it('registers an error when minification raises an exception') do
+          asset = get_asset('/app.js', minify: true)
+
+          Uglifier.stub(:compile, -> (*args) { raise('[Uglifier Error]') }) do
+            asset.process(Time.now.to_f)
+          end
+
+          assert(asset.error)
+          assert_includes(asset.error.message, '[Uglifier Error]')
+        end
+
+        it('accumulates multiple errors') do
+          asset = get_asset('/bad-imports.js', minify: true)
+
+          Uglifier.stub(:compile, -> (*args) { raise('[Uglifier Error]') }) do
+            asset.process(Time.now.to_f)
+          end
+
+          assert_equal(3, asset.errors.size)
+
+          assert_instance_of(Darkroom::AssetNotFoundError, asset.errors[0])
+          assert_instance_of(Darkroom::AssetNotFoundError, asset.errors[1])
+          assert_instance_of(RuntimeError, asset.errors[2])
+
+          assert_includes(asset.errors[0].inspect, '/bad-imports.js')
+          assert_includes(asset.errors[0].inspect, '/does-not-exist.js')
+
+          assert_includes(asset.errors[1].inspect, '/bad-imports.js')
+          assert_includes(asset.errors[1].inspect, '/also-does-not-exist.js')
+
+          assert_includes(asset.errors[2].inspect, '[Uglifier Error]')
+
+          assert_instance_of(Darkroom::ProcessingError, asset.error)
+          assert_equal(3, asset.error.size)
+          assert_equal(asset.errors, asset.error.instance_variable_get(:@errors))
         end
       end
 
@@ -190,78 +315,21 @@ class AssetTest < Minitest::Test
       end
 
       ######################################################################################################
-      ## Asset#error                                                                                      ##
-      ######################################################################################################
-
-      describe('#error') do
-        it('returns nil if there were no errors during processing') do
-          asset = get_asset
-          asset.process(Time.now.to_f)
-
-          assert_nil(asset.error)
-        end
-
-        it('returns ProcessingError instance if there were one or more errors during processing') do
-          asset = get_asset('/bad-imports.js')
-          asset.process(Time.now.to_f)
-
-          assert_instance_of(Darkroom::ProcessingError, asset.error)
-          assert_equal(2, asset.error.size)
-
-          assert_instance_of(Darkroom::AssetNotFoundError, asset.errors.first)
-          assert_includes(asset.error.inspect, asset.errors.first.to_s)
-          assert_includes(asset.error.first.inspect, '/does-not-exist.js')
-
-          assert_instance_of(Darkroom::AssetNotFoundError, asset.errors.last)
-          assert_includes(asset.error.inspect, asset.errors.last.to_s)
-          assert_includes(asset.error.last.inspect, '/also-does-not-exist.js')
-        end
-      end
-
-      ######################################################################################################
-      ## Asset#errors                                                                                     ##
-      ######################################################################################################
-
-      describe('#errors') do
-        it('returns empty array if there were no errors during processing') do
-          asset = get_asset
-          asset.process(Time.now.to_f)
-
-          assert_empty(asset.errors)
-        end
-
-        it('returns array of errors if there were one or more errors during processing') do
-          asset = get_asset('/bad-imports.js')
-          asset.process(Time.now.to_f)
-
-          assert_instance_of(Array, asset.errors)
-          assert_equal(2, asset.errors.size)
-
-          assert_instance_of(Darkroom::AssetNotFoundError, asset.errors.first)
-          assert_includes(asset.errors.inspect, asset.errors.first.inspect)
-
-          assert_instance_of(Darkroom::AssetNotFoundError, asset.errors.last)
-          assert_includes(asset.errors.inspect, asset.errors.last.inspect)
-        end
-      end
-
-      ######################################################################################################
       ## Asset#error?                                                                                     ##
       ######################################################################################################
 
       describe('#error?') do
-        it('returns true if there were one or more errors during processing') do
-          asset = get_asset('/bad-import.js')
-          asset.process(Time.now.to_f)
-
-          assert(asset.error?)
-        end
-
         it('returns false if there were no errors during processing') do
           asset = get_asset
           asset.process(Time.now.to_f)
 
           refute(asset.error?)
+        end
+
+        it('returns true if there were one or more errors during processing') do
+          asset = get_asset('/bad-import.js')
+          asset.process(Time.now.to_f)
+          assert(asset.error?)
         end
       end
 
