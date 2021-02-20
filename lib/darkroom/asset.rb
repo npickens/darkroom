@@ -61,7 +61,7 @@ class Darkroom
     end
 
     ##
-    # Returns the specs hash.
+    # Returns an array of file extensions for which specs exist.
     #
     def self.extensions
       @@specs.keys
