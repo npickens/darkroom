@@ -1,33 +1,35 @@
-class AssetTest < Minitest::Test
+require_relative('darkroom_test')
+
+class AssetTest < DarkroomTest
+  ##########################################################################################################
+  ## Constants                                                                                            ##
+  ##########################################################################################################
+
+  JS_ASSET_PATH = '/app.js'
+  JS_ASSET_FILE = File.join(ASSET_DIR, JS_ASSET_PATH)
+
+  ##########################################################################################################
+  ## Helpers                                                                                              ##
+  ##########################################################################################################
+
+  def get_asset(*args, **options)
+    path = args.first.kind_of?(String) ? args.first : JS_ASSET_PATH
+    file = file_for(path)
+    manifest = args.last.kind_of?(Hash) ? args.last : {}
+
+    Darkroom::Asset.new(path, file, manifest, **options)
+  end
+
+  def file_for(path)
+    File.join(ASSET_DIR, path)
+  end
+
+  #########################################################################################################
+  # Tests                                                                                                ##
+  #########################################################################################################
+
   describe('Darkroom') do
     describe('Asset') do
-      ######################################################################################################
-      ## Setup                                                                                            ##
-      ######################################################################################################
-
-      begin
-        TEST_DIR = File.expand_path('..', __FILE__).freeze
-        ASSET_DIR = File.join(TEST_DIR, 'assets').freeze
-        DUMMY_LIBS_DIR = File.join(TEST_DIR, 'dummy_libs').freeze
-
-        JS_ASSET_PATH = '/app.js'
-        JS_ASSET_FILE = File.join(ASSET_DIR, JS_ASSET_PATH)
-
-        $:.unshift(DUMMY_LIBS_DIR)
-
-        def get_asset(*args, **options)
-          path = args.first.kind_of?(String) ? args.first : JS_ASSET_PATH
-          file = file_for(path)
-          manifest = args.last.kind_of?(Hash) ? args.last : {}
-
-          Darkroom::Asset.new(path, file, manifest, **options)
-        end
-
-        def file_for(path)
-          File.join(ASSET_DIR, path)
-        end
-      end
-
       ######################################################################################################
       ## Asset#initialize                                                                                 ##
       ######################################################################################################
