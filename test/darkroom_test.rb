@@ -28,6 +28,31 @@ class DarkroomTest < Minitest::Test
   end
 
   ##########################################################################################################
+  ## Test #dump                                                                                           ##
+  ##########################################################################################################
+
+  test('#dump writes processed assets to a directory') do
+    dump_dir = File.join(TEST_DIR, 'test_dump')
+    darkroom = Darkroom.new(ASSET_DIR)
+
+    darkroom.process
+    darkroom.dump(dump_dir)
+
+    %w[
+      app-25f290825cb44d4cf57632abfa82c37e.js
+      app-c21dbc03fb551f55b202b56908f8e4d5.css
+      bad-import-afa0a5ffe7423f4b568f19a39b53b122.js
+      bad-imports-afa0a5ffe7423f4b568f19a39b53b122.js
+      good-import-f8b61e176e89f88e14213533a7f75742.js
+      template-729d62af81cf5754f62c005fbe7da4b9.htx
+    ].each do |file|
+      assert(File.exists?(File.join(dump_dir, file)))
+    end
+  ensure
+    FileUtils.rm_rf(dump_dir)
+  end
+
+  ##########################################################################################################
   ## Test #inspect                                                                                        ##
   ##########################################################################################################
 
