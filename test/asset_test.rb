@@ -316,4 +316,20 @@ class AssetTest < Minitest::Test
       '@path_versioned="/bad-import-afa0a5ffe7423f4b568f19a39b53b122.js"'\
     '>', asset.inspect)
   end
+
+  ##########################################################################################################
+  ## Helpers                                                                                              ##
+  ##########################################################################################################
+
+  def get_asset(*args, **options)
+    path = args.first.kind_of?(String) ? args.first : JS_ASSET_PATH
+    file = file_for(path)
+    manifest = args.last.kind_of?(Hash) ? args.last : {}
+
+    Darkroom::Asset.new(path, file, manifest, **options)
+  end
+
+  def file_for(path)
+    File.join(ASSET_DIR, path)
+  end
 end

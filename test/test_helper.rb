@@ -33,20 +33,4 @@ module TestHelper
   def self.included(klass)
     klass.extend(ClassMethods)
   end
-
-  ##########################################################################################################
-  ## Helpers                                                                                              ##
-  ##########################################################################################################
-
-  def get_asset(*args, **options)
-    path = args.first.kind_of?(String) ? args.first : JS_ASSET_PATH
-    file = file_for(path)
-    manifest = args.last.kind_of?(Hash) ? args.last : {}
-
-    Darkroom::Asset.new(path, file, manifest, **options)
-  end
-
-  def file_for(path)
-    File.join(ASSET_DIR, path)
-  end
 end
