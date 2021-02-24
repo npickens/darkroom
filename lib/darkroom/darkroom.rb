@@ -23,7 +23,8 @@ class Darkroom
   #   are specified, they will be round-robined within each thread for each call to +#asset_path+.
   # * +hosts+ - Alias of +host+ parameter.
   # * +prefix+ - Prefix to prepend to asset paths (e.g. +/assets+).
-  # * +pristine+ - Path(s) that should not have the prefix or versioning applied (e.g. +/favicon.ico+).
+  # * +pristine+ - Path(s) that should not include prefix and for which unversioned form should be provided
+  #   by default (e.g. +/favicon.ico+).
   # * +minify+ - Boolean specifying whether or not to minify assets.
   # * +minified_pattern+ - Regex used against asset paths to determine if they are already minified and
   #   should therefore be skipped over for minification.
@@ -130,13 +131,14 @@ class Darkroom
   # * +path+ - The external path of the asset.
   #
   def asset(path)
-    if @prefix && !@pristine.include?(path)
-      path = path.start_with?(@prefix) ? path.sub(@prefix, '') : nil
-      path = nil if @pristine.include?(path)
-    end
+    asset = @manifest[@prefix ? path.sub(@prefix, '') : path]
 
-    asset = @manifest[path] or return nil
-    asset if !asset.internal?
+    return nil if asset.nil?
+    return nil if asset.internal?
+    return nil if @prefix && !path.start_with?(@prefix) && !@pristine.include?(asset.path)
+    return nil if @prefix && path.start_with?(@prefix) && @pristine.include?(asset.path)
+
+    asset
   end
 
   ##
