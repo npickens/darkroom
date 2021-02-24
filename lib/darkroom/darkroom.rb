@@ -11,6 +11,8 @@ class Darkroom
   PRISTINE = Set.new(%w[/favicon.ico /mask-icon.svg /humans.txt /robots.txt]).freeze
   MIN_PROCESS_INTERVAL = 0.5
 
+  TRAILING_SLASHES = /\/+$/.freeze
+
   attr_reader(:error, :errors)
 
   ##
@@ -36,12 +38,12 @@ class Darkroom
       globs[path.chomp('/')] = File.join(path, '**', "*{#{Asset.extensions.join(',')}}")
     end
 
-    @hosts = Array(host) + Array(hosts)
+    @hosts = (Array(host) + Array(hosts)).map! { |host| host.sub(TRAILING_SLASHES, '') }
     @minify = minify
     @internal_pattern = internal_pattern
     @minified_pattern = minified_pattern
 
-    @prefix = prefix&.sub(/\/+$/, '')
+    @prefix = prefix&.sub(TRAILING_SLASHES, '')
     @prefix = nil if @prefix && @prefix.empty?
 
     @pristine = PRISTINE.dup.merge(Array(pristine))
