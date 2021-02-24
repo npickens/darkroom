@@ -6,6 +6,7 @@ module TestHelper
   TEST_DIR = File.expand_path('..', __FILE__).freeze
   ASSET_DIR = File.join(TEST_DIR, 'assets').freeze
   DUMMY_LIBS_DIR = File.join(TEST_DIR, 'dummy_libs').freeze
+  DUMP_DIR = File.join(TEST_DIR, 'dump').freeze
 
   JS_ASSET_PATH = '/app.js'
   JS_ASSET_FILE = File.join(ASSET_DIR, JS_ASSET_PATH).freeze

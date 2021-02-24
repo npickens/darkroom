@@ -1,3 +1,4 @@
+require('fileutils')
 require_relative('test_helper')
 
 class DarkroomTest < Minitest::Test
@@ -12,24 +13,68 @@ class DarkroomTest < Minitest::Test
   ##########################################################################################################
 
   test('#dump writes processed assets to a directory') do
-    dump_dir = File.join(TEST_DIR, 'test_dump')
     darkroom = Darkroom.new(ASSET_DIR)
-
     darkroom.process
-    darkroom.dump(dump_dir)
+    darkroom.dump(DUMP_DIR)
 
-    %w[
-      app-25f290825cb44d4cf57632abfa82c37e.js
-      app-c21dbc03fb551f55b202b56908f8e4d5.css
-      bad-import-afa0a5ffe7423f4b568f19a39b53b122.js
-      bad-imports-afa0a5ffe7423f4b568f19a39b53b122.js
-      good-import-f8b61e176e89f88e14213533a7f75742.js
-      template-729d62af81cf5754f62c005fbe7da4b9.htx
-    ].each do |file|
-      assert(File.exists?(File.join(dump_dir, file)))
+    Dir.glob(File.join(DUMP_DIR, '*')).each do |file|
+      assert_equal(darkroom.asset("/#{File.basename(file)}").content, File.read(file))
     end
   ensure
-    FileUtils.rm_rf(dump_dir)
+    FileUtils.rm_rf(DUMP_DIR)
+  end
+
+  test('#dump does not include internal files') do
+    internal_pattern = /\.js$/
+
+    darkroom = Darkroom.new(ASSET_DIR, internal_pattern: internal_pattern)
+    darkroom.process
+    darkroom.dump(DUMP_DIR)
+
+    Dir.glob(File.join(DUMP_DIR, '*')).each do |file|
+      refute_match(internal_pattern, file)
+    end
+  ensure
+    FileUtils.rm_rf(DUMP_DIR)
+  end
+
+  test('#dump clears directory if clear option is true') do
+    darkroom = Darkroom.new(ASSET_DIR)
+    darkroom.process
+
+    some_file = File.join(DUMP_DIR, 'hello.txt')
+
+    FileUtils.mkdir_p(DUMP_DIR)
+    File.write(some_file, 'Hello World!')
+
+    darkroom.dump(DUMP_DIR)
+    assert(File.exists?(some_file), 'Expected file to exist')
+
+    darkroom.dump(DUMP_DIR, clear: false)
+    assert(File.exists?(some_file), 'Expected file to exist')
+
+    darkroom.dump(DUMP_DIR, clear: true)
+    refute(File.exists?(some_file), 'Expected file to have been deleted')
+  ensure
+    FileUtils.rm_rf(DUMP_DIR)
+  end
+
+  test('#dump does not include pristine assets if include_pristine option is false') do
+    darkroom = Darkroom.new(ASSET_DIR, pristine: JS_ASSET_PATH)
+    darkroom.process
+
+    file = File.join(DUMP_DIR, JS_ASSET_PATH)
+
+    darkroom.dump(DUMP_DIR, clear: true)
+    assert(File.exists?(file), "Expected #{JS_ASSET_PATH} to exist")
+
+    darkroom.dump(DUMP_DIR, clear: true, include_pristine: true)
+    assert(File.exists?(file), "Expected #{JS_ASSET_PATH} to exist")
+
+    darkroom.dump(DUMP_DIR, clear: true, include_pristine: false)
+    refute(File.exists?(file), "Expected #{JS_ASSET_PATH} to not exist")
+  ensure
+    FileUtils.rm_rf(DUMP_DIR)
   end
 
   ##########################################################################################################
