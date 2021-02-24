@@ -1,30 +1,10 @@
+require_relative('test_helper')
+
 class DarkroomTest < Minitest::Test
-  ##########################################################################################################
-  ## Constants                                                                                            ##
-  ##########################################################################################################
+  include(TestHelper)
 
-  TEST_DIR = File.expand_path('..', __FILE__).freeze
-  ASSET_DIR = File.join(TEST_DIR, 'assets').freeze
-  DUMMY_LIBS_DIR = File.join(TEST_DIR, 'dummy_libs').freeze
-
-  $:.unshift(DUMMY_LIBS_DIR)
-
-  ##########################################################################################################
-  ## Configuration                                                                                        ##
-  ##########################################################################################################
-
-  def self.test(name, &block)
-    define_method("#{contexts.join('::')}#{
-      name.start_with?('self.') ? name.sub('self.', '.') : name[0] == '#' ? '' : ' '
-    }#{name}", &block)
-  end
-
-  def self.contexts
-    %w[Darkroom]
-  end
-
-  def self.runnable_methods
-    public_instance_methods(true).grep(/^#{contexts.first}/).map(&:to_s)
+  def self.context
+    'Darkroom'
   end
 
   ##########################################################################################################

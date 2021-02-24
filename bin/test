@@ -19,7 +19,7 @@ require('minitest/spec')
 
 class Minitest::Result
   def location
-    super.sub(/^\w+Test#/, '')
+    super.sub(/^\w+#/, '')
   end
 end
 

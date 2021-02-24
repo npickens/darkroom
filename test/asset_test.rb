@@ -1,35 +1,10 @@
-require_relative('darkroom_test')
+require_relative('test_helper')
 
-class AssetTest < DarkroomTest
-  ##########################################################################################################
-  ## Constants                                                                                            ##
-  ##########################################################################################################
+class AssetTest < Minitest::Test
+  include(TestHelper)
 
-  JS_ASSET_PATH = '/app.js'
-  JS_ASSET_FILE = File.join(ASSET_DIR, JS_ASSET_PATH)
-
-  ##########################################################################################################
-  ## Configuration                                                                                        ##
-  ##########################################################################################################
-
-  def self.contexts
-    super + %w[Asset]
-  end
-
-  ##########################################################################################################
-  ## Helpers                                                                                              ##
-  ##########################################################################################################
-
-  def get_asset(*args, **options)
-    path = args.first.kind_of?(String) ? args.first : JS_ASSET_PATH
-    file = file_for(path)
-    manifest = args.last.kind_of?(Hash) ? args.last : {}
-
-    Darkroom::Asset.new(path, file, manifest, **options)
-  end
-
-  def file_for(path)
-    File.join(ASSET_DIR, path)
+  def self.context
+    'Darkroom::Asset'
   end
 
   ##########################################################################################################
