@@ -52,6 +52,8 @@ class Darkroom
     @last_processed_at = 0
     @mutex = Mutex.new
     @manifest = {}
+
+    Thread.current[:darkroom_host_index] = -1 unless @hosts.empty?
   end
 
   ##
@@ -151,15 +153,11 @@ class Darkroom
   #
   def asset_path(path, versioned: true)
     asset = @manifest[path] or return nil
-    prefix = @prefix if @prefix && !@pristine.include?(path)
 
-    if @hosts && !@hosts.empty?
-      if Thread.current[:darkroom_counter].nil? || Thread.current[:darkroom_counter] >= @hosts.size
-        Thread.current[:darkroom_counter] = 0
-      end
-
-      host = @hosts[(Thread.current[:darkroom_counter] += 1) % @hosts.size]
-    end
+    host = @hosts.empty? ? '' : @hosts[
+      Thread.current[:darkroom_host_index] = (Thread.current[:darkroom_host_index] + 1) % @hosts.size
+    ]
+    prefix = @prefix unless @pristine.include?(path)
 
     "#{host}#{prefix}#{versioned ? asset.path_versioned : path}"
   end
