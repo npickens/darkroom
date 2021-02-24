@@ -151,7 +151,7 @@ class Darkroom
   # * +path+ - The internal path of the asset.
   # * +versioned+ - Boolean indicating whether the versioned or unversioned path should be returned.
   #
-  def asset_path(path, versioned: true)
+  def asset_path(path, versioned: !@pristine.include?(path))
     asset = @manifest[path] or return nil
 
     host = @hosts.empty? ? '' : @hosts[
