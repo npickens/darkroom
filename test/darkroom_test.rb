@@ -20,6 +20,73 @@ class DarkroomTest < Minitest::Test
   end
 
   ##########################################################################################################
+  ## Test #asset_path                                                                                     ##
+  ##########################################################################################################
+
+  test('#asset_path returns nil if the asset does not exist') do
+    assert_nil(darkroom.asset_path('/does-not-exist.js'))
+  end
+
+  test('#asset_path returns versioned path by default if asset is not pristine') do
+    assert_equal(JS_ASSET_PATH_VERSIONED, darkroom.asset_path(JS_ASSET_PATH))
+  end
+
+  test('#asset_path returns unversioned path by default if asset is pristine') do
+    assert_equal(PRISTINE_ASSET_PATH, darkroom.asset_path(PRISTINE_ASSET_PATH))
+  end
+
+  test('#asset_path returns versioned asset path if `versioned` option is true') do
+    assert_equal(JS_ASSET_PATH_VERSIONED, darkroom.asset_path(JS_ASSET_PATH, versioned: true))
+    assert_equal(PRISTINE_ASSET_PATH_VERSIONED, darkroom.asset_path(PRISTINE_ASSET_PATH, versioned: true))
+  end
+
+  test('#asset_path returns unversioned asset path if `versioned` option is false') do
+    assert_equal(JS_ASSET_PATH, darkroom.asset_path(JS_ASSET_PATH, versioned: false))
+    assert_equal(PRISTINE_ASSET_PATH, darkroom.asset_path(PRISTINE_ASSET_PATH, versioned: false))
+  end
+
+  test('#asset_path includes a round-robin selected host if any hosts are configured') do
+    host = 'https://cdn1.darkroom'
+    hosts = %w[https://cdn1.darkroom https://cdn2.darkroom https://cdn3.darkroom]
+
+    configure_darkroom(host: host)
+    assert_equal("#{host}#{JS_ASSET_PATH_VERSIONED}", darkroom.asset_path(JS_ASSET_PATH))
+    assert_equal("#{host}#{JS_ASSET_PATH_VERSIONED}", darkroom.asset_path(JS_ASSET_PATH))
+
+    configure_darkroom(hosts: hosts)
+    assert_equal("#{hosts[0]}#{JS_ASSET_PATH_VERSIONED}", darkroom.asset_path(JS_ASSET_PATH))
+    assert_equal("#{hosts[1]}#{JS_ASSET_PATH_VERSIONED}", darkroom.asset_path(JS_ASSET_PATH))
+    assert_equal("#{hosts[2]}#{CSS_ASSET_PATH_VERSIONED}", darkroom.asset_path(CSS_ASSET_PATH))
+    assert_equal("#{hosts[0]}#{JS_ASSET_PATH_VERSIONED}", darkroom.asset_path(JS_ASSET_PATH))
+  end
+
+  test('#asset_path includes prefix if one is configured and asset is not pristine') do
+    configure_darkroom(prefix: '/static')
+
+    assert_match(/^\/static/, darkroom.asset_path(JS_ASSET_PATH))
+  end
+
+  test('#asset_path does not include prefix if one is configured and asset is pristine') do
+    configure_darkroom(prefix: '/static')
+
+    refute_match(/^\/static/, darkroom.asset_path(PRISTINE_ASSET_PATH))
+  end
+
+  ##########################################################################################################
+  ## Test #asset_path!                                                                                    ##
+  ##########################################################################################################
+
+  test('#asset_path! raises AssetNotFoundError if asset does not exist') do
+    path = '/does-not-exist.js'
+
+    error = assert_raises(Darkroom::AssetNotFoundError) do
+      darkroom.asset_path!(path)
+    end
+
+    assert_includes(error.inspect, path)
+  end
+
+  ##########################################################################################################
   ## Test #dump                                                                                           ##
   ##########################################################################################################
 
