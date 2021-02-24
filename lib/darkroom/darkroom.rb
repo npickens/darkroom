@@ -166,6 +166,8 @@ class Darkroom
   # Calls #asset_path and raises a AssetNotFoundError if the asset doesn't exist (instead of just returning
   # nil).
   #
+  # * +versioned+ - Boolean indicating whether the versioned or unversioned path should be returned.
+  #
   def asset_path!(path, versioned: true)
     asset_path(path, versioned: versioned) or raise(AssetNotFoundError.new(path))
   end
@@ -175,7 +177,11 @@ class Darkroom
   # uploaded to and served from a CDN or proxy server.
   #
   # * +dir+ - Directory to write the assets to.
-  # * +clear+ - Delete existing content of directory before performing dump.
+  # * +clear+ - Boolean indicating whether or not the existing contents of the directory should be deleted
+  #   before performing the dump.
+  # * +include_pristine+ - Boolean indicating whether or not to include pristine assets (when dumping for
+  #   the purpose of uploading to a CDN, assets such as /robots.txt and /favicon.ico don't need to be
+  #   included).
   #
   def dump(dir, clear: false, include_pristine: true)
     dir = File.expand_path(dir)
