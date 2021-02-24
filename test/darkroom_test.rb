@@ -20,6 +20,21 @@ class DarkroomTest < Minitest::Test
   end
 
   ##########################################################################################################
+  ## Test #process!                                                                                       ##
+  ##########################################################################################################
+
+  test('#process! raises ProcessingError if there were one or more errors during processing') do
+    configure_darkroom(ASSET_DIR, BAD_ASSET_DIR)
+
+    error = assert_raises(Darkroom::ProcessingError) do
+      darkroom.process!
+    end
+
+    assert_includes(error.inspect, '/does-not-exist.js')
+    assert_includes(error.inspect, '/also-does-not-exist.js')
+  end
+
+  ##########################################################################################################
   ## Test #error?                                                                                         ##
   ##########################################################################################################
 
