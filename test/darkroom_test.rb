@@ -4,17 +4,43 @@ require_relative('test_helper')
 class DarkroomTest < Minitest::Test
   include(TestHelper)
 
+  DUMP_DIR = File.join(TEST_DIR, 'dump').freeze
+  DUMP_DIR_EXISTING_FILE = File.join(DUMP_DIR, 'existing.txt').freeze
+
   def self.context
     'Darkroom'
+  end
+
+  ##########################################################################################################
+  ## Hooks                                                                                                ##
+  ##########################################################################################################
+
+  def setup
+    @@darkroom = (@@default_darkroom ||= darkroom)
   end
 
   ##########################################################################################################
   ## Test #dump                                                                                           ##
   ##########################################################################################################
 
+  def setup_dump_dir(with_file: false)
+    FileUtils.rm_rf(DUMP_DIR)
+    FileUtils.mkdir_p(DUMP_DIR)
+
+    File.write(DUMP_DIR_EXISTING_FILE, 'Existing file...') if with_file
+  end
+
+  test('#dump creates target directory if it does not exist') do
+    FileUtils.rm_rf(DUMP_DIR)
+    darkroom.dump(DUMP_DIR) rescue nil
+
+    assert(File.directory?(DUMP_DIR))
+  ensure
+    FileUtils.rm_rf(DUMP_DIR)
+  end
+
   test('#dump writes processed assets to a directory') do
-    darkroom = Darkroom.new(ASSET_DIR)
-    darkroom.process
+    setup_dump_dir
     darkroom.dump(DUMP_DIR)
 
     Dir.glob(File.join(DUMP_DIR, '*')).each do |file|
@@ -24,55 +50,67 @@ class DarkroomTest < Minitest::Test
     FileUtils.rm_rf(DUMP_DIR)
   end
 
-  test('#dump does not include internal files') do
-    internal_pattern = /\.js$/
-
-    darkroom = Darkroom.new(ASSET_DIR, internal_pattern: internal_pattern)
-    darkroom.process
+  test('#dump does not include internal assets') do
+    setup_dump_dir
+    configure_darkroom(internal_pattern: /\.js$/)
     darkroom.dump(DUMP_DIR)
 
-    Dir.glob(File.join(DUMP_DIR, '*')).each do |file|
-      refute_match(internal_pattern, file)
-    end
+    refute(Dir.glob(File.join(DUMP_DIR, '*')).empty?)
+    assert(Dir.glob(File.join(DUMP_DIR, '*.js')).empty?)
   ensure
     FileUtils.rm_rf(DUMP_DIR)
   end
 
-  test('#dump clears directory if clear option is true') do
-    darkroom = Darkroom.new(ASSET_DIR)
-    darkroom.process
-
-    some_file = File.join(DUMP_DIR, 'hello.txt')
-
-    FileUtils.mkdir_p(DUMP_DIR)
-    File.write(some_file, 'Hello World!')
-
+  test('#dump does not delete anything in target directory by default') do
+    setup_dump_dir(with_file: true)
     darkroom.dump(DUMP_DIR)
-    assert(File.exists?(some_file), 'Expected file to exist')
 
+    assert(File.exists?(DUMP_DIR_EXISTING_FILE))
+  ensure
+    FileUtils.rm_rf(DUMP_DIR)
+  end
+
+  test('#dump deletes everything in target directory if `clear` option is true') do
+    setup_dump_dir(with_file: true)
+    darkroom.dump(DUMP_DIR, clear: true)
+
+    refute(File.exists?(DUMP_DIR_EXISTING_FILE))
+  ensure
+    FileUtils.rm_rf(DUMP_DIR)
+  end
+
+  test('#dump does not delete anything in target directory if `clear` option is false') do
+    setup_dump_dir(with_file: true)
     darkroom.dump(DUMP_DIR, clear: false)
-    assert(File.exists?(some_file), 'Expected file to exist')
 
-    darkroom.dump(DUMP_DIR, clear: true)
-    refute(File.exists?(some_file), 'Expected file to have been deleted')
+    assert(File.exists?(DUMP_DIR_EXISTING_FILE))
   ensure
     FileUtils.rm_rf(DUMP_DIR)
   end
 
-  test('#dump does not include pristine assets if include_pristine option is false') do
-    darkroom = Darkroom.new(ASSET_DIR, pristine: JS_ASSET_PATH)
-    darkroom.process
+  test('#dump includes pristine assets by default') do
+    setup_dump_dir
+    darkroom.dump(DUMP_DIR)
 
-    file = File.join(DUMP_DIR, JS_ASSET_PATH)
+    assert(File.exists?(File.join(DUMP_DIR, PRISTINE_ASSET_PATH)))
+  ensure
+    FileUtils.rm_rf(DUMP_DIR)
+  end
 
-    darkroom.dump(DUMP_DIR, clear: true)
-    assert(File.exists?(file), "Expected #{JS_ASSET_PATH} to exist")
+  test('#dump includes pristine assets if `include_pristine` option is true') do
+    setup_dump_dir
+    darkroom.dump(DUMP_DIR, include_pristine: true)
 
-    darkroom.dump(DUMP_DIR, clear: true, include_pristine: true)
-    assert(File.exists?(file), "Expected #{JS_ASSET_PATH} to exist")
+    assert(File.exists?(File.join(DUMP_DIR, PRISTINE_ASSET_PATH)))
+  ensure
+    FileUtils.rm_rf(DUMP_DIR)
+  end
 
-    darkroom.dump(DUMP_DIR, clear: true, include_pristine: false)
-    refute(File.exists?(file), "Expected #{JS_ASSET_PATH} to not exist")
+  test('#dump does not include pristine assets if `include_pristine` option is false') do
+    setup_dump_dir
+    darkroom.dump(DUMP_DIR, include_pristine: false)
+
+    refute(File.exists?(File.join(DUMP_DIR, PRISTINE_ASSET_PATH)))
   ensure
     FileUtils.rm_rf(DUMP_DIR)
   end
@@ -82,7 +120,7 @@ class DarkroomTest < Minitest::Test
   ##########################################################################################################
 
   test('#inspect returns a high-level object info string') do
-    darkroom = Darkroom.new(ASSET_DIR,
+    configure_darkroom(
       hosts: 'https://cdn1.hello.world',
       prefix: '/static',
       pristine: '/hi.txt',
@@ -90,7 +128,6 @@ class DarkroomTest < Minitest::Test
       internal_pattern: /^\/private\//,
       min_process_interval: 1,
     )
-    darkroom.process
 
     assert_equal('#<Darkroom: '\
       '@errors=['\
@@ -111,5 +148,20 @@ class DarkroomTest < Minitest::Test
       '@prefix="/static", '\
       '@pristine=#<Set: {"/favicon.ico", "/mask-icon.svg", "/humans.txt", "/robots.txt", "/hi.txt"}>'\
     '>'.split(', @').join(",\n@"), darkroom.inspect.split(', @').join(",\n@"))
+  end
+
+  ##########################################################################################################
+  ## Helpers                                                                                              ##
+  ##########################################################################################################
+
+  def darkroom
+    defined?(@@darkroom) ? @@darkroom : configure_darkroom
+  end
+
+  def configure_darkroom(**options)
+    @@darkroom = Darkroom.new(ASSET_DIR, **options)
+    @@darkroom.process
+
+    @@darkroom
   end
 end
