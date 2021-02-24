@@ -330,6 +330,6 @@ class AssetTest < Minitest::Test
   end
 
   def file_for(path)
-    File.join(ASSET_DIR, path)
+    File.join(path.start_with?('/bad-') ? BAD_ASSET_DIR : ASSET_DIR, path)
   end
 end

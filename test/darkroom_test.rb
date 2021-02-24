@@ -20,6 +20,20 @@ class DarkroomTest < Minitest::Test
   end
 
   ##########################################################################################################
+  ## Test #error?                                                                                         ##
+  ##########################################################################################################
+
+  test('#error? returns false if there were no errors during processing') do
+    refute(darkroom.error?)
+  end
+
+  test('#error? returns true if there were one or more errors during processing') do
+    configure_darkroom(ASSET_DIR, BAD_ASSET_DIR)
+
+    assert(darkroom.error?)
+  end
+
+  ##########################################################################################################
   ## Test #asset                                                                                          ##
   ##########################################################################################################
 
@@ -231,7 +245,7 @@ class DarkroomTest < Minitest::Test
   ##########################################################################################################
 
   test('#inspect returns a high-level object info string') do
-    configure_darkroom(
+    configure_darkroom(ASSET_DIR, BAD_ASSET_DIR,
       hosts: 'https://cdn1.hello.world',
       prefix: '/static',
       pristine: '/hi.txt',
@@ -249,7 +263,8 @@ class DarkroomTest < Minitest::Test
         '#<Darkroom::AssetNotFoundError: Asset not found (referenced from /bad-imports.js:2): '\
           '/also-does-not-exist.js>'\
       '], '\
-      "@globs={\"#{ASSET_DIR}\"=>\"#{ASSET_DIR}/**/*{#{Darkroom::Asset.extensions.join(',')}}\"}, "\
+      "@globs={\"#{ASSET_DIR}\"=>\"#{ASSET_DIR}/**/*{#{Darkroom::Asset.extensions.join(',')}}\", "\
+        "\"#{BAD_ASSET_DIR}\"=>\"#{BAD_ASSET_DIR}/**/*{#{Darkroom::Asset.extensions.join(',')}}\"}, "\
       '@hosts=["https://cdn1.hello.world"], '\
       '@internal_pattern=/^\\/private\\//, '\
       "@last_processed_at=#{darkroom.instance_variable_get(:@last_processed_at)}, "\
@@ -269,8 +284,8 @@ class DarkroomTest < Minitest::Test
     defined?(@@darkroom) ? @@darkroom : configure_darkroom
   end
 
-  def configure_darkroom(**options)
-    @@darkroom = Darkroom.new(ASSET_DIR, **options)
+  def configure_darkroom(*args, **options)
+    @@darkroom = Darkroom.new(*(args.empty? ? [ASSET_DIR] : args), **options)
     @@darkroom.process
 
     @@darkroom
