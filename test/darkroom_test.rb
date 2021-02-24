@@ -20,6 +20,50 @@ class DarkroomTest < Minitest::Test
   end
 
   ##########################################################################################################
+  ## Test #asset                                                                                          ##
+  ##########################################################################################################
+
+  test('#asset returns nil if asset does not exist') do
+    assert_nil(darkroom.asset('/does-not-exist.js'))
+  end
+
+  test('#asset returns asset for unversioned path') do
+    assert_equal(File.read(JS_ASSET_FILE), darkroom.asset(JS_ASSET_PATH)&.content)
+  end
+
+  test('#asset returns asset for versioned path') do
+    assert_equal(File.read(JS_ASSET_FILE), darkroom.asset(JS_ASSET_PATH_VERSIONED)&.content)
+  end
+
+  test('#asset only returns asset if path includes prefix when a prefix is configured and asset is not '\
+      'pristine') do
+    configure_darkroom(prefix: '/static')
+
+    assert(darkroom.asset("/static#{JS_ASSET_PATH}"))
+    assert(darkroom.asset("/static#{JS_ASSET_PATH_VERSIONED}"))
+
+    assert_nil(darkroom.asset(JS_ASSET_PATH))
+    assert_nil(darkroom.asset(JS_ASSET_PATH_VERSIONED))
+  end
+
+  test('#asset only returns asset if path excludes prefix when a prefix is configured and asset is '\
+      'pristine') do
+    configure_darkroom(prefix: '/static')
+
+    assert(darkroom.asset(PRISTINE_ASSET_PATH))
+    assert(darkroom.asset(PRISTINE_ASSET_PATH_VERSIONED))
+
+    assert_nil(darkroom.asset("/static#{PRISTINE_ASSET_PATH}"))
+    assert_nil(darkroom.asset("/static#{PRISTINE_ASSET_PATH_VERSIONED}"))
+  end
+
+  test('#asset returns nil if asset is internal') do
+    configure_darkroom(internal_pattern: /\.js$/)
+
+    assert_nil(darkroom.asset(JS_ASSET_PATH))
+  end
+
+  ##########################################################################################################
   ## Test #asset_path                                                                                     ##
   ##########################################################################################################
 
