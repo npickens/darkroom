@@ -1,5 +1,1 @@
-class DummyMinify
-  def self.minify(*args)
-    # Dummy
-  end
-end
+class DummyMinify; end

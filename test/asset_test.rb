@@ -24,10 +24,7 @@ class AssetTest < Minitest::Test
   end
 
   test('#initialize requires compile library if spec has one') do
-    Darkroom::Asset.add_spec('.dummy-compile', 'text/dummy-compile',
-      compile_lib: 'dummy_compile',
-      compile: -> (path, content) { DummyCompile.compile(path, content) },
-    )
+    Darkroom::Asset.add_spec('.dummy-compile', 'text/dummy-compile', compile_lib: 'dummy_compile')
 
     refute(defined?(DummyCompile), 'Expected DummyCompile to be undefined when an asset of that type has '\
       'not be initialized yet.')
@@ -38,10 +35,7 @@ class AssetTest < Minitest::Test
   end
 
   test('#initialize requires minify library if spec has one and minification is enabled') do
-    Darkroom::Asset.add_spec('.dummy-minify', 'text/dummy-minify',
-      minify: -> (content) { DummyMinify.minify(content) },
-      minify_lib: 'dummy_minify',
-    )
+    Darkroom::Asset.add_spec('.dummy-minify', 'text/dummy-minify', minify_lib: 'dummy_minify')
 
     get_asset('/app.dummy-minify')
     refute(defined?(DummyMinify), 'Expected DummyMinify to be undefined when minification is not enabled.')

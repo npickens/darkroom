@@ -1,5 +1,1 @@
-class DummyCompile
-  def self.compile(*args)
-    # Dummy
-  end
-end
+class DummyCompile; end
