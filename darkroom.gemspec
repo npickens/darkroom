@@ -19,7 +19,7 @@ Gem::Specification.new('darkroom', version) do |spec|
     raise('RubyGems 2.0 or newer is required to protect against public gem pushes.')
   end
 
-  spec.required_ruby_version = '>= 2.3'
+  spec.required_ruby_version = '>= 2.5.8'
 
   spec.add_development_dependency('bundler', '~> 2.0')
   spec.add_development_dependency('minitest', '>= 5.11.2', '< 6.0.0')
