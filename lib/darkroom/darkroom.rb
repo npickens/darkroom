@@ -58,7 +58,8 @@ class Darkroom
   end
 
   ##
-  # Refresh any assets that have been modified on disk since the last call to this method.
+  # Walks all load paths and refreshes any assets that have been modified on disk since the last call to
+  # this method.
   #
   def process
     return if Time.now.to_f - @last_processed_at < @min_process_interval
