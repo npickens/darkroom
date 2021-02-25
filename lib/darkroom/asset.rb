@@ -95,7 +95,7 @@ class Darkroom
     # Processes the asset if necessary (file's mtime is compared to the last time it was processed). File is
     # read from disk, any dependencies are merged into its content (if spec for the asset type allows for
     # it), the content is compiled (if the asset type requires compilation), and minified (if specified for
-    # this Asset).
+    # this Asset). Returns true if asset was modified since it was last processed and false otherwise.
     #
     # * +key+ - Unique value associated with the current round of processing.
     #
