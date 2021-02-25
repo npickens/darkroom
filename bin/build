@@ -1,0 +1,123 @@
+#!/usr/bin/env ruby --enable=frozen_string_literal
+
+require('open3')
+
+############################################################################################################
+## Command Line Options                                                                                   ##
+############################################################################################################
+
+bump = ARGV.first.to_s.strip.to_sym
+
+unless ARGV.size == 1 && [:major, :minor, :patch].include?(bump)
+  abort('Usage: bin/build {major|minor|patch}')
+end
+
+############################################################################################################
+## Constants                                                                                              ##
+############################################################################################################
+
+BASE_DIR = File.expand_path(File.join('..', '..'), __FILE__).freeze
+TEST_COMMAND = File.join(BASE_DIR, 'bin', 'test').freeze
+VERSION_FILE = File.join(BASE_DIR, 'VERSION').freeze
+GEMSPEC_FILE = File.join(BASE_DIR, 'darkroom.gemspec').freeze
+RUBY_FILE_WITH_VERSION = File.join(BASE_DIR, 'lib', 'darkroom', 'version.rb').freeze
+
+major, minor, patch = File.read(VERSION_FILE).strip.split('.').map(&:to_i)
+
+OLD_VERSION = "#{major}.#{minor}.#{patch}"
+NEW_VERSION =
+  case bump
+  when :major then "#{major + 1}.0.0"
+  when :minor then "#{major}.#{minor + 1}.0"
+  when :patch then "#{major}.#{minor}.#{patch + 1}"
+  end
+
+############################################################################################################
+## Test                                                                                                   ##
+############################################################################################################
+
+def test
+  begin_task('Running tests...')
+
+  status = command(TEST_COMMAND)
+
+  finish_task(status, 'Tests passed', 'Build aborted')
+end
+
+############################################################################################################
+## Update Version                                                                                         ##
+############################################################################################################
+
+def update_version(version = NEW_VERSION, quiet = false)
+  begin_task('Updating version number...') unless quiet
+
+  ruby = File.read(RUBY_FILE_WITH_VERSION)
+  ruby.sub!(/VERSION = (['"])(\d+\.\d+\.\d+)\1/, "VERSION = '#{version}'")
+
+  File.write(RUBY_FILE_WITH_VERSION, ruby)
+  File.write(VERSION_FILE, "#{version}\n")
+
+  finish_task('Version number updated') unless quiet
+end
+
+############################################################################################################
+## Build                                                                                                  ##
+############################################################################################################
+
+def build
+  begin_task('Building Ruby gem...')
+
+  status = command("cd #{File.dirname(GEMSPEC_FILE)} && gem build #{File.basename(GEMSPEC_FILE)}")
+
+  finish_task(status, 'Ruby gem built', 'Build aborted')
+ensure
+  (update_version(OLD_VERSION, :quiet) rescue nil) if status != 0
+end
+
+############################################################################################################
+## Utils                                                                                                  ##
+############################################################################################################
+
+def command(command, capture_output: false)
+  Open3.popen2("#{command} 2>&1") do |stdin, stdout_stderr, thread|
+    prefix = '  '
+    output = ''.dup
+
+    Thread.new do
+      begin
+        while (line = stdout_stderr.gets)
+          capture_output ? (output << line) : puts("#{prefix}#{line}")
+        end
+      rescue IOError => e
+        raise unless stdout_stderr.closed? && e.message == 'stream closed in another thread'
+      end
+    end
+
+    capture_output ? [output, thread.value.exitstatus] : thread.value.exitstatus
+  end
+end
+
+def begin_task(str)
+  puts("\e[1;33m\u270e #{str}\e[0m")
+end
+
+def finish_task(*args)
+  status = args.first.kind_of?(Integer) ? args.shift : 0
+  success = args.shift
+  failure = args.shift
+
+  if status == 0
+    puts("\e[1;32m\u2714 #{success}\e[0m")
+  else
+    puts("\e[1;31m\u2718 #{failure}\e[0m")
+    exit(status)
+  end
+end
+
+############################################################################################################
+
+test
+update_version
+build
+
+finish_task("Version #{NEW_VERSION} built successfully!")
