@@ -191,7 +191,7 @@ class Darkroom
     written = Set.new
 
     FileUtils.mkdir_p(dir)
-    Dir.new(dir).each_child { |child| FileUtils.rm_rf(File.join(dir, child)) } if clear
+    Dir.each_child(dir) { |child| FileUtils.rm_rf(File.join(dir, child)) } if clear
 
     @manifest.each do |_, asset|
       next if asset.internal?
