@@ -74,7 +74,7 @@ class Darkroom
       found = {}
 
       @globs.each do |load_path, glob|
-        Dir.glob(glob).each do |file|
+        Dir.glob(glob).sort.each do |file|
           path = file.sub(load_path, '')
 
           if found.key?(path)
