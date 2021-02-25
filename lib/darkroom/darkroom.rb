@@ -197,7 +197,7 @@ class Darkroom
       next if written.include?(asset.path)
       next if @pristine.include?(asset.path) && !include_pristine
 
-      external_path = asset_path(asset.path, versioned: !@pristine.include?(asset.path))
+      external_path = asset_path(asset.path)
       file_path = File.join(dir, external_path)
 
       FileUtils.mkdir_p(File.dirname(file_path))
