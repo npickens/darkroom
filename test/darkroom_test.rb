@@ -4,6 +4,9 @@ require_relative('test_helper')
 class DarkroomTest < Minitest::Test
   include(TestHelper)
 
+  TMP_ASSET_PATH = '/tmp.txt'
+  TMP_ASSET_FILE = File.join(ASSET_DIR, TMP_ASSET_PATH).freeze
+
   DUMP_DIR = File.join(TEST_DIR, 'dump').freeze
   DUMP_DIR_EXISTING_FILE = File.join(DUMP_DIR, 'existing.txt').freeze
 
@@ -17,6 +20,50 @@ class DarkroomTest < Minitest::Test
 
   def setup
     @@darkroom = (@@default_darkroom ||= darkroom)
+  end
+
+  ##########################################################################################################
+  ## Test #process                                                                                        ##
+  ##########################################################################################################
+
+  test('#process skips processing if minimum process interval has not elapsed since last call') do
+    configure_darkroom(min_process_interval: 2)
+
+    File.write(TMP_ASSET_FILE, 'Temporary...')
+    darkroom.process
+
+    assert_nil(darkroom.asset(TMP_ASSET_PATH))
+  ensure
+    FileUtils.rm_rf(TMP_ASSET_FILE)
+  end
+
+  test('#process skips processing if another thread is currently processing') do
+    mutex_mock = Minitest::Mock.new
+    def mutex_mock.locked?() true end
+    def mutex_mock.synchronize(&block) block.call end
+
+    Mutex.stub(:new, mutex_mock) do
+      configure_darkroom(min_process_interval: 0)
+
+      File.write(TMP_ASSET_FILE, 'Temporary...')
+      darkroom.process
+    end
+
+    assert_nil(darkroom.asset(TMP_ASSET_PATH))
+  ensure
+    FileUtils.rm_rf(TMP_ASSET_FILE)
+  end
+
+  test('#process includes DuplicateAssetError if an asset with the same path is in multiple load paths') do
+    FileUtils.touch(File.join(BAD_ASSET_DIR, JS_ASSET_PATH))
+
+    configure_darkroom(ASSET_DIR, BAD_ASSET_DIR)
+    darkroom.process
+
+    assert_kind_of(Darkroom::DuplicateAssetError, darkroom.errors.first)
+    assert_includes(darkroom.errors.first.inspect, JS_ASSET_PATH)
+  ensure
+    FileUtils.rm_rf(File.join(BAD_ASSET_DIR, JS_ASSET_PATH))
   end
 
   ##########################################################################################################
