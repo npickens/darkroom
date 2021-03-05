@@ -13,7 +13,7 @@ class Darkroom
 
     @@specs = {}
 
-    attr_reader(:content, :error, :errors, :path, :path_versioned)
+    attr_reader(:content, :error, :errors, :path, :path_unversioned, :path_versioned)
 
     ##
     # Holds information about how to handle a particular asset type.
@@ -74,17 +74,20 @@ class Darkroom
     # * +file+ - The path to the file on disk.
     # * +path+ - The path this asset will be referenced by (e.g. /js/app.js).
     # * +manifest+ - Manifest hash from the Darkroom instance that the asset is a member of.
+    # * +prefix+ - Prefix to apply to unversioned and versioned paths.
     # * +minify+ - Boolean specifying whether or not the asset should be minified when processed.
     # * +internal+ - Boolean indicating whether or not the asset is only accessible internally (i.e. as a
     #   dependency).
     #
-    def initialize(path, file, manifest, minify: false, internal: false)
+    def initialize(path, file, manifest, prefix: nil, minify: false, internal: false)
       @path = path
       @file = file
       @manifest = manifest
+      @prefix = prefix
       @minify = minify
       @internal = internal
 
+      @path_unversioned = "#{@prefix}#{@path}"
       @extension = File.extname(@path).downcase
       @spec = self.class.spec(@extension) or raise(SpecNotDefinedError.new(@extension, @file))
 
@@ -119,7 +122,7 @@ class Darkroom
       minify
 
       @fingerprint = Digest::MD5.hexdigest(@content)
-      @path_versioned = @path.sub(EXTENSION_REGEX, "-#{@fingerprint}")
+      @path_versioned = "#{@prefix}#{@path.sub(EXTENSION_REGEX, "-#{@fingerprint}")}"
 
       @modified
     ensure
@@ -191,7 +194,9 @@ class Darkroom
         "@minify=#{@minify.inspect}, "\
         "@mtime=#{@mtime.inspect}, "\
         "@path=#{@path.inspect}, "\
-        "@path_versioned=#{@path_versioned.inspect}"\
+        "@path_unversioned=#{@path_unversioned.inspect}, "\
+        "@path_versioned=#{@path_versioned.inspect}, "\
+        "@prefix=#{@prefix.inspect}"\
       '>'
     end
 

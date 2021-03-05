@@ -329,7 +329,7 @@ class AssetTest < Minitest::Test
   ##########################################################################################################
 
   test('#inspect returns a high-level object info string') do
-    asset = get_asset('/bad-import.js')
+    asset = get_asset('/bad-import.js', prefix: '/static')
     file = file_for(asset.path)
 
     asset.process(Time.now.to_f)
@@ -344,7 +344,9 @@ class AssetTest < Minitest::Test
       '@minify=false, '\
       "@mtime=#{File.mtime(file).inspect}, "\
       '@path="/bad-import.js", '\
-      '@path_versioned="/bad-import-afa0a5ffe7423f4b568f19a39b53b122.js"'\
+      '@path_unversioned="/static/bad-import.js", '\
+      '@path_versioned="/static/bad-import-afa0a5ffe7423f4b568f19a39b53b122.js", '\
+      '@prefix="/static"'\
     '>'.split(INSPECT_SPLIT).join(INSPECT_JOIN), asset.inspect.split(INSPECT_SPLIT).join(INSPECT_JOIN))
   end
 

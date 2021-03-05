@@ -52,7 +52,10 @@ class Darkroom
     @min_process_interval = min_process_interval
     @last_processed_at = 0
     @mutex = Mutex.new
+
     @manifest = {}
+    @manifest_unversioned = {}
+    @manifest_versioned = {}
 
     Thread.current[:darkroom_host_index] = -1 unless @hosts.empty?
   end
@@ -83,20 +86,27 @@ class Darkroom
             found[path] = load_path
 
             @manifest[path] ||= Asset.new(path, file, @manifest,
-              internal: internal = @internal_pattern && path =~ @internal_pattern,
-              minify: @minify && !internal && path !~ @minified_pattern,
+              prefix: (@prefix unless @pristine.include?(path)),
+              internal: @internal_pattern && path =~ @internal_pattern,
+              minify: @minify && path !~ @minified_pattern,
             )
           end
         end
       end
 
       @manifest.select! { |path, _| found.key?(path) }
+      @manifest_unversioned.clear
+      @manifest_versioned.clear
 
-      found.each do |path, _|
-        @manifest[path].process(@last_processed_at)
-        @manifest[@manifest[path].path_versioned] = @manifest[path]
+      @manifest.each do |path, asset|
+        asset.process(@last_processed_at)
 
-        @errors += @manifest[path].errors
+        unless asset.internal?
+          @manifest_unversioned[asset.path_unversioned] = asset
+          @manifest_versioned[asset.path_versioned] = asset
+        end
+
+        @errors += asset.errors
       end
     ensure
       @last_processed_at = Time.now.to_f
@@ -132,14 +142,7 @@ class Darkroom
   # * +path+ - The external path of the asset.
   #
   def asset(path)
-    asset = @manifest[@prefix ? path.sub(@prefix, '') : path]
-
-    return nil if asset.nil?
-    return nil if asset.internal?
-    return nil if @prefix && !path.start_with?(@prefix) && !@pristine.include?(asset.path)
-    return nil if @prefix && path.start_with?(@prefix) && @pristine.include?(asset.path)
-
-    asset
+    @manifest_versioned[path] || @manifest_unversioned[path]
   end
 
   ##
@@ -158,13 +161,11 @@ class Darkroom
   #
   def asset_path(path, versioned: !@pristine.include?(path))
     asset = @manifest[path] or raise(AssetNotFoundError.new(path))
-
     host = @hosts.empty? ? '' : @hosts[
       Thread.current[:darkroom_host_index] = (Thread.current[:darkroom_host_index] + 1) % @hosts.size
     ]
-    prefix = @prefix unless @pristine.include?(path)
 
-    "#{host}#{prefix}#{versioned ? asset.path_versioned : path}"
+    "#{host}#{versioned ? asset.path_versioned : asset.path_unversioned}"
   end
 
   ##
@@ -193,23 +194,20 @@ class Darkroom
   #
   def dump(dir, clear: false, include_pristine: true)
     dir = File.expand_path(dir)
-    written = Set.new
 
     FileUtils.mkdir_p(dir)
     Dir.each_child(dir) { |child| FileUtils.rm_rf(File.join(dir, child)) } if clear
 
-    @manifest.each do |_, asset|
+    @manifest_versioned.each do |path, asset|
       next if asset.internal?
-      next if written.include?(asset.path)
       next if @pristine.include?(asset.path) && !include_pristine
 
-      external_path = asset_path(asset.path)
-      file_path = File.join(dir, external_path)
+      file_path = File.join(dir,
+        @pristine.include?(asset.path) ? asset.path_unversioned : path
+      )
 
       FileUtils.mkdir_p(File.dirname(file_path))
       File.write(file_path, asset.content)
-
-      written << asset.path
     end
   end
 
