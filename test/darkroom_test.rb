@@ -145,8 +145,14 @@ class DarkroomTest < Minitest::Test
   ## Test #asset_path                                                                                     ##
   ##########################################################################################################
 
-  test('#asset_path returns nil if the asset does not exist') do
-    assert_nil(darkroom.asset_path('/does-not-exist.js'))
+  test('#asset_path raises AssetNotFoundError if asset does not exist') do
+    path = '/does-not-exist.js'
+
+    error = assert_raises(Darkroom::AssetNotFoundError) do
+      darkroom.asset_path(path)
+    end
+
+    assert_includes(error.inspect, path)
   end
 
   test('#asset_path returns versioned path by default if asset is not pristine') do
@@ -192,20 +198,6 @@ class DarkroomTest < Minitest::Test
     configure_darkroom(prefix: '/static')
 
     refute_match(/^\/static/, darkroom.asset_path(PRISTINE_ASSET_PATH))
-  end
-
-  ##########################################################################################################
-  ## Test #asset_path!                                                                                    ##
-  ##########################################################################################################
-
-  test('#asset_path! raises AssetNotFoundError if asset does not exist') do
-    path = '/does-not-exist.js'
-
-    error = assert_raises(Darkroom::AssetNotFoundError) do
-      darkroom.asset_path!(path)
-    end
-
-    assert_includes(error.inspect, path)
   end
 
   ##########################################################################################################

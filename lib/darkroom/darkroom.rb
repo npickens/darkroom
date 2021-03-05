@@ -151,11 +151,13 @@ class Darkroom
   #   darkroom.asset_path('/js/app.js')                   # => /assets/js/app.<hash>.js
   #   darkroom.asset_path('/js/app.js', versioned: false) # => /assets/js/app.js
   #
+  # Raises an AssetNotFoundError if the asset doesn't exist.
+  #
   # * +path+ - The internal path of the asset.
   # * +versioned+ - Boolean indicating whether the versioned or unversioned path should be returned.
   #
   def asset_path(path, versioned: !@pristine.include?(path))
-    asset = @manifest[path] or return nil
+    asset = @manifest[path] or raise(AssetNotFoundError.new(path))
 
     host = @hosts.empty? ? '' : @hosts[
       Thread.current[:darkroom_host_index] = (Thread.current[:darkroom_host_index] + 1) % @hosts.size
@@ -163,16 +165,6 @@ class Darkroom
     prefix = @prefix unless @pristine.include?(path)
 
     "#{host}#{prefix}#{versioned ? asset.path_versioned : path}"
-  end
-
-  ##
-  # Calls #asset_path and raises a AssetNotFoundError if the asset doesn't exist (instead of just returning
-  # nil).
-  #
-  # * +versioned+ - Boolean indicating whether the versioned or unversioned path should be returned.
-  #
-  def asset_path!(path, versioned: true)
-    asset_path(path, versioned: versioned) or raise(AssetNotFoundError.new(path))
   end
 
   ##
