@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require('base64')
 require('digest')
 
 class Darkroom
@@ -146,6 +147,23 @@ class Darkroom
     end
 
     ##
+    # Returns subresource integrity string.
+    #
+    # * +algorithm+ - The hash algorithm to use to generate the integrity string (one of sha256, sha384, or
+    #   sha512).
+    #
+    def integrity(algorithm = :sha384)
+      @integrity[algorithm] ||= "#{algorithm}-#{Base64.strict_encode64(
+        case algorithm
+        when :sha256 then Digest::SHA256.digest(@content)
+        when :sha384 then Digest::SHA384.digest(@content)
+        when :sha512 then Digest::SHA512.digest(@content)
+        else raise("Unrecognized integrity algorithm: #{algorithm}")
+        end
+      )}".freeze
+    end
+
+    ##
     # Returns boolean indicating whether or not the asset is marked as internal.
     #
     def internal?
@@ -203,6 +221,7 @@ class Darkroom
       (@dependencies ||= []).clear
       (@content ||= +'').clear
       (@own_content ||= +'').clear
+      (@integrity ||= {}).clear
     end
 
     ##

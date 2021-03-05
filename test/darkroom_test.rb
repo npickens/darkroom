@@ -201,6 +201,36 @@ class DarkroomTest < Minitest::Test
   end
 
   ##########################################################################################################
+  ## Test #asset_integrity                                                                                ##
+  ##########################################################################################################
+
+  test('#asset_integrity returns subresource integrity string according to algorithm argument') do
+    assert_equal(JS_ASSET_SHA256, darkroom.asset_integrity(JS_ASSET_PATH, :sha256))
+    assert_equal(JS_ASSET_SHA384, darkroom.asset_integrity(JS_ASSET_PATH, :sha384))
+    assert_equal(JS_ASSET_SHA512, darkroom.asset_integrity(JS_ASSET_PATH, :sha512))
+  end
+
+  test('#asset_integrity returns sha384 subresource integrity string by default') do
+    assert_equal(JS_ASSET_SHA384, darkroom.asset_integrity(JS_ASSET_PATH))
+  end
+
+  test('#asset_integrity raises error if algorithm argument is not recognized') do
+    assert_raises(RuntimeError) do
+      darkroom.asset_integrity(JS_ASSET_PATH, :sha)
+    end
+  end
+
+  test('#asset_integrity raises AssetNotFoundError if asset does not exist') do
+    path = '/does-not-exist.js'
+
+    error = assert_raises(Darkroom::AssetNotFoundError) do
+      darkroom.asset_integrity(path)
+    end
+
+    assert_includes(error.inspect, path)
+  end
+
+  ##########################################################################################################
   ## Test #dump                                                                                           ##
   ##########################################################################################################
 

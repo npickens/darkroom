@@ -168,6 +168,19 @@ class Darkroom
   end
 
   ##
+  # Returns an asset's subresource integrity string. Raises an AssetNotFoundError if the asset doesn't
+  # exist.
+  #
+  # * +path+ - The internal path of the asset.
+  # * +algorithm+ - The hash algorithm to use to generate the integrity string (see Asset#integrity).
+  #
+  def asset_integrity(path, algorithm = nil)
+    asset = @manifest[path] or raise(AssetNotFoundError.new(path))
+
+    algorithm ? asset.integrity(algorithm) : asset.integrity
+  end
+
+  ##
   # Writes assets to disk. This is useful when deploying to a production environment where assets will be
   # uploaded to and served from a CDN or proxy server.
   #

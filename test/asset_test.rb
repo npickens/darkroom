@@ -257,6 +257,35 @@ class AssetTest < Minitest::Test
   end
 
   ##########################################################################################################
+  ## Test #integrity                                                                                      ##
+  ##########################################################################################################
+
+  test('#integrity returns subresource integrity string according to algorithm argument') do
+    asset = get_asset
+    asset.process(Time.now.to_f)
+
+    assert_equal(JS_ASSET_SHA256, asset.integrity(:sha256))
+    assert_equal(JS_ASSET_SHA384, asset.integrity(:sha384))
+    assert_equal(JS_ASSET_SHA512, asset.integrity(:sha512))
+  end
+
+  test('#integrity returns sha384 subresource integrity string by default') do
+    asset = get_asset
+    asset.process(Time.now.to_f)
+
+    assert_equal(JS_ASSET_SHA384, asset.integrity)
+  end
+
+  test('#integrity raises error if algorithm argument is not recognized') do
+    asset = get_asset
+    asset.process(Time.now.to_f)
+
+    assert_raises(RuntimeError) do
+      asset.integrity(:sha)
+    end
+  end
+
+  ##########################################################################################################
   ## Test #internal?                                                                                      ##
   ##########################################################################################################
 
