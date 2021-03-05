@@ -337,7 +337,7 @@ class DarkroomTest < Minitest::Test
       '@minify=false, '\
       '@prefix="/static", '\
       '@pristine=#<Set: {"/favicon.ico", "/mask-icon.svg", "/humans.txt", "/robots.txt", "/hi.txt"}>'\
-    '>'.split(', @').join(",\n@"), darkroom.inspect.split(', @').join(",\n@"))
+    '>'.split(INSPECT_SPLIT).join(INSPECT_JOIN), darkroom.inspect.split(INSPECT_SPLIT).join(INSPECT_JOIN))
   end
 
   ##########################################################################################################

@@ -316,7 +316,7 @@ class AssetTest < Minitest::Test
       "@mtime=#{File.mtime(file).inspect}, "\
       '@path="/bad-import.js", '\
       '@path_versioned="/bad-import-afa0a5ffe7423f4b568f19a39b53b122.js"'\
-    '>', asset.inspect)
+    '>'.split(INSPECT_SPLIT).join(INSPECT_JOIN), asset.inspect.split(INSPECT_SPLIT).join(INSPECT_JOIN))
   end
 
   ##########################################################################################################

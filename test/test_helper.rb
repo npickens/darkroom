@@ -20,6 +20,9 @@ module TestHelper
   PRISTINE_ASSET_PATH = '/robots.txt'
   PRISTINE_ASSET_PATH_VERSIONED = '/robots-b6216d61c03e6ce0c9aea6ca7808f7ca.txt'
 
+  INSPECT_SPLIT = /@(?=\w+=)/.freeze
+  INSPECT_JOIN = "\n@"
+
   ##########################################################################################################
   ## Configuration                                                                                        ##
   ##########################################################################################################
