@@ -358,7 +358,8 @@ class DarkroomTest < Minitest::Test
       '@minified_pattern=/\\.minified\\.*/, '\
       '@minify=false, '\
       '@prefix="/static", '\
-      '@pristine=#<Set: {"/favicon.ico", "/mask-icon.svg", "/humans.txt", "/robots.txt", "/hi.txt"}>'\
+      '@pristine=#<Set: {"/favicon.ico", "/mask-icon.svg", "/humans.txt", "/robots.txt", "/hi.txt"}>, '\
+      '@process_key=1'\
     '>'.split(INSPECT_SPLIT).join(INSPECT_JOIN), darkroom.inspect.split(INSPECT_SPLIT).join(INSPECT_JOIN))
   end
 

@@ -85,8 +85,6 @@ class AssetTest < Minitest::Test
     file = file_for(path)
     asset = get_asset(path)
 
-    asset.process(Time.now.to_f)
-
     assert_equal("[HTX.compile(#{path.inspect}, #{File.read(file).inspect})]", asset.content)
   end
 
@@ -96,14 +94,8 @@ class AssetTest < Minitest::Test
       ['/app.js', 'Uglifier.compile'],
       ['/template.htx', 'Uglifier.compile'],
     ].each do |path, meth|
-      asset = get_asset(path)
-      file = file_for(asset.path)
-
-      asset.process(Time.now.to_f)
-      content = asset.content
-
+      content = get_asset(path).content
       asset = get_asset(path, minify: true)
-      asset.process(Time.now.to_f)
 
       assert_equal("[#{meth}(#{content.inspect})]", asset.content)
     end
@@ -111,27 +103,23 @@ class AssetTest < Minitest::Test
 
   test('#process merges dependencies with own content') do
     imported = get_asset('/app.js')
-    imported_own_content = imported.send(:own_content)
-
     asset = get_asset('/good-import.js', {'/app.js' => imported})
+
+    imported_own_content = imported.send(:own_content)
     asset_own_content = asset.send(:own_content)
 
-    asset.process(Time.now.to_f)
-
-    assert_equal(imported_own_content, asset.content[0...imported_own_content.size])
-    assert_equal(asset_own_content, asset.content[imported_own_content.size..-1])
+    assert(asset.content.start_with?(imported_own_content))
+    assert(asset.content.end_with?(asset_own_content))
   end
 
   test('#process gracefully handles asset file being deleted on disk') do
     asset = get_asset('/deleted.js')
-    asset.process(Time.now.to_f)
 
     assert_empty(asset.content)
   end
 
   test('#process does not register any errors if successful') do
     asset = get_asset(minify: true)
-    asset.process(Time.now.to_f)
 
     assert_nil(asset.error)
     assert_empty(asset.errors)
@@ -139,7 +127,6 @@ class AssetTest < Minitest::Test
 
   test('#process registers an error when a dependency is not found') do
     asset = get_asset('/bad-import.js')
-    asset.process(Time.now.to_f)
 
     assert_equal(1, asset.errors.size)
     assert_instance_of(Darkroom::AssetNotFoundError, asset.errors.first)
@@ -152,10 +139,10 @@ class AssetTest < Minitest::Test
   end
 
   test('#process registers an error when compilation raises an exception') do
-    asset = get_asset('/template.htx')
+    asset = get_asset('/template.htx', process: false)
 
     HTX.stub(:compile, -> (*args) { raise('[HTX Error]') }) do
-      asset.process(Time.now.to_f)
+      asset.process
     end
 
     assert(asset.error)
@@ -163,10 +150,10 @@ class AssetTest < Minitest::Test
   end
 
   test('#process registers an error when minification raises an exception') do
-    asset = get_asset('/app.js', minify: true)
+    asset = get_asset('/app.js', minify: true, process: false)
 
     Uglifier.stub(:compile, -> (*args) { raise('[Uglifier Error]') }) do
-      asset.process(Time.now.to_f)
+      asset.process
     end
 
     assert(asset.error)
@@ -174,10 +161,10 @@ class AssetTest < Minitest::Test
   end
 
   test('#process accumulates multiple errors') do
-    asset = get_asset('/bad-imports.js', minify: true)
+    asset = get_asset('/bad-imports.js', minify: true, process: false)
 
     Uglifier.stub(:compile, -> (*args) { raise('[Uglifier Error]') }) do
-      asset.process(Time.now.to_f)
+      asset.process
     end
 
     assert_equal(3, asset.errors.size)
@@ -197,6 +184,20 @@ class AssetTest < Minitest::Test
     assert_instance_of(Darkroom::ProcessingError, asset.error)
     assert_equal(3, asset.error.size)
     assert_equal(asset.errors, asset.error.instance_variable_get(:@errors))
+  end
+
+  test('#process handles circular dependencies') do
+    manifest = {}
+    manifest.merge!(
+      '/circular1.css' => asset1 = get_asset('/circular1.css', manifest, process: false),
+      '/circular2.css' => asset2 = get_asset('/circular2.css', manifest, process: false),
+      '/circular3.css' => asset3 = get_asset('/circular3.css', manifest, process: false),
+    )
+    asset1.process
+
+    assert(asset1.content.start_with?(asset3.send(:own_content)))
+    assert(asset2.content.start_with?(asset1.send(:own_content)))
+    assert(asset3.content.start_with?(asset2.send(:own_content)))
   end
 
   ##########################################################################################################
@@ -238,8 +239,6 @@ class AssetTest < Minitest::Test
 
   test('#headers includes Cache-Control header if :versioned is true') do
     asset = get_asset
-    asset.process(Time.now.to_f)
-
     headers = asset.headers(versioned: true)
 
     assert_equal('public, max-age=31536000', headers['Cache-Control'])
@@ -248,8 +247,6 @@ class AssetTest < Minitest::Test
 
   test('#headers includes ETag header if :versioned is false') do
     asset = get_asset
-    asset.process(Time.now.to_f)
-
     headers = asset.headers(versioned: false)
 
     assert_equal('"25f290825cb44d4cf57632abfa82c37e"', headers['ETag'])
@@ -262,7 +259,6 @@ class AssetTest < Minitest::Test
 
   test('#integrity returns subresource integrity string according to algorithm argument') do
     asset = get_asset
-    asset.process(Time.now.to_f)
 
     assert_equal(JS_ASSET_SHA256, asset.integrity(:sha256))
     assert_equal(JS_ASSET_SHA384, asset.integrity(:sha384))
@@ -271,14 +267,12 @@ class AssetTest < Minitest::Test
 
   test('#integrity returns sha384 subresource integrity string by default') do
     asset = get_asset
-    asset.process(Time.now.to_f)
 
     assert_equal(JS_ASSET_SHA384, asset.integrity)
   end
 
   test('#integrity raises error if algorithm argument is not recognized') do
     asset = get_asset
-    asset.process(Time.now.to_f)
 
     assert_raises(RuntimeError) do
       asset.integrity(:sha)
@@ -313,14 +307,13 @@ class AssetTest < Minitest::Test
 
   test('#error? returns false if there were no errors during processing') do
     asset = get_asset
-    asset.process(Time.now.to_f)
 
     refute(asset.error?)
   end
 
   test('#error? returns true if there were one or more errors during processing') do
     asset = get_asset('/bad-import.js')
-    asset.process(Time.now.to_f)
+
     assert(asset.error?)
   end
 
@@ -331,8 +324,6 @@ class AssetTest < Minitest::Test
   test('#inspect returns a high-level object info string') do
     asset = get_asset('/bad-import.js', prefix: '/static')
     file = file_for(asset.path)
-
-    asset.process(Time.now.to_f)
 
     assert_equal('#<Darkroom::Asset: '\
       '@errors=[#<Darkroom::AssetNotFoundError: Asset not found (referenced from /bad-import.js:1): '\
@@ -354,12 +345,22 @@ class AssetTest < Minitest::Test
   ## Helpers                                                                                              ##
   ##########################################################################################################
 
+  class DarkroomMock
+    def initialize(manifest = {}) @manifest = manifest end
+    def manifest(path) @manifest[path] end
+    def process_key() 1 end
+  end
+
   def get_asset(*args, **options)
     path = args.first.kind_of?(String) ? args.first : JS_ASSET_PATH
     file = file_for(path)
     manifest = args.last.kind_of?(Hash) ? args.last : {}
+    process = options.delete(:process)
 
-    Darkroom::Asset.new(path, file, manifest, **options)
+    asset = Darkroom::Asset.new(path, file, DarkroomMock.new(manifest), **options)
+    asset.process unless process == false
+
+    asset
   end
 
   def file_for(path)

@@ -13,7 +13,7 @@ class Darkroom
 
   TRAILING_SLASHES = /\/+$/.freeze
 
-  attr_reader(:error, :errors)
+  attr_reader(:error, :errors, :process_key)
 
   ##
   # Creates a new instance.
@@ -51,6 +51,7 @@ class Darkroom
 
     @min_process_interval = min_process_interval
     @last_processed_at = 0
+    @process_key = 0
     @mutex = Mutex.new
 
     @manifest = {}
@@ -73,6 +74,7 @@ class Darkroom
     end
 
     @mutex.synchronize do
+      @process_key += 1
       @errors = []
       found = {}
 
@@ -85,7 +87,7 @@ class Darkroom
           else
             found[path] = load_path
 
-            @manifest[path] ||= Asset.new(path, file, @manifest,
+            @manifest[path] ||= Asset.new(path, file, self,
               prefix: (@prefix unless @pristine.include?(path)),
               internal: @internal_pattern && path =~ @internal_pattern,
               minify: @minify && path !~ @minified_pattern,
@@ -99,7 +101,7 @@ class Darkroom
       @manifest_versioned.clear
 
       @manifest.each do |path, asset|
-        asset.process(@last_processed_at)
+        asset.process
 
         unless asset.internal?
           @manifest_unversioned[asset.path_unversioned] = asset
@@ -182,6 +184,15 @@ class Darkroom
   end
 
   ##
+  # Returns the asset from the manifest hash associated with the given path.
+  #
+  # * +path+ - The internal path of the asset.
+  #
+  def manifest(path)
+    @manifest[path]
+  end
+
+  ##
   # Writes assets to disk. This is useful when deploying to a production environment where assets will be
   # uploaded to and served from a CDN or proxy server.
   #
@@ -225,7 +236,8 @@ class Darkroom
       "@minified_pattern=#{@minified_pattern.inspect}, "\
       "@minify=#{@minify.inspect}, "\
       "@prefix=#{@prefix.inspect}, "\
-      "@pristine=#{@pristine.inspect}"\
+      "@pristine=#{@pristine.inspect}, "\
+      "@process_key=#{@process_key.inspect}"\
     '>'
   end
 end

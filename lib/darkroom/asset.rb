@@ -73,16 +73,16 @@ class Darkroom
     #
     # * +file+ - The path to the file on disk.
     # * +path+ - The path this asset will be referenced by (e.g. /js/app.js).
-    # * +manifest+ - Manifest hash from the Darkroom instance that the asset is a member of.
+    # * +darkroom+ - Darkroom instance that the asset is a member of.
     # * +prefix+ - Prefix to apply to unversioned and versioned paths.
     # * +minify+ - Boolean specifying whether or not the asset should be minified when processed.
     # * +internal+ - Boolean indicating whether or not the asset is only accessible internally (i.e. as a
     #   dependency).
     #
-    def initialize(path, file, manifest, prefix: nil, minify: false, internal: false)
+    def initialize(path, file, darkroom, prefix: nil, minify: false, internal: false)
       @path = path
       @file = file
-      @manifest = manifest
+      @darkroom = darkroom
       @prefix = prefix
       @minify = minify
       @internal = internal
@@ -96,35 +96,26 @@ class Darkroom
     end
 
     ##
-    # Processes the asset if necessary (file's mtime is compared to the last time it was processed). File is
-    # read from disk, any dependencies are merged into its content (if spec for the asset type allows for
-    # it), the content is compiled (if the asset type requires compilation), and minified (if specified for
-    # this Asset). Returns true if asset was modified since it was last processed and false otherwise.
+    # Processes the asset if modified (see #modified? for how modification is determined). File is read from
+    # disk, any dependencies are merged into its content (if spec for the asset type allows for it), the
+    # content is compiled (if the asset type requires compilation), and minified (if specified for this
+    # Asset). Returns true if asset was modified since it was last processed and false otherwise.
     #
-    # * +key+ - Unique value associated with the current round of processing.
-    #
-    def process(key)
-      key == @process_key ? (return @modified) : (@process_key = key)
-
-      begin
-        @modified = @mtime != (@mtime = File.mtime(@file))
-        @modified ||= @dependencies.any? { |d| d.process(key) }
-
-        return false unless @modified
-      rescue Errno::ENOENT
-        clear
-        return @modified = true
-      end
+    def process
+      @process_key == @darkroom.process_key ? (return @processed) : (@process_key = @darkroom.process_key)
+      modified? ? (@processed = true) : (return @processed = false)
 
       clear
-      read(key)
+      read
       compile
       minify
 
       @fingerprint = Digest::MD5.hexdigest(@content)
       @path_versioned = "#{@prefix}#{@path.sub(EXTENSION_REGEX, "-#{@fingerprint}")}"
 
-      @modified
+      @processed
+    rescue Errno::ENOENT
+      # File was deleted. Do nothing.
     ensure
       @error = @errors.empty? ? nil : ProcessingError.new(@errors)
     end
@@ -203,17 +194,48 @@ class Darkroom
     protected
 
     ##
+    # Returns true if the asset or any of its dependencies were modified since last processed, or if an
+    # error was recorded during the last processing run.
+    #
+    def modified?
+      @modified_key == @darkroom.process_key ? (return @modified) : (@modified_key = @darkroom.process_key)
+
+      begin
+        @modified = !!@error
+        @modified ||= @mtime != (@mtime = File.mtime(@file))
+        @modified ||= dependencies.any? { |d| d.modified? }
+      rescue Errno::ENOENT
+        @modified = true
+      end
+    end
+
+    ##
+    # Returns all dependencies (including dependencies of dependencies).
+    #
+    # * +ancestors+ - Ancestor chain followed to get to this asset as a dependency.
+    #
+    def dependencies(ancestors = Set.new)
+      @dependencies ||= @own_dependencies.inject([]) do |dependencies, own_dependency|
+        next dependencies if ancestors.include?(self)
+
+        ancestors << self
+        own_dependency.process
+
+        dependencies |= own_dependency.dependencies(ancestors)
+        dependencies |= [own_dependency]
+
+        dependencies.delete(self)
+        ancestors.delete(self)
+
+        dependencies
+      end
+    end
+
+    ##
     # Returns the processed content of the asset without dependencies concatenated.
     #
     def own_content
       @own_content
-    end
-
-    ##
-    # Returns an array of all the asset's dependencies.
-    #
-    def dependencies
-      @dependencies
     end
 
     private
@@ -222,8 +244,13 @@ class Darkroom
     # Clears content, dependencies, and errors so asset is ready for (re)processing.
     #
     def clear
+      @dependencies = nil
+      @error = nil
+      @fingerprint = nil
+      @path_versioned = nil
+
       (@errors ||= []).clear
-      (@dependencies ||= []).clear
+      (@own_dependencies ||= []).clear
       (@content ||= +'').clear
       (@own_content ||= +'').clear
       (@integrity ||= {}).clear
@@ -232,39 +259,25 @@ class Darkroom
     ##
     # Reads the asset file, building dependency array if dependencies are supported for the asset's type.
     #
-    # * +key+ - Unique value associated with the current round of processing.
-    #
-    def read(key)
-      if @spec.dependency_regex
-        dependencies = []
-
-        File.new(@file).each.with_index do |line, line_num|
-          if (path = line[@spec.dependency_regex, :path])
-            if (dependency = @manifest[path])
-              dependencies << dependency
-            else
-              @errors << AssetNotFoundError.new(path, @path, line_num + 1)
-            end
-          else
-            @own_content << line
-          end
-        end
-
-        dependencies.each do |dependency|
-          dependency.process(key)
-
-          @dependencies += dependency.dependencies
-          @dependencies << dependency
-        end
-
-        @dependencies.uniq!
-        @dependencies.delete_if { |d| d.path == @path }
-
-        @content << @dependencies.map { |d| d.own_content }.join(DEPENDENCY_JOINER)
-        @own_content
-      else
+    def read
+      unless @spec.dependency_regex
         @own_content = File.read(@file)
+        return
       end
+
+      File.new(@file).each.with_index do |line, line_num|
+        if (path = line[@spec.dependency_regex, :path])
+          if (dependency = @darkroom.manifest(path))
+            @own_dependencies << dependency
+          else
+            @errors << AssetNotFoundError.new(path, @path, line_num + 1)
+          end
+        else
+          @own_content << line
+        end
+      end
+
+      @content << dependencies.map { |d| d.own_content }.join(DEPENDENCY_JOINER)
     end
 
     ##
