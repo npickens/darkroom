@@ -129,6 +129,21 @@ Imports can even be cyclical. If `asset-a.css` imports `asset-b.css` and vice-ve
 contain the content of both of those assets (though order will be different as an asset's own content always
 comes after any imported assets' contents).
 
+## Extending
+
+Darkroom is extensible. Support for arbitrary file types can be added as follows:
+
+```ruby
+Darkroom::Asset.add_spec('.extension1', 'extension2', '...', 'content/type',
+  dependency_regex: /^import .../,       # Regex for bundling dependencies (optional)
+  compile_lib: 'some-compile-lib',       # Name of library required for compilation (optional)
+  compile: -> (path, content) { '...' }, # Proc that returns compiled content (optional)
+  minify_lib: 'some-minify-lib',         # Name of library required for minification (optional)
+  minify: -> (content) { '...' },        # Proc that returns minified content (optional)
+)
+
+```
+
 ## Contributing
 
 Bug reports and pull requests are welcome on GitHub at https://github.com/npickens/darkroom.
