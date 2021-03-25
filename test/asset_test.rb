@@ -31,7 +31,7 @@ class AssetTest < Minitest::Test
     refute(defined?(DummyCompile), 'Expected DummyCompile to be undefined when an asset of that type has '\
       'not be initialized yet.')
 
-    get_asset('/app.dummy-compile')
+    get_asset('/app.dummy-compile', process: false)
 
     assert(defined?(DummyCompile), 'Expected DummyCompile to be defined.')
   end
@@ -39,10 +39,10 @@ class AssetTest < Minitest::Test
   test('#initialize requires minify library if spec has one and minification is enabled') do
     Darkroom::Asset.add_spec('.dummy-minify', 'text/dummy-minify', minify_lib: 'dummy_minify')
 
-    get_asset('/app.dummy-minify')
+    get_asset('/app.dummy-minify', process: false)
     refute(defined?(DummyMinify), 'Expected DummyMinify to be undefined when minification is not enabled.')
 
-    get_asset('/app.dummy-minify', minify: true)
+    get_asset('/app.dummy-minify', minify: true, process: false)
     assert(defined?(DummyMinify), 'Expected DummyMinify to be defined.')
   end
 
@@ -62,7 +62,7 @@ class AssetTest < Minitest::Test
     Darkroom::Asset.add_spec('.bad-minify', 'text/bad-minify', minify_lib: 'bad_minify')
 
     begin
-      get_asset('/app.bad-minify')
+      get_asset('/app.bad-minify', process: false)
     rescue Darkroom::MissingLibraryError => e
       assert(false, 'Expected minify library to not be required when minification is not enabled')
     end
@@ -113,7 +113,8 @@ class AssetTest < Minitest::Test
   end
 
   test('#process gracefully handles asset file being deleted on disk') do
-    asset = get_asset('/deleted.js')
+    asset = get_asset('/deleted.js', process: false)
+    asset.process
 
     assert_empty(asset.content)
   end
@@ -205,17 +206,17 @@ class AssetTest < Minitest::Test
   ##########################################################################################################
 
   test('#content_type returns the HTTP MIME type string for the asset') do
-    assert_equal('text/css', get_asset('/app.css').content_type)
-    assert_equal('text/html', get_asset('/index.html').content_type)
-    assert_equal('application/javascript', get_asset('/template.htx').content_type)
-    assert_equal('image/x-icon', get_asset('/favicon.ico').content_type)
-    assert_equal('application/javascript', get_asset('/app.js').content_type)
-    assert_equal('image/jpeg', get_asset('/photo.jpg').content_type)
-    assert_equal('image/png', get_asset('/graphic.png').content_type)
-    assert_equal('image/svg+xml', get_asset('/graphic.svg').content_type)
-    assert_equal('text/plain', get_asset('/robots.txt').content_type)
-    assert_equal('font/woff', get_asset('/font.woff').content_type)
-    assert_equal('font/woff2', get_asset('/font.woff2').content_type)
+    assert_equal('text/css', get_asset('/app.css', process: false).content_type)
+    assert_equal('text/html', get_asset('/index.html', process: false).content_type)
+    assert_equal('application/javascript', get_asset('/template.htx', process: false).content_type)
+    assert_equal('image/x-icon', get_asset('/favicon.ico', process: false).content_type)
+    assert_equal('application/javascript', get_asset('/app.js', process: false).content_type)
+    assert_equal('image/jpeg', get_asset('/photo.jpg', process: false).content_type)
+    assert_equal('image/png', get_asset('/graphic.png', process: false).content_type)
+    assert_equal('image/svg+xml', get_asset('/graphic.svg', process: false).content_type)
+    assert_equal('text/plain', get_asset('/robots.txt', process: false).content_type)
+    assert_equal('font/woff', get_asset('/font.woff', process: false).content_type)
+    assert_equal('font/woff2', get_asset('/font.woff2', process: false).content_type)
   end
 
   ##########################################################################################################
@@ -224,7 +225,7 @@ class AssetTest < Minitest::Test
 
   test('#headers includes Content-Type header') do
     Darkroom::Asset.extensions.each do |extension|
-      asset = get_asset("/hello#{extension}")
+      asset = get_asset("/hello#{extension}", process: false)
       assert_equal(asset.content_type, asset.headers['Content-Type'])
     end
   end
@@ -358,7 +359,11 @@ class AssetTest < Minitest::Test
     process = options.delete(:process)
 
     asset = Darkroom::Asset.new(path, file, DarkroomMock.new(manifest), **options)
-    asset.process unless process == false
+
+    unless process == false
+      raise("File not found: #{file}") unless File.exists?(file)
+      asset.process
+    end
 
     asset
   end
