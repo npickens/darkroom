@@ -36,7 +36,7 @@ darkroom = Darkroom.new('app/assets', 'vendor/assets', '...',
   min_process_interval: 1,             # Minimum time that must elapse between process calls
 )
 
-# Refreshe any assets that have been modified (in development, this should be called at the
+# Refresh any assets that have been modified (in development, this should be called at the
 # beginning of each web request).
 darkroom.process
 
