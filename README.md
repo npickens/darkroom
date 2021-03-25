@@ -148,15 +148,17 @@ comes after any imported assets' contents).
 
 ## Extending
 
-Darkroom is extensible. Support for arbitrary file types can be added as follows:
+Darkroom is extensible. Support for arbitrary file types can be added as follows (all named parameters are
+optional):
 
 ```ruby
 Darkroom::Asset.add_spec('.extension1', 'extension2', '...', 'content/type',
-  dependency_regex: /^import .../,       # Regex for bundling dependencies (optional)
-  compile_lib: 'some-compile-lib',       # Name of library required for compilation (optional)
-  compile: -> (path, content) { '...' }, # Proc that returns compiled content (optional)
-  minify_lib: 'some-minify-lib',         # Name of library required for minification (optional)
-  minify: -> (content) { '...' },        # Proc that returns minified content (optional)
+  dependency_regex: /import (?<path>.*)/, # Regex for identifying dependencies for bundling;
+                                          # must include `path` named capture group
+  compile_lib: 'some-compile-lib',        # Name of library required for compilation
+  compile: -> (path, content) { '...' },  # Proc that returns compiled content
+  minify_lib: 'some-minify-lib',          # Name of library required for minification
+  minify: -> (content) { '...' },         # Proc that returns minified content
 )
 
 ```
