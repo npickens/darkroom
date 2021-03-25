@@ -5,8 +5,11 @@ version = File.read(File.expand_path('../VERSION', __FILE__)).strip
 Gem::Specification.new('darkroom', version) do |spec|
   spec.authors       = ['Nate Pickens']
   spec.summary       = 'A fast, lightweight, and straightforward web asset management library.'
-  spec.description   = 'Darkroom provides simple web asset management complete with dependency bundling '\
-                       'based on import statements, compilation, and minification.'
+  spec.description   = 'Darkroom provides web asset compilation, bundling, and minification without any '\
+                       'external tools, manifest files, or special comment syntax. CSS and JavaScript '\
+                       'bundles are automatically generated based on import statements native to each '\
+                       'language. Darkroom is also extensible, allowing support to be added for arbitrary '\
+                       'file types.'
   spec.homepage      = 'https://github.com/npickens/darkroom'
   spec.license       = 'MIT'
   spec.files         = Dir['lib/**/*.rb', 'LICENSE', 'README.md', 'VERSION']
