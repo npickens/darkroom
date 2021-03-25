@@ -324,14 +324,17 @@ class Darkroom
       begin
         require(@spec.compile_lib) if @spec.compile_lib
       rescue LoadError
-        raise(MissingLibraryError.new(@spec.compile_lib, 'compile', @extension))
+        compile_load_error = true
       end
 
       begin
         require(@spec.minify_lib) if @spec.minify_lib && @minify
       rescue LoadError
-        raise(MissingLibraryError.new(@spec.minify_lib, 'minify', @extension))
+        minify_load_error = true
       end
+
+      raise(MissingLibraryError.new(@spec.compile_lib, 'compile', @extension)) if compile_load_error
+      raise(MissingLibraryError.new(@spec.minify_lib, 'minify', @extension)) if minify_load_error
     end
   end
 end
