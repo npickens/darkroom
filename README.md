@@ -65,7 +65,7 @@ darkroom.dump('output/dir',
 )                         # /favicon.ico or /robots.txt should be left out)
 ```
 
-Note that assets paths across all load path directories must be globally unique (e.g. the existance of both
+Note that assets paths across all load path directories must be globally unique (e.g. the existence of both
 `app/assets/app.js` and `vendor/assets/app.js` will result in an error).
 
 To work with assets:
