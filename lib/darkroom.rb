@@ -29,7 +29,7 @@ Darkroom::Asset.add_spec('.htx', 'application/javascript',
   minify_lib: Darkroom::Asset.spec('.js').minify_lib,
 )
 
-Darkroom::Asset.add_spec('.html', '.html', 'text/html')
+Darkroom::Asset.add_spec('.htm', '.html', 'text/html')
 Darkroom::Asset.add_spec('.ico', 'image/x-icon')
 Darkroom::Asset.add_spec('.jpg', '.jpeg', 'image/jpeg')
 Darkroom::Asset.add_spec('.png', 'image/png')
