@@ -6,6 +6,23 @@ performed for upload to a CDN or proxy server in production environments); this 
 simple and performant in development. Darkroom also supports asset bundling for CSS and JavaScript using
 each language's native import statement syntax.
 
+The following file types are supported out of the box, though support for others can be added (see the
+[Extending](#extending) section):
+
+| Name       | Content Type           | Exension(s) |
+| ---------- |----------------------- |-------------|
+| CSS        | text/css               | .css        |
+| JavaScript | application/javascript | .js         |
+| HTML       | text/html              | .htm, .html |
+| HTX        | application/javascript | .htx        |
+| ICO        | image/x-icon           | .ico        |
+| JPEG       | image/jpeg             | .jpg, .jpeg |
+| PNG        | image/png              | .png        |
+| SVG        | image/svg+xml          | .svg        |
+| Text       | text/plain             | .txt        |
+| WOFF       | font/woff              | .woff       |
+| WOFF2      | font/woff2             | .woff2      |
+
 ## Installation
 
 Add this line to your Gemfile:
