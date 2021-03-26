@@ -12,8 +12,8 @@ require('darkroom/errors/spec_not_defined_error')
 
 Darkroom::Asset.add_spec('.css', 'text/css',
   dependency_regex: /^ *@import +(?<quote>['"]) *(?<path>.*) *\g<quote> *; *$/,
-  minify: -> (content) { CSSminify.compress(content) },
-  minify_lib: 'cssminify',
+  minify: -> (content) { SassC::Engine.new(content, style: :compressed).render },
+  minify_lib: 'sassc',
 )
 
 Darkroom::Asset.add_spec('.js', 'application/javascript',

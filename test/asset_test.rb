@@ -85,19 +85,19 @@ class AssetTest < Minitest::Test
     file = file_for(path)
     asset = get_asset(path)
 
-    assert_equal("[HTX.compile(#{path.inspect}, #{File.read(file).inspect})]", asset.content)
+    assert_equal("[htx:compile #{path.inspect}, #{File.read(file).inspect}]", asset.content)
   end
 
   test('#process minifies content if minification is part of spec and minification is enabled') do
     [
-      ['/app.css', 'CSSminify.compress'],
-      ['/app.js', 'Uglifier.compile'],
-      ['/template.htx', 'Uglifier.compile'],
-    ].each do |path, meth|
+      ['/app.css', 'css:minify'],
+      ['/app.js', 'javascript:minify'],
+      ['/template.htx', 'javascript:minify'],
+    ].each do |path, ident|
       content = get_asset(path).content
       asset = get_asset(path, minify: true)
 
-      assert_equal("[#{meth}(#{content.inspect})]", asset.content)
+      assert_equal("[#{ident} #{content.inspect}]", asset.content)
     end
   end
 
