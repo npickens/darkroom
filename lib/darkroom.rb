@@ -11,13 +11,13 @@ require('darkroom/errors/processing_error')
 require('darkroom/errors/spec_not_defined_error')
 
 Darkroom::Asset.add_spec('.css', 'text/css',
-  dependency_regex: /^ *@import +(?<quote>['"]) *(?<path>.*) *\g<quote> *; *$/,
+  dependency_regex: /^ *@import +#{Darkroom::Asset::IMPORT_PATH_REGEX} *; *$/,
   minify: -> (content) { SassC::Engine.new(content, style: :compressed).render },
   minify_lib: 'sassc',
 )
 
 Darkroom::Asset.add_spec('.js', 'application/javascript',
-  dependency_regex: /^ *import +(?<quote>['"])(?<path>.*)\g<quote> *;? *$/,
+  dependency_regex: /^ *import +#{Darkroom::Asset::IMPORT_PATH_REGEX} *;? *$/,
   minify: -> (content) { Uglifier.compile(content, harmony: true) },
   minify_lib: 'uglifier',
 )
