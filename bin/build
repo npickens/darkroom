@@ -7,9 +7,7 @@ require('open3')
 ## Command Line Options                                                                                   ##
 ############################################################################################################
 
-bump = ARGV.first.to_s.strip.to_sym
-
-unless ARGV.size == 1 && [:major, :minor, :patch].include?(bump)
+unless ARGV.size == 1 && [:major, :minor, :patch].include?(bump = ARGV.shift.to_s.strip.to_sym)
   abort('Usage: bin/build {major|minor|patch}')
 end
 
@@ -18,14 +16,14 @@ end
 ############################################################################################################
 
 BASE_DIR = File.expand_path(File.join('..', '..'), __FILE__).freeze
-TEST_COMMAND = File.join(BASE_DIR, 'bin', 'test').freeze
 VERSION_FILE = File.join(BASE_DIR, 'VERSION').freeze
-GEMSPEC_FILE = File.join(BASE_DIR, 'darkroom.gemspec').freeze
-RUBY_FILE_WITH_VERSION = File.join(BASE_DIR, 'lib', 'darkroom', 'version.rb').freeze
+GEMSPEC_FILE = Dir[File.join(BASE_DIR, '*.gemspec')].first.freeze
+LIB_NAME = File.basename(GEMSPEC_FILE, '.gemspec').freeze
+RUBY_FILE_WITH_VERSION = File.join(BASE_DIR, 'lib', LIB_NAME, 'version.rb').freeze
+TEST_COMMAND = File.join(BASE_DIR, 'bin', 'test').freeze
 
-major, minor, patch = File.read(VERSION_FILE).strip.split('.').map(&:to_i)
-
-OLD_VERSION = "#{major}.#{minor}.#{patch}"
+OLD_VERSION = File.read(VERSION_FILE).strip.freeze
+major, minor, patch = OLD_VERSION.split('.').map(&:to_i)
 NEW_VERSION =
   case bump
   when :major then "#{major + 1}.0.0"
@@ -53,7 +51,9 @@ def update_version(version = NEW_VERSION, quiet = false)
   begin_task('Updating version number...') unless quiet
 
   ruby = File.read(RUBY_FILE_WITH_VERSION)
-  ruby.sub!(/VERSION = (['"])(\d+\.\d+\.\d+)\1/, "VERSION = '#{version}'")
+  ruby.sub!(/(?<var>VERSION\s*=\s*)(?<quote>['"])(\d+\.\d+\.\d+)\g<quote>/) do
+    "#{$~[:var]}#{$~[:quote]}#{version}#{$~[:quote]}"
+  end
 
   File.write(RUBY_FILE_WITH_VERSION, ruby)
   File.write(VERSION_FILE, "#{version}\n")
