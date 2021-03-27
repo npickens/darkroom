@@ -2,21 +2,35 @@
 # frozen_string_literal: true
 
 ############################################################################################################
+## Constants                                                                                              ##
+############################################################################################################
+
+BASE_DIR = File.expand_path('../..', __FILE__).freeze
+LIB_NAME = File.basename(Dir[File.join(BASE_DIR, '*.gemspec')].first, '.gemspec').freeze
+GLOB = File.expand_path("{test,#{LIB_NAME}-*/test}/**/*_test.rb", BASE_DIR).freeze
+
+############################################################################################################
 ## Requires                                                                                               ##
 ############################################################################################################
 
 require('bundler')
 
-Dir.chdir(File.expand_path('../..', __FILE__))
+Dir.chdir(BASE_DIR)
 Bundler.setup(:default, :development)
 
-require('darkroom')
+require(LIB_NAME)
 require('minitest')
 require('minitest/mock')
 
+Dir[GLOB].each do |file|
+  require(file)
+end
+
 ############################################################################################################
-## Monkey Patch Minitest                                                                                  ##
+## Minitest Setup                                                                                         ##
 ############################################################################################################
+
+ENV['MT_NO_PLUGINS'] = 'true'
 
 class Minitest::Result
   def location
@@ -28,9 +42,4 @@ end
 ## Run                                                                                                    ##
 ############################################################################################################
 
-Dir[File.expand_path('test/**/*_test.rb')].each do |file|
-  require(file)
-end
-
-ENV['MT_NO_PLUGINS'] = 'true'
 Minitest.autorun
