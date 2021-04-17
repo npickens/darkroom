@@ -77,9 +77,10 @@ path = darkroom.asset_path('/js/app.js') # => '/static/js/app-<fingerprint>.js'
 # Retrieve the Asset object associated with a path.
 asset = darkroom.asset(path)
 
-# Getting paths directly from an Asset object will not include any host or prefix.
-assest.path           # => '/js/app.js'
-assest.path_versioned # => '/js/app-<fingerprint>.js'
+# Prefix (if set on the Darkroom instance) is included in the unversioned and versioned paths.
+assest.path             # => '/js/app.js'
+assest.path_unversioned # => '/static/js/app.js'
+assest.path_versioned   # => '/static/js/app-<fingerprint>.js'
 
 asset.content_type # => 'application/javascript'
 asset.content      # Content of processed /js/app.js file
