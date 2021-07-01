@@ -13,6 +13,7 @@ The following file types are supported out of the box, though support for others
 | ---------- |----------------------- |-------------|
 | CSS        | text/css               | .css        |
 | JavaScript | application/javascript | .js         |
+| JSON       | application/json       | .json       |
 | HTML       | text/html              | .htm, .html |
 | HTX        | application/javascript | .htx        |
 | ICO        | image/x-icon           | .ico        |
