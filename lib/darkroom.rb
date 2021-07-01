@@ -32,6 +32,7 @@ Darkroom::Asset.add_spec('.htx', 'application/javascript',
 Darkroom::Asset.add_spec('.htm', '.html', 'text/html')
 Darkroom::Asset.add_spec('.ico', 'image/x-icon')
 Darkroom::Asset.add_spec('.jpg', '.jpeg', 'image/jpeg')
+Darkroom::Asset.add_spec('.json', 'application/json')
 Darkroom::Asset.add_spec('.png', 'image/png')
 Darkroom::Asset.add_spec('.svg', 'image/svg+xml')
 Darkroom::Asset.add_spec('.txt', 'text/plain')
