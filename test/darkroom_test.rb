@@ -56,6 +56,27 @@ class DarkroomTest < Minitest::Test
     FileUtils.rm_rf(TMP_ASSET_FILE)
   end
 
+  test('#process registers InvalidPathError if an asset path contains one or more disallowed character') do
+    paths = [
+      "/single'quote.js",
+      '/double"quote.js',
+      '/back`tick.js',
+      '/equal=sign.js',
+      '/less<than.js',
+      '/greater>than.js',
+      '/spa ce.js',
+    ].sort
+
+    Dir.stub(:glob, paths) do
+      configure_darkroom.process
+    end
+
+    paths.each.with_index do |path, i|
+      assert_kind_of(Darkroom::InvalidPathError, darkroom.errors[i])
+      assert_includes(darkroom.errors[i].inspect, path)
+    end
+  end
+
   test('#process includes DuplicateAssetError if an asset with the same path is in multiple load paths') do
     FileUtils.touch(File.join(BAD_ASSET_DIR, JS_ASSET_PATH))
 

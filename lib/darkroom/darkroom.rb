@@ -11,6 +11,8 @@ class Darkroom
   PRISTINE = Set.new(%w[/favicon.ico /mask-icon.svg /humans.txt /robots.txt]).freeze
   MIN_PROCESS_INTERVAL = 0.5
 
+  DISALLOWED_PATH_CHARS = '\'"`=<> '
+  INVALID_PATH = /[#{DISALLOWED_PATH_CHARS}]/.freeze
   TRAILING_SLASHES = /\/+$/.freeze
 
   attr_reader(:error, :errors, :process_key)
@@ -82,7 +84,9 @@ class Darkroom
         Dir.glob(glob).sort.each do |file|
           path = file.sub(load_path, '')
 
-          if found.key?(path)
+          if index = (path =~ INVALID_PATH)
+            @errors << InvalidPathError.new(path, index)
+          elsif found.key?(path)
             @errors << DuplicateAssetError.new(path, found[path], load_path)
           else
             found[path] = load_path

@@ -6,35 +6,40 @@ require('darkroom/version')
 
 require('darkroom/errors/asset_not_found_error')
 require('darkroom/errors/duplicate_asset_error')
+require('darkroom/errors/invalid_path_error')
 require('darkroom/errors/missing_library_error')
 require('darkroom/errors/processing_error')
 require('darkroom/errors/spec_not_defined_error')
 
-Darkroom::Asset.add_spec('.css', 'text/css',
-  dependency_regex: /^ *@import +#{Darkroom::Asset::IMPORT_PATH_REGEX} *; *$/,
-  minify: -> (content) { SassC::Engine.new(content, style: :compressed).render },
-  minify_lib: 'sassc',
-)
+class Darkroom
+  QUOTED_PATH = '(?<quote>[\'"])(?<path>[^\'"]*)\k<quote>'
 
-Darkroom::Asset.add_spec('.js', 'application/javascript',
-  dependency_regex: /^ *import +#{Darkroom::Asset::IMPORT_PATH_REGEX} *;? *$/,
-  minify: -> (content) { Uglifier.compile(content, harmony: true) },
-  minify_lib: 'uglifier',
-)
+  Asset.add_spec('.css', 'text/css',
+    dependency_regex: /^ *@import +#{QUOTED_PATH} *; *$/,
+    minify: -> (content) { SassC::Engine.new(content, style: :compressed).render },
+    minify_lib: 'sassc',
+  )
 
-Darkroom::Asset.add_spec('.htx', 'application/javascript',
-  compile: -> (path, content) { HTX.compile(path, content) },
-  compile_lib: 'htx',
-  minify: Darkroom::Asset.spec('.js').minify,
-  minify_lib: Darkroom::Asset.spec('.js').minify_lib,
-)
+  Asset.add_spec('.js', 'application/javascript',
+    dependency_regex: /^ *import +#{QUOTED_PATH} *;? *$/,
+    minify: -> (content) { Uglifier.compile(content, harmony: true) },
+    minify_lib: 'uglifier',
+  )
 
-Darkroom::Asset.add_spec('.htm', '.html', 'text/html')
-Darkroom::Asset.add_spec('.ico', 'image/x-icon')
-Darkroom::Asset.add_spec('.jpg', '.jpeg', 'image/jpeg')
-Darkroom::Asset.add_spec('.json', 'application/json')
-Darkroom::Asset.add_spec('.png', 'image/png')
-Darkroom::Asset.add_spec('.svg', 'image/svg+xml')
-Darkroom::Asset.add_spec('.txt', 'text/plain')
-Darkroom::Asset.add_spec('.woff', 'font/woff')
-Darkroom::Asset.add_spec('.woff2', 'font/woff2')
+  Asset.add_spec('.htx', 'application/javascript',
+    compile: -> (path, content) { HTX.compile(path, content) },
+    compile_lib: 'htx',
+    minify: Asset.spec('.js').minify,
+    minify_lib: Asset.spec('.js').minify_lib,
+  )
+
+  Asset.add_spec('.htm', '.html', 'text/html')
+  Asset.add_spec('.ico', 'image/x-icon')
+  Asset.add_spec('.jpg', '.jpeg', 'image/jpeg')
+  Asset.add_spec('.json', 'application/json')
+  Asset.add_spec('.png', 'image/png')
+  Asset.add_spec('.svg', 'image/svg+xml')
+  Asset.add_spec('.txt', 'text/plain')
+  Asset.add_spec('.woff', 'font/woff')
+  Asset.add_spec('.woff2', 'font/woff2')
+end

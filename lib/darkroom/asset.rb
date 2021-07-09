@@ -11,13 +11,6 @@ class Darkroom
     DEPENDENCY_JOINER = "\n"
     EXTENSION_REGEX = /(?=\.\w+)/.freeze
 
-    OPEN_QUOTE = '(?<quote>[\'"])'
-    BODY = '((?!\k<quote>).|(?<!\\\\)\\\\(\\\\\\\\)*\k<quote>)*'
-    BODY_END = '(?<!\\\\)(\\\\\\\\)*'
-    CLOSE_QUOTE = '\k<quote>'
-
-    IMPORT_PATH_REGEX = /#{OPEN_QUOTE}(?<path>#{BODY}#{BODY_END})#{CLOSE_QUOTE}/.freeze
-
     @@specs = {}
 
     attr_reader(:content, :error, :errors, :path, :path_unversioned, :path_versioned)

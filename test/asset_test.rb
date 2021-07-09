@@ -349,63 +349,72 @@ class AssetTest < Minitest::Test
   test('JavaScript spec dependency regex matches import statements with proper syntax') do
     regex = Darkroom::Asset.spec('.js').dependency_regex
 
-    assert_match(regex, %q{import ''})
-    assert_match(regex, %q{import ""})
-    assert_match(regex, %q{import '/single-quotes.js'})
-    assert_match(regex, %q{import "/double-quotes.js"})
-    assert_match(regex, %q{import "/semicolon.js";})
-    assert_match(regex, %q{  import  '/spaces.js'  ;  })
-    assert_match(regex, %q{import '/escaped\\'-single-quote.js'})
-    assert_match(regex, %q{import '/escaped\\\\\\'-single-quote.js'})
-    assert_match(regex, %q{import "/escaped\\"-double-quote.js"})
-    assert_match(regex, %q{import "/escaped\\\\\\"-double-quote.js"})
+    assert_match(regex, %q(import ''))
+    assert_match(regex, %q(import ""))
+    assert_match(regex, %q(import '/single-quotes.js'))
+    assert_match(regex, %q(import "/double-quotes.js"))
+    assert_match(regex, %q(import '/single-quotes-semicolon.js';))
+    assert_match(regex, %q(import "/double-quotes-semicolon.js";))
+    assert_match(regex, %q( import  '/whitespace.js' ; ))
   end
 
   test('JavaScript spec dependency regex does not match import statements with bad quoting') do
     regex = Darkroom::Asset.spec('.js').dependency_regex
 
-    refute_match(regex, %q{import /no-quotes.js})
-    refute_match(regex, %q{import "/mismatched-quotes.js'})
-    refute_match(regex, %q{import '/mismatched-quotes.js"})
-    refute_match(regex, %q{import /missing-open-single-quote.js'})
-    refute_match(regex, %q{import /missing-open-double-quote.js"})
-    refute_match(regex, %q{import '/missing-close-single-quote.js})
-    refute_match(regex, %q{import "/missing-close-double-quote.js})
-    refute_match(regex, %q{import '/unescaped'-single-quote.js'})
-    refute_match(regex, %q{import "/unescaped"-double-quote.js"})
-    refute_match(regex, %q{import '/unescaped\\\\'-single-quote.js'})
-    refute_match(regex, %q{import "/unescaped\\\\"-double-quote.js"})
+    # Bad quoting
+    refute_match(regex, %q(import /no-quotes.js))
+    refute_match(regex, %q(import "/mismatched-quotes.js'))
+    refute_match(regex, %q(import '/mismatched-quotes.js"))
+    refute_match(regex, %q(import /missing-open-single-quote.js'))
+    refute_match(regex, %q(import /missing-open-double-quote.js"))
+    refute_match(regex, %q(import '/missing-close-single-quote.js))
+    refute_match(regex, %q(import "/missing-close-double-quote.js))
+
+    # Escaped and unescaped quotes
+    refute_match(regex, %q(import '/unescaped'-single-quote.js'))
+    refute_match(regex, %q(import "/unescaped"-double-quote.js"))
+    refute_match(regex, %q(import '/unescaped\\\\'-single-quote.js'))
+    refute_match(regex, %q(import "/unescaped\\\\"-double-quote.js"))
+    refute_match(regex, %q(import '/escaped\\'-single-quote.js'))
+    refute_match(regex, %q(import '/escaped\\\\\\'-single-quote.js'))
+    refute_match(regex, %q(import "/escaped\\"-double-quote.js"))
+    refute_match(regex, %q(import "/escaped\\\\\\"-double-quote.js"))
   end
 
   test('CSS spec dependency regex matches import statements with proper syntax') do
     regex = Darkroom::Asset.spec('.css').dependency_regex
 
-    assert_match(regex, %q{@import '';})
-    assert_match(regex, %q{@import "";})
-    assert_match(regex, %q{@import '/single-quotes.css';})
-    assert_match(regex, %q{@import "/double-quotes.css";})
-    assert_match(regex, %q{@import "/semicolon.css";})
-    assert_match(regex, %q{  @import  '/spaces.css'  ;  })
-    assert_match(regex, %q{@import '/escaped\\'-single-quote.css';})
-    assert_match(regex, %q{@import '/escaped\\\\\\'-single-quote.css';})
-    assert_match(regex, %q{@import "/escaped\\"-double-quote.css";})
-    assert_match(regex, %q{@import "/escaped\\\\\\"-double-quote.css";})
+    assert_match(regex, %q(@import '';))
+    assert_match(regex, %q(@import "";))
+    assert_match(regex, %q(@import '/single-quotes.css';))
+    assert_match(regex, %q(@import "/double-quotes.css";))
+    assert_match(regex, %q( @import  '/whitespace.js' ; ))
   end
 
   test('CSS spec dependency regex does not match import statements with bad quoting') do
     regex = Darkroom::Asset.spec('.css').dependency_regex
 
-    refute_match(regex, %q{@import /no-quotes.css;})
-    refute_match(regex, %q{@import "/mismatched-quotes.css';})
-    refute_match(regex, %q{@import '/mismatched-quotes.css";})
-    refute_match(regex, %q{@import /missing-open-single-quote.css';})
-    refute_match(regex, %q{@import /missing-open-double-quote.css";})
-    refute_match(regex, %q{@import '/missing-close-single-quote.css;})
-    refute_match(regex, %q{@import "/missing-close-double-quote.css;})
-    refute_match(regex, %q{@import '/unescaped'-single-quote.css';})
-    refute_match(regex, %q{@import "/unescaped"-double-quote.css";})
-    refute_match(regex, %q{@import '/unescaped\\\\'-single-quote.css';})
-    refute_match(regex, %q{@import "/unescaped\\\\"-double-quote.css";})
+    # Bad quoting
+    refute_match(regex, %q(@import /no-quotes.css;))
+    refute_match(regex, %q(@import "/mismatched-quotes.css';))
+    refute_match(regex, %q(@import '/mismatched-quotes.css";))
+    refute_match(regex, %q(@import /missing-open-single-quote.css';))
+    refute_match(regex, %q(@import /missing-open-double-quote.css";))
+    refute_match(regex, %q(@import '/missing-close-single-quote.css;))
+    refute_match(regex, %q(@import "/missing-close-double-quote.css;))
+
+    # Escaped and unescaped quotes
+    refute_match(regex, %q(@import '/unescaped'-single-quote.css';))
+    refute_match(regex, %q(@import "/unescaped"-double-quote.css";))
+    refute_match(regex, %q(@import '/unescaped\\\\'-single-quote.css';))
+    refute_match(regex, %q(@import "/unescaped\\\\"-double-quote.css";))
+    refute_match(regex, %q(@import '/escaped\\'-single-quote.css';))
+    refute_match(regex, %q(@import '/escaped\\\\\\'-single-quote.css';))
+    refute_match(regex, %q(@import "/escaped\\"-double-quote.css";))
+    refute_match(regex, %q(@import "/escaped\\\\\\"-double-quote.css";))
+
+    # Semicolon
+    refute_match(regex, %q(@import '/no-semicolon.css'))
   end
 
   ##########################################################################################################
