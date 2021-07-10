@@ -20,13 +20,13 @@ class Darkroom
     minify_lib: 'sassc',
   )
 
-  Asset.add_spec('.js', 'application/javascript',
+  Asset.add_spec('.js', 'text/javascript',
     dependency_regex: /^ *import +#{QUOTED_PATH} *;? *$/,
     minify: -> (content) { Uglifier.compile(content, harmony: true) },
     minify_lib: 'uglifier',
   )
 
-  Asset.add_spec('.htx', 'application/javascript',
+  Asset.add_spec('.htx', 'text/javascript',
     compile: -> (path, content) { HTX.compile(path, content) },
     compile_lib: 'htx',
     minify: Asset.spec('.js').minify,

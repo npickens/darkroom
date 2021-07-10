@@ -9,20 +9,20 @@ each language's native import statement syntax.
 The following file types are supported out of the box, though support for others can be added (see the
 [Extending](#extending) section):
 
-| Name       | Content Type           | Exension(s) |
-| ---------- |----------------------- |-------------|
-| CSS        | text/css               | .css        |
-| JavaScript | application/javascript | .js         |
-| JSON       | application/json       | .json       |
-| HTML       | text/html              | .htm, .html |
-| HTX        | application/javascript | .htx        |
-| ICO        | image/x-icon           | .ico        |
-| JPEG       | image/jpeg             | .jpg, .jpeg |
-| PNG        | image/png              | .png        |
-| SVG        | image/svg+xml          | .svg        |
-| Text       | text/plain             | .txt        |
-| WOFF       | font/woff              | .woff       |
-| WOFF2      | font/woff2             | .woff2      |
+| Name       | Content Type     | Extension(s) |
+|------------|------------------|--------------|
+| CSS        | text/css         | .css         |
+| HTML       | text/html        | .htm, .html  |
+| HTX        | text/javascript  | .htx         |
+| ICO        | image/x-icon     | .ico         |
+| JavaScript | text/javascript  | .js          |
+| JPEG       | image/jpeg       | .jpg, .jpeg  |
+| JSON       | application/json | .json        |
+| PNG        | image/png        | .png         |
+| SVG        | image/svg+xml    | .svg         |
+| Text       | text/plain       | .txt         |
+| WOFF       | font/woff        | .woff        |
+| WOFF2      | font/woff2       | .woff2       |
 
 ## Installation
 
@@ -84,12 +84,12 @@ assest.path             # => '/js/app.js'
 assest.path_unversioned # => '/static/js/app.js'
 assest.path_versioned   # => '/static/js/app-<fingerprint>.js'
 
-asset.content_type # => 'application/javascript'
+asset.content_type # => 'text/javascript'
 asset.content      # Content of processed /js/app.js file
 
-asset.headers                   # => {'Content-Type' => 'application/javascript',
+asset.headers                   # => {'Content-Type' => 'text/javascript',
                                 #     'Cache-Control' => 'public, max-age=31536000'}
-asset.headers(versioned: false) # => {'Content-Type' => 'application/javascript',
+asset.headers(versioned: false) # => {'Content-Type' => 'text/javascript',
                                 #     'ETag' => '<fingerprint>'}
 
 asset.integrity          # => 'sha384-<hash>'

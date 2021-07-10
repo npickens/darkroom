@@ -208,9 +208,9 @@ class AssetTest < Minitest::Test
   test('#content_type returns the HTTP MIME type string for the asset') do
     assert_equal('text/css', get_asset('/app.css', process: false).content_type)
     assert_equal('text/html', get_asset('/index.html', process: false).content_type)
-    assert_equal('application/javascript', get_asset('/template.htx', process: false).content_type)
+    assert_equal('text/javascript', get_asset('/template.htx', process: false).content_type)
     assert_equal('image/x-icon', get_asset('/favicon.ico', process: false).content_type)
-    assert_equal('application/javascript', get_asset('/app.js', process: false).content_type)
+    assert_equal('text/javascript', get_asset('/app.js', process: false).content_type)
     assert_equal('image/jpeg', get_asset('/photo.jpg', process: false).content_type)
     assert_equal('image/png', get_asset('/graphic.png', process: false).content_type)
     assert_equal('image/svg+xml', get_asset('/graphic.svg', process: false).content_type)
