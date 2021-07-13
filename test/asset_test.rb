@@ -212,6 +212,7 @@ class AssetTest < Minitest::Test
     assert_equal('image/x-icon', get_asset('/favicon.ico', process: false).content_type)
     assert_equal('text/javascript', get_asset('/app.js', process: false).content_type)
     assert_equal('image/jpeg', get_asset('/photo.jpg', process: false).content_type)
+    assert_equal('application/json', get_asset('/data.json', process: false).content_type)
     assert_equal('image/png', get_asset('/graphic.png', process: false).content_type)
     assert_equal('image/svg+xml', get_asset('/graphic.svg', process: false).content_type)
     assert_equal('text/plain', get_asset('/robots.txt', process: false).content_type)
