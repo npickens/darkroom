@@ -38,6 +38,17 @@ Or install manually on the command line:
 gem install darkroom
 ```
 
+Darkroom depends on a few other gems for compilation and minification of certain asset types, but does not
+explicitly include them as dependencies since need for them varies from project to project. As such, if your
+project includes HTX templates or you wish to minify CSS and/or JavaScript assets, the following will need
+to be added to your Gemfile:
+
+```ruby
+gem('htx')      # HTX compilation
+gem('sassc')    # CSS minification
+gem('uglifier') # JavaScript and HTX minification
+```
+
 ## Usage
 
 To create and start using a Darkroom instance, specify one or more load paths (all other arguments are
