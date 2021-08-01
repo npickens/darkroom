@@ -60,6 +60,8 @@ class Darkroom
     @manifest_unversioned = {}
     @manifest_versioned = {}
 
+    @errors = []
+
     Thread.current[:darkroom_host_index] = -1 unless @hosts.empty?
   end
 
@@ -77,7 +79,7 @@ class Darkroom
 
     @mutex.synchronize do
       @process_key += 1
-      @errors = []
+      @errors.clear
       found = {}
 
       @globs.each do |load_path, glob|
