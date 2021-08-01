@@ -139,6 +139,13 @@ class Darkroom
     end
 
     ##
+    # Returns boolean indicating whether or not the asset is a font.
+    #
+    def font?
+      defined?(@is_font) ? @is_font : (@is_font = content_type.start_with?('font/'))
+    end
+
+    ##
     # Returns appropriate HTTP headers.
     #
     # * +versioned+ - Uses Cache-Control header with max-age if +true+ and ETag header if +false+.

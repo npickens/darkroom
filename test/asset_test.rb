@@ -284,6 +284,30 @@ class AssetTest < Minitest::Test
   end
 
   ##########################################################################################################
+  ## Test #font?                                                                                          ##
+  ##########################################################################################################
+
+  test('#font? returns false if asset is not a font') do
+    refute(new_asset('/app.css').font?)
+    refute(new_asset('/index.htm').font?)
+    refute(new_asset('/index.html').font?)
+    refute(new_asset('/template.htx').font?)
+    refute(new_asset('/favicon.ico').font?)
+    refute(new_asset('/app.js').font?)
+    refute(new_asset('/photo.jpg').font?)
+    refute(new_asset('/photo.jpeg').font?)
+    refute(new_asset('/data.json').font?)
+    refute(new_asset('/graphic.png').font?)
+    refute(new_asset('/graphic.svg').font?)
+    refute(new_asset('/robots.txt').font?)
+  end
+
+  test('#font? returns true if asset is a font') do
+    assert(new_asset('/font.woff').font?)
+    assert(new_asset('/font.woff2').font?)
+  end
+
+  ##########################################################################################################
   ## Test #headers                                                                                        ##
   ##########################################################################################################
 
