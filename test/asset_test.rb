@@ -308,6 +308,30 @@ class AssetTest < Minitest::Test
   end
 
   ##########################################################################################################
+  ## Test #image?                                                                                         ##
+  ##########################################################################################################
+
+  test('#image? returns false if asset is not an image') do
+    refute(new_asset('/app.css').image?)
+    refute(new_asset('/index.htm').image?)
+    refute(new_asset('/index.html').image?)
+    refute(new_asset('/template.htx').image?)
+    refute(new_asset('/app.js').image?)
+    refute(new_asset('/data.json').image?)
+    refute(new_asset('/robots.txt').image?)
+    refute(new_asset('/font.woff').image?)
+    refute(new_asset('/font.woff2').image?)
+  end
+
+  test('#image? returns true if asset is an image') do
+    assert(new_asset('/favicon.ico').image?)
+    assert(new_asset('/photo.jpg').image?)
+    assert(new_asset('/photo.jpeg').image?)
+    assert(new_asset('/graphic.png').image?)
+    assert(new_asset('/graphic.svg').image?)
+  end
+
+  ##########################################################################################################
   ## Test #headers                                                                                        ##
   ##########################################################################################################
 

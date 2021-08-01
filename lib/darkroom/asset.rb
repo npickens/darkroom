@@ -146,6 +146,13 @@ class Darkroom
     end
 
     ##
+    # Returns boolean indicating whether or not the asset is an image.
+    #
+    def image?
+      defined?(@is_image) ? @is_image : (@is_image = content_type.start_with?('image/'))
+    end
+
+    ##
     # Returns appropriate HTTP headers.
     #
     # * +versioned+ - Uses Cache-Control header with max-age if +true+ and ETag header if +false+.
