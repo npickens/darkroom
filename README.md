@@ -56,56 +56,70 @@ optional):
 
 ```ruby
 darkroom = Darkroom.new('app/assets', 'vendor/assets', '...',
-  hosts: ['https://cdn1.com', '...']   # Hosts to prepend to asset paths (useful in production)
+  hosts: [                             # Hosts to prepend to asset paths (useful in production
+    'https://cname1.cdn.com',          # when assets are served from a CDN with multiple
+    'https://cname2.cdn.com',          # cnames); hosts are chosen round-robin per thread
+    '...',
+  ],
   prefix: '/static',                   # Prefix to add to all asset paths
-  pristine: ['/google-verify.html'],   # Paths with no prefix or versioning (e.g. /favicon.ico)
+  pristine: ['/google-verify.html'],   # Paths with no prefix or versioning (/favicon.ico,
+                                       # /mask-icon.svg, /humans.txt, and /robots.txt are
+                                       # included automatically)
   minify: true,                        # Minify assets that can be minified
-  minified_pattern: /(\.|-)min\.\w+$/, # Files that should not be minified
-  internal_pattern: /^\/components\//, # Files that cannot be accessed directly
+  minified_pattern: /(\.|-)min\.\w+$/, # Files to skip minification on when minify: true
+  internal_pattern: /^\/components\//, # Files to disallow direct external access to (they can
+                                       # still be imported into other assets)
   min_process_interval: 1,             # Minimum time that must elapse between process calls
 )
+```
 
-# Refresh any assets that have been modified (in development, this should be called at the
-# beginning of each web request).
+Note that assets paths across all load path directories must be globally unique (e.g. the existence of both
+`app/assets/app.js` and `vendor/assets/app.js` will result in an error).
+
+Darkroom will never update assets without explicitly being told to do so. The following call should be made
+once when the app is started and additionally at the beginning of each web request in development to refresh
+any modified assets:
+
+```ruby
 darkroom.process
+```
 
-# Dump assets to disk. Useful when deploying to a production environment where assets will be
-# uploaded to and served from a CDN or proxy server.
+Alternatively, assets can be dumped to disk when deploying to a production environment where assets will be
+uploaded to and served from a CDN or proxy server:
+
+```ruby
 darkroom.dump('output/dir',
   clear: true,            # Delete contents of output/dir before dumping
   include_pristine: true, # Include pristine assets (if preparing for CDN upload, files like
 )                         # /favicon.ico or /robots.txt should be left out)
 ```
 
-Note that assets paths across all load path directories must be globally unique (e.g. the existence of both
-`app/assets/app.js` and `vendor/assets/app.js` will result in an error).
-
 To work with assets:
 
 ```ruby
 # A Darkroom instance has a few convenience helper methods.
-path = darkroom.asset_path('/js/app.js')           # => '/static/js/app-<fingerprint>.js'
-integrity = darkroom.asset_integrity('/js/app.js') # => 'sha384-<hash>'
+path = darkroom.asset_path('/js/app.js')           # => '/static/js/app-[fingerprint].js'
+integrity = darkroom.asset_integrity('/js/app.js') # => 'sha384-[hash]'
 
 # Retrieve the Asset object associated with a path.
 asset = darkroom.asset(path)
 
 # Prefix (if set on the Darkroom instance) is included in the unversioned and versioned paths.
-assest.path             # => '/js/app.js'
-assest.path_unversioned # => '/static/js/app.js'
-assest.path_versioned   # => '/static/js/app-<fingerprint>.js'
+assest.path                     # => '/js/app.js'
+assest.path_unversioned         # => '/static/js/app.js'
+assest.path_versioned           # => '/static/js/app-[fingerprint].js'
 
-asset.content_type # => 'text/javascript'
-asset.content      # Content of processed /js/app.js file
+asset.content_type              # => 'text/javascript'
+asset.content                   # Content of processed /js/app.js file
 
 asset.headers                   # => {'Content-Type' => 'text/javascript',
                                 #     'Cache-Control' => 'public, max-age=31536000'}
 asset.headers(versioned: false) # => {'Content-Type' => 'text/javascript',
-                                #     'ETag' => '<fingerprint>'}
+                                #     'ETag' => '[fingerprint]'}
 
-asset.integrity          # => 'sha384-<hash>'
-asset.integrity(:sha256) # => 'sha256-<hash>'
-asset.integrity(:sha512) # => 'sha512-<hash>'
+asset.integrity                 # => 'sha384-[hash]'
+asset.integrity(:sha256)        # => 'sha256-[hash]'
+asset.integrity(:sha512)        # => 'sha512-[hash]'
 ```
 
 ## Asset Bundling
