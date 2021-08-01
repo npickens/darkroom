@@ -260,6 +260,30 @@ class AssetTest < Minitest::Test
   end
 
   ##########################################################################################################
+  ## Test #binary?                                                                                        ##
+  ##########################################################################################################
+
+  test('#binary? returns false if asset is not binary') do
+    refute(new_asset('/app.css').binary?)
+    refute(new_asset('/index.htm').binary?)
+    refute(new_asset('/index.html').binary?)
+    refute(new_asset('/template.htx').binary?)
+    refute(new_asset('/app.js').binary?)
+    refute(new_asset('/data.json').binary?)
+    refute(new_asset('/graphic.svg').binary?)
+    refute(new_asset('/robots.txt').binary?)
+  end
+
+  test('#binary? returns true if asset is binary') do
+    assert(new_asset('/favicon.ico').binary?)
+    assert(new_asset('/photo.jpg').binary?)
+    assert(new_asset('/photo.jpeg').binary?)
+    assert(new_asset('/graphic.png').binary?)
+    assert(new_asset('/font.woff').binary?)
+    assert(new_asset('/font.woff2').binary?)
+  end
+
+  ##########################################################################################################
   ## Test #headers                                                                                        ##
   ##########################################################################################################
 

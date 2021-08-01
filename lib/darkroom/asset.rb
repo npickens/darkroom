@@ -128,6 +128,17 @@ class Darkroom
     end
 
     ##
+    # Returns boolean indicating whether or not the asset is binary.
+    #
+    def binary?
+      return @is_binary if defined?(@is_binary)
+
+      type, subtype = content_type.split('/')
+
+      @is_binary = type != 'text' && !subtype.include?('json') && !subtype.include?('xml')
+    end
+
+    ##
     # Returns appropriate HTTP headers.
     #
     # * +versioned+ - Uses Cache-Control header with max-age if +true+ and ETag header if +false+.
