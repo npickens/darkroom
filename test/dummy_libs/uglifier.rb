@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class Uglifier
-  def self.compile(content, *other)
-    "[javascript:minify #{content.inspect}]"
+  def self.compile(*)
+    raise('Uglifier.compile must be stubbed in tests')
   end
 end

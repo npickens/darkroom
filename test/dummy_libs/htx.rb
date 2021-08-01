@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class HTX
-  def self.compile(path, content)
-    "[htx:compile #{path.inspect}, #{content.inspect}]"
+  def self.compile(*)
+    raise('HTX.compile must be stubbed in tests')
   end
 end

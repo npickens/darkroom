@@ -1,15 +1,11 @@
 # frozen_string_literal: true
 
-require('fileutils')
 require_relative('test_helper')
 
 class DarkroomTest < Minitest::Test
   include(TestHelper)
 
-  TMP_ASSET_PATH = '/tmp.txt'
-  TMP_ASSET_FILE = File.join(ASSET_DIR, TMP_ASSET_PATH).freeze
-
-  DUMP_DIR = File.join(TEST_DIR, 'dump').freeze
+  DUMP_DIR = File.join(TMP_DIR, 'dump').freeze
   DUMP_DIR_EXISTING_FILE = File.join(DUMP_DIR, 'existing.txt').freeze
 
   def self.context
@@ -21,7 +17,7 @@ class DarkroomTest < Minitest::Test
   ##########################################################################################################
 
   def setup
-    @@darkroom = (@@default_darkroom ||= darkroom)
+    @@darkroom = nil
   end
 
   ##########################################################################################################
@@ -29,31 +25,35 @@ class DarkroomTest < Minitest::Test
   ##########################################################################################################
 
   test('#process skips processing if minimum process interval has not elapsed since last call') do
-    configure_darkroom(min_process_interval: 2)
+    write_files('/assets/app.js' => "console.log('Hello')")
 
-    File.write(TMP_ASSET_FILE, 'Temporary...')
+    darkroom('/assets', min_process_interval: 2)
     darkroom.process
 
-    assert_nil(darkroom.asset(TMP_ASSET_PATH))
-  ensure
-    FileUtils.rm_rf(TMP_ASSET_FILE)
+    write_files('/assets/tmp.txt' => 'Temporary...')
+    darkroom.process
+
+    assert(darkroom.asset('/app.js'))
+    assert_nil(darkroom.asset('/tmp.txt'))
   end
 
   test('#process skips processing if another thread is currently processing') do
     mutex_mock = Minitest::Mock.new
-    def mutex_mock.locked?() true end
+    def mutex_mock.locked?() (@locked_calls = (@locked_calls || 0) + 1) == 2 end
     def mutex_mock.synchronize(&block) block.call end
 
     Mutex.stub(:new, mutex_mock) do
-      configure_darkroom(min_process_interval: 0)
+      write_files('/assets/app.js' => "console.log('Hello')")
 
-      File.write(TMP_ASSET_FILE, 'Temporary...')
+      darkroom('/assets', min_process_interval: 0)
+      darkroom.process
+
+      write_files('/assets/tmp.txt' => 'Temporary...')
       darkroom.process
     end
 
-    assert_nil(darkroom.asset(TMP_ASSET_PATH))
-  ensure
-    FileUtils.rm_rf(TMP_ASSET_FILE)
+    assert(darkroom.asset('/app.js'))
+    assert_nil(darkroom.asset('/tmp.txt'))
   end
 
   test('#process registers InvalidPathError if an asset path contains one or more disallowed character') do
@@ -67,9 +67,10 @@ class DarkroomTest < Minitest::Test
       '/spa ce.js',
     ].sort
 
-    Dir.stub(:glob, paths) do
-      configure_darkroom.process
-    end
+    write_files(paths.map { |path| ["/assets#{path}", '[...]'] }.to_h)
+
+    darkroom('/assets')
+    darkroom.process
 
     paths.each.with_index do |path, i|
       assert_kind_of(Darkroom::InvalidPathError, darkroom.errors[i])
@@ -77,16 +78,17 @@ class DarkroomTest < Minitest::Test
     end
   end
 
-  test('#process includes DuplicateAssetError if an asset with the same path is in multiple load paths') do
-    FileUtils.touch(File.join(BAD_ASSET_DIR, JS_ASSET_PATH))
+  test('#process registers DuplicateAssetError if an asset with the same path is in multiple load paths') do
+    write_files(
+      '/assets/app.js' => "console.log('Hello')",
+      '/other-assets/app.js' => "console.log('Hello again')",
+    )
 
-    configure_darkroom(ASSET_DIR, BAD_ASSET_DIR)
+    darkroom('/assets', '/other-assets')
     darkroom.process
 
     assert_kind_of(Darkroom::DuplicateAssetError, darkroom.errors.first)
-    assert_includes(darkroom.errors.first.inspect, JS_ASSET_PATH)
-  ensure
-    FileUtils.rm_rf(File.join(BAD_ASSET_DIR, JS_ASSET_PATH))
+    assert_includes(darkroom.errors.first.to_s, '/app.js')
   end
 
   ##########################################################################################################
@@ -94,9 +96,17 @@ class DarkroomTest < Minitest::Test
   ##########################################################################################################
 
   test('#process! raises ProcessingError if there were one or more errors during processing') do
-    configure_darkroom(ASSET_DIR, BAD_ASSET_DIR)
+    write_files(
+      '/assets/bad-imports.js' => <<~EOS,
+        import '/does-not-exist.js'
+        import '/also-does-not-exist.js'
+
+        console.log('Hello')
+      EOS
+    )
 
     error = assert_raises(Darkroom::ProcessingError) do
+      darkroom('/assets')
       darkroom.process!
     end
 
@@ -109,11 +119,25 @@ class DarkroomTest < Minitest::Test
   ##########################################################################################################
 
   test('#error? returns false if there were no errors during processing') do
+    write_files('/assets/app.js' => "console.log('Hello')")
+
+    darkroom('/assets')
+    darkroom.process
+
     refute(darkroom.error?)
   end
 
   test('#error? returns true if there were one or more errors during processing') do
-    configure_darkroom(ASSET_DIR, BAD_ASSET_DIR)
+    write_files(
+      '/assets/bad-import.js' => <<~EOS,
+        import '/does-not-exist.js'
+
+        console.log('Hello')
+      EOS
+    )
+
+    darkroom('/assets')
+    darkroom.process
 
     assert(darkroom.error?)
   end
@@ -123,43 +147,73 @@ class DarkroomTest < Minitest::Test
   ##########################################################################################################
 
   test('#asset returns nil if asset does not exist') do
+    darkroom('/assets')
+    darkroom.process
+
     assert_nil(darkroom.asset('/does-not-exist.js'))
   end
 
   test('#asset returns asset for unversioned path') do
-    assert_equal(File.read(JS_ASSET_FILE), darkroom.asset(JS_ASSET_PATH)&.content)
+    content = "console.log('Hello')"
+    write_files('/assets/app.js' => content)
+
+    darkroom('/assets')
+    darkroom.process
+
+    asset = darkroom.asset('/app.js')
+
+    assert(asset)
+    assert_equal(content, asset.content)
   end
 
   test('#asset returns asset for versioned path') do
-    assert_equal(File.read(JS_ASSET_FILE), darkroom.asset(JS_ASSET_PATH_VERSIONED)&.content)
+    content = "console.log('Hello')"
+    write_files('/assets/app.js' => content)
+
+    darkroom('/assets')
+    darkroom.process
+
+    asset = darkroom.asset('/app-ef0f76b822009ab847bd6a370e911556.js')
+
+    assert(asset)
+    assert_equal(content, asset.content)
   end
 
   test('#asset only returns asset if path includes prefix when a prefix is configured and asset is not '\
       'pristine') do
-    configure_darkroom(prefix: '/static')
+    write_files('/assets/app.js' => "console.log('Hello')")
 
-    assert(darkroom.asset("/static#{JS_ASSET_PATH}"))
-    assert(darkroom.asset("/static#{JS_ASSET_PATH_VERSIONED}"))
+    darkroom('/assets', prefix: '/static')
+    darkroom.process
 
-    assert_nil(darkroom.asset(JS_ASSET_PATH))
-    assert_nil(darkroom.asset(JS_ASSET_PATH_VERSIONED))
+    assert(darkroom.asset('/static/app.js'))
+    assert(darkroom.asset('/static/app-ef0f76b822009ab847bd6a370e911556.js'))
+
+    assert_nil(darkroom.asset('/app.js'))
+    assert_nil(darkroom.asset('/app-aec92e09ce672c46c094c95b1208cd09.js'))
   end
 
   test('#asset only returns asset if path excludes prefix when a prefix is configured and asset is '\
       'pristine') do
-    configure_darkroom(prefix: '/static')
+    write_files('/assets/pristine.txt' => 'Hello')
 
-    assert(darkroom.asset(PRISTINE_ASSET_PATH))
-    assert(darkroom.asset(PRISTINE_ASSET_PATH_VERSIONED))
+    darkroom('/assets', prefix: '/static', pristine: '/pristine.txt')
+    darkroom.process
 
-    assert_nil(darkroom.asset("/static#{PRISTINE_ASSET_PATH}"))
-    assert_nil(darkroom.asset("/static#{PRISTINE_ASSET_PATH_VERSIONED}"))
+    assert_nil(darkroom.asset('/static/pristine.txt'))
+    assert_nil(darkroom.asset('/static/pristine-8b1a9953c4611296a827abf8c47804d7.txt'))
+
+    assert(darkroom.asset('/pristine.txt'))
+    assert(darkroom.asset('/pristine-8b1a9953c4611296a827abf8c47804d7.txt'))
   end
 
   test('#asset returns nil if asset is internal') do
-    configure_darkroom(internal_pattern: /\.js$/)
+    write_files('/assets/components/header.htx' => '<header>${this.title}</header>')
 
-    assert_nil(darkroom.asset(JS_ASSET_PATH))
+    darkroom('/assets', internal_pattern: /^\/components\/.*$/)
+    darkroom.process
+
+    assert_nil(darkroom.asset('/components/header.htx'))
   end
 
   ##########################################################################################################
@@ -167,58 +221,102 @@ class DarkroomTest < Minitest::Test
   ##########################################################################################################
 
   test('#asset_path raises AssetNotFoundError if asset does not exist') do
-    path = '/does-not-exist.js'
+    darkroom('/assets')
+    darkroom.process
 
     error = assert_raises(Darkroom::AssetNotFoundError) do
-      darkroom.asset_path(path)
+      darkroom.asset_path('/does-not-exist.js')
     end
 
-    assert_includes(error.inspect, path)
+    assert_includes(error.inspect, '/does-not-exist.js')
   end
 
   test('#asset_path returns versioned path by default if asset is not pristine') do
-    assert_equal(JS_ASSET_PATH_VERSIONED, darkroom.asset_path(JS_ASSET_PATH))
+    write_files('/assets/app.js' => "console.log('Hello')")
+
+    darkroom('/assets')
+    darkroom.process
+
+    assert_equal('/app-ef0f76b822009ab847bd6a370e911556.js', darkroom.asset_path('/app.js'))
   end
 
   test('#asset_path returns unversioned path by default if asset is pristine') do
-    assert_equal(PRISTINE_ASSET_PATH, darkroom.asset_path(PRISTINE_ASSET_PATH))
+    write_files('/assets/robots.txt' => "User-agent: *\nDisallow:")
+
+    darkroom('/assets')
+    darkroom.process
+
+    assert_equal('/robots.txt', darkroom.asset_path('/robots.txt'))
   end
 
   test('#asset_path returns versioned asset path if `versioned` option is true') do
-    assert_equal(JS_ASSET_PATH_VERSIONED, darkroom.asset_path(JS_ASSET_PATH, versioned: true))
-    assert_equal(PRISTINE_ASSET_PATH_VERSIONED, darkroom.asset_path(PRISTINE_ASSET_PATH, versioned: true))
+    write_files(
+      '/assets/app.js' => "console.log('Hello')",
+      '/assets/robots.txt' => "User-agent: *\nDisallow:",
+    )
+
+    darkroom('/assets')
+    darkroom.process
+
+    assert_equal('/app-ef0f76b822009ab847bd6a370e911556.js', darkroom.asset_path('/app.js',
+      versioned: true))
+    assert_equal('/robots-50d8a018e8ae96732c8a2ba663c61d4e.txt', darkroom.asset_path('/robots.txt',
+      versioned: true))
   end
 
   test('#asset_path returns unversioned asset path if `versioned` option is false') do
-    assert_equal(JS_ASSET_PATH, darkroom.asset_path(JS_ASSET_PATH, versioned: false))
-    assert_equal(PRISTINE_ASSET_PATH, darkroom.asset_path(PRISTINE_ASSET_PATH, versioned: false))
+    write_files(
+      '/assets/app.js' => "console.log('Hello')",
+      '/assets/robots.txt' => "User-agent: *\nDisallow:",
+    )
+
+    darkroom('/assets')
+    darkroom.process
+
+    assert_equal('/app.js', darkroom.asset_path('/app.js', versioned: false))
+    assert_equal('/robots.txt', darkroom.asset_path('/robots.txt', versioned: false))
   end
 
   test('#asset_path includes a round-robin selected host if any hosts are configured') do
+    write_files(
+      '/assets/app.js' => "console.log('Hello')",
+      '/assets/app.css' => 'body { background: white; }',
+    )
+
     host = 'https://cdn1.darkroom'
     hosts = %w[https://cdn1.darkroom https://cdn2.darkroom https://cdn3.darkroom]
 
-    configure_darkroom(host: host)
-    assert_equal("#{host}#{JS_ASSET_PATH_VERSIONED}", darkroom.asset_path(JS_ASSET_PATH))
-    assert_equal("#{host}#{JS_ASSET_PATH_VERSIONED}", darkroom.asset_path(JS_ASSET_PATH))
+    darkroom('/assets', host: host)
+    darkroom.process
 
-    configure_darkroom(hosts: hosts)
-    assert_equal("#{hosts[0]}#{JS_ASSET_PATH_VERSIONED}", darkroom.asset_path(JS_ASSET_PATH))
-    assert_equal("#{hosts[1]}#{JS_ASSET_PATH_VERSIONED}", darkroom.asset_path(JS_ASSET_PATH))
-    assert_equal("#{hosts[2]}#{CSS_ASSET_PATH_VERSIONED}", darkroom.asset_path(CSS_ASSET_PATH))
-    assert_equal("#{hosts[0]}#{JS_ASSET_PATH_VERSIONED}", darkroom.asset_path(JS_ASSET_PATH))
+    assert_equal("#{host}/app-ef0f76b822009ab847bd6a370e911556.js", darkroom.asset_path('/app.js'))
+    assert_equal("#{host}/app-ef0f76b822009ab847bd6a370e911556.js", darkroom.asset_path('/app.js'))
+
+    darkroom('/assets', hosts: hosts)
+    darkroom.process
+
+    assert_equal("#{hosts[0]}/app-ef0f76b822009ab847bd6a370e911556.js", darkroom.asset_path('/app.js'))
+    assert_equal("#{hosts[1]}/app-ef0f76b822009ab847bd6a370e911556.js", darkroom.asset_path('/app.js'))
+    assert_equal("#{hosts[2]}/app-c7319c7b3b95111f028f6f4161ebd371.css", darkroom.asset_path('/app.css'))
+    assert_equal("#{hosts[0]}/app-ef0f76b822009ab847bd6a370e911556.js", darkroom.asset_path('/app.js'))
   end
 
   test('#asset_path includes prefix if one is configured and asset is not pristine') do
-    configure_darkroom(prefix: '/static')
+    write_files('/assets/app.js' => "console.log('Hello')")
 
-    assert_match(/^\/static/, darkroom.asset_path(JS_ASSET_PATH))
+    darkroom('/assets', prefix: '/static')
+    darkroom.process
+
+    assert_equal('/static/app-ef0f76b822009ab847bd6a370e911556.js', darkroom.asset_path('/app.js'))
   end
 
   test('#asset_path does not include prefix if one is configured and asset is pristine') do
-    configure_darkroom(prefix: '/static')
+    write_files('/assets/robots.txt' => "User-agent: *\nDisallow:")
 
-    refute_match(/^\/static/, darkroom.asset_path(PRISTINE_ASSET_PATH))
+    darkroom('/assets', prefix: '/static')
+    darkroom.process
+
+    assert_equal('/robots.txt', darkroom.asset_path('/robots.txt'))
   end
 
   ##########################################################################################################
@@ -226,29 +324,51 @@ class DarkroomTest < Minitest::Test
   ##########################################################################################################
 
   test('#asset_integrity returns subresource integrity string according to algorithm argument') do
-    assert_equal(JS_ASSET_SHA256, darkroom.asset_integrity(JS_ASSET_PATH, :sha256))
-    assert_equal(JS_ASSET_SHA384, darkroom.asset_integrity(JS_ASSET_PATH, :sha384))
-    assert_equal(JS_ASSET_SHA512, darkroom.asset_integrity(JS_ASSET_PATH, :sha512))
+    write_files('/assets/app.js' => "console.log('Hello')")
+
+    darkroom('/assets')
+    darkroom.process
+
+    assert_equal('sha256-S9v8mQ0Xba2sG+AEXC4IpdFUM2EX/oRNADEeJ5MpV3s=',
+      darkroom.asset_integrity('/app.js', :sha256))
+    assert_equal('sha384-2nxTl5wRLPxsDXWEi27WU3OmaXL2BxWbycv+O0ICyA11sCQMbb1K/uREBxvBKaMT',
+      darkroom.asset_integrity('/app.js', :sha384))
+    assert_equal('sha512-VAhb8yjzGIyuPN8kosvMhu7ix55T8eLHdOqrYNcXwA6rPUlt1/420xdSzl2SNHOp93piKyjcNkQwh2Lw8'\
+      'imrQA==', darkroom.asset_integrity('/app.js', :sha512))
   end
 
   test('#asset_integrity returns sha384 subresource integrity string by default') do
-    assert_equal(JS_ASSET_SHA384, darkroom.asset_integrity(JS_ASSET_PATH))
+    write_files('/assets/app.js' => "console.log('Hello')")
+
+    darkroom('/assets')
+    darkroom.process
+
+    assert_equal('sha384-2nxTl5wRLPxsDXWEi27WU3OmaXL2BxWbycv+O0ICyA11sCQMbb1K/uREBxvBKaMT',
+      darkroom.asset_integrity('/app.js'))
   end
 
   test('#asset_integrity raises error if algorithm argument is not recognized') do
-    assert_raises(RuntimeError) do
-      darkroom.asset_integrity(JS_ASSET_PATH, :sha)
+    write_files('/assets/app.js' => "console.log('Hello')")
+
+    darkroom('/assets')
+    darkroom.process
+
+    error = assert_raises(RuntimeError) do
+      darkroom.asset_integrity('/app.js', :sha)
     end
+
+    assert_equal('Unrecognized integrity algorithm: sha', error.to_s)
   end
 
   test('#asset_integrity raises AssetNotFoundError if asset does not exist') do
-    path = '/does-not-exist.js'
+    darkroom('/assets')
+    darkroom.process
 
     error = assert_raises(Darkroom::AssetNotFoundError) do
-      darkroom.asset_integrity(path)
+      darkroom.asset_integrity('/does-not-exist.js')
     end
 
-    assert_includes(error.inspect, path)
+    assert_includes(error.to_s, '/does-not-exist.js')
   end
 
   ##########################################################################################################
@@ -263,7 +383,15 @@ class DarkroomTest < Minitest::Test
   end
 
   test('#dump creates target directory if it does not exist') do
+    write_files(
+      '/assets/app.js' => "console.log('Hello')",
+      '/assets/app.css' => 'body { background: white; }',
+    )
+
     FileUtils.rm_rf(DUMP_DIR)
+
+    darkroom('/assets')
+    darkroom.process
     darkroom.dump(DUMP_DIR) rescue nil
 
     assert(File.directory?(DUMP_DIR))
@@ -272,29 +400,50 @@ class DarkroomTest < Minitest::Test
   end
 
   test('#dump writes processed assets to a directory') do
+    write_files(
+      '/assets/app.js' => "console.log('Hello')",
+      '/assets/app.css' => 'body { background: white; }',
+    )
+
     setup_dump_dir
+
+    darkroom('/assets')
+    darkroom.process
     darkroom.dump(DUMP_DIR)
 
-    Dir.glob(File.join(DUMP_DIR, '*')).each do |file|
-      assert_equal(darkroom.asset("/#{File.basename(file)}").content, File.read(file))
-    end
+    assert_equal(darkroom.asset('/app.js').content,
+      File.read("#{DUMP_DIR}/app-ef0f76b822009ab847bd6a370e911556.js"))
+    assert_equal(darkroom.asset('/app.css').content,
+      File.read("#{DUMP_DIR}/app-c7319c7b3b95111f028f6f4161ebd371.css"))
   ensure
     FileUtils.rm_rf(DUMP_DIR)
   end
 
   test('#dump does not include internal assets') do
+    write_files(
+      '/assets/app.js' => "console.log('Hello')",
+      '/assets/components/header.htx' => '<header>${this.title}</header>',
+    )
+
     setup_dump_dir
-    configure_darkroom(internal_pattern: /\.js$/)
+
+    darkroom('/assets', internal_pattern: /^\/components\/.*$/)
+    darkroom.process
     darkroom.dump(DUMP_DIR)
 
-    refute(Dir.glob(File.join(DUMP_DIR, '*')).empty?)
-    assert(Dir.glob(File.join(DUMP_DIR, '*.js')).empty?)
+    assert(File.exists?("#{DUMP_DIR}/app-ef0f76b822009ab847bd6a370e911556.js"))
+    refute(File.exists?("#{DUMP_DIR}/components/header-e84f21b5c4ce60bb92d2e61e2b4d11f1.htx"))
   ensure
     FileUtils.rm_rf(DUMP_DIR)
   end
 
   test('#dump does not delete anything in target directory by default') do
+    write_files('/assets/app.js' => "console.log('Hello')")
+
     setup_dump_dir(with_file: true)
+
+    darkroom('/assets')
+    darkroom.process
     darkroom.dump(DUMP_DIR)
 
     assert(File.exists?(DUMP_DIR_EXISTING_FILE))
@@ -303,7 +452,12 @@ class DarkroomTest < Minitest::Test
   end
 
   test('#dump deletes everything in target directory if `clear` option is true') do
+    write_files('/assets/app.js' => "console.log('Hello')")
+
     setup_dump_dir(with_file: true)
+
+    darkroom('/assets')
+    darkroom.process
     darkroom.dump(DUMP_DIR, clear: true)
 
     refute(File.exists?(DUMP_DIR_EXISTING_FILE))
@@ -312,7 +466,12 @@ class DarkroomTest < Minitest::Test
   end
 
   test('#dump does not delete anything in target directory if `clear` option is false') do
+    write_files('/assets/app.js' => "console.log('Hello')")
+
     setup_dump_dir(with_file: true)
+
+    darkroom('/assets')
+    darkroom.process
     darkroom.dump(DUMP_DIR, clear: false)
 
     assert(File.exists?(DUMP_DIR_EXISTING_FILE))
@@ -321,28 +480,43 @@ class DarkroomTest < Minitest::Test
   end
 
   test('#dump includes pristine assets by default') do
+    write_files('/assets/robots.txt' => "User-agent: *\nDisallow:")
+
     setup_dump_dir
+
+    darkroom('/assets')
+    darkroom.process
     darkroom.dump(DUMP_DIR)
 
-    assert(File.exists?(File.join(DUMP_DIR, PRISTINE_ASSET_PATH)))
+    assert(File.exists?("#{DUMP_DIR}/robots.txt"))
   ensure
     FileUtils.rm_rf(DUMP_DIR)
   end
 
   test('#dump includes pristine assets if `include_pristine` option is true') do
+    write_files('/assets/robots.txt' => "User-agent: *\nDisallow:")
+
     setup_dump_dir
+
+    darkroom('/assets')
+    darkroom.process
     darkroom.dump(DUMP_DIR, include_pristine: true)
 
-    assert(File.exists?(File.join(DUMP_DIR, PRISTINE_ASSET_PATH)))
+    assert(File.exists?("#{DUMP_DIR}/robots.txt"))
   ensure
     FileUtils.rm_rf(DUMP_DIR)
   end
 
   test('#dump does not include pristine assets if `include_pristine` option is false') do
+    write_files('/assets/robots.txt' => "User-agent: *\nDisallow:")
+
     setup_dump_dir
+
+    darkroom('/assets')
+    darkroom.process
     darkroom.dump(DUMP_DIR, include_pristine: false)
 
-    refute(File.exists?(File.join(DUMP_DIR, PRISTINE_ASSET_PATH)))
+    refute(File.exists?("#{DUMP_DIR}/robots.txt"))
   ensure
     FileUtils.rm_rf(DUMP_DIR)
   end
@@ -352,7 +526,22 @@ class DarkroomTest < Minitest::Test
   ##########################################################################################################
 
   test('#inspect returns a high-level object info string') do
-    configure_darkroom(ASSET_DIR, BAD_ASSET_DIR,
+    write_files(
+      '/assets/bad-import.js' => <<~EOS,
+        import '/does-not-exist.js'
+
+        console.log('Hello')
+      EOS
+
+      '/assets/bad-imports.js' => <<~EOS,
+        import '/does-not-exist.js'
+        import '/also-does-not-exist.js'
+
+        console.log('Hello')
+      EOS
+    )
+
+    darkroom('/assets',
       hosts: 'https://cdn1.hello.world',
       prefix: '/static',
       pristine: '/hi.txt',
@@ -360,6 +549,7 @@ class DarkroomTest < Minitest::Test
       internal_pattern: /^\/private\//,
       min_process_interval: 1,
     )
+    darkroom.process
 
     assert_equal('#<Darkroom: '\
       '@errors=['\
@@ -370,8 +560,8 @@ class DarkroomTest < Minitest::Test
         '#<Darkroom::AssetNotFoundError: Asset not found (referenced from /bad-imports.js:2): '\
           '/also-does-not-exist.js>'\
       '], '\
-      "@globs={\"#{ASSET_DIR}\"=>\"#{ASSET_DIR}/**/*{#{Darkroom::Asset.extensions.join(',')}}\", "\
-        "\"#{BAD_ASSET_DIR}\"=>\"#{BAD_ASSET_DIR}/**/*{#{Darkroom::Asset.extensions.join(',')}}\"}, "\
+      "@globs={\"#{full_path('/assets')}\"=>\"#{full_path('/assets')}/**/*{.css,.js,.htx,.htm,.html,.ico,"\
+        '.jpg,.jpeg,.json,.png,.svg,.txt,.woff,.woff2}"}, '\
       '@hosts=["https://cdn1.hello.world"], '\
       '@internal_pattern=/^\\/private\\//, '\
       "@last_processed_at=#{darkroom.instance_variable_get(:@last_processed_at)}, "\
@@ -388,13 +578,10 @@ class DarkroomTest < Minitest::Test
   ## Helpers                                                                                              ##
   ##########################################################################################################
 
-  def darkroom
-    defined?(@@darkroom) ? @@darkroom : configure_darkroom
-  end
-
-  def configure_darkroom(*args, **options)
-    @@darkroom = Darkroom.new(*(args.empty? ? [ASSET_DIR] : args), **options)
-    @@darkroom.process
+  def darkroom(*load_paths, **options)
+    unless @@darkroom && load_paths.empty? && options.empty?
+      @@darkroom = Darkroom.new(*load_paths.map { |path| full_path(path) }, **options)
+    end
 
     @@darkroom
   end

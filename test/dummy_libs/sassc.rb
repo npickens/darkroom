@@ -2,12 +2,8 @@
 
 module SassC
   class Engine
-    def initialize(content, *other)
-      @content = content
-    end
-
-    def render
-      "[css:minify #{@content.inspect}]"
+    def render(*)
+      raise('SassC::Engine#compile must be stubbed in tests')
     end
   end
 end

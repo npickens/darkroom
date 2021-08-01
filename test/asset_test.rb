@@ -10,19 +10,25 @@ class AssetTest < Minitest::Test
   end
 
   ##########################################################################################################
+  ## Hooks                                                                                                ##
+  ##########################################################################################################
+
+  def setup
+    @@darkroom = DarkroomMock.new
+  end
+
+  ##########################################################################################################
   ## Test #initialize                                                                                     ##
   ##########################################################################################################
 
   test('#initialize raises SpecNotDefinedError if no spec is defined for a file extension') do
     path = '/app.undefined'
-    file = file_for(path)
 
     error = assert_raises(Darkroom::SpecNotDefinedError) do
-      get_asset(path)
+      new_asset(path)
     end
 
-    assert_includes(error.inspect, '.undefined')
-    assert_includes(error.inspect, file)
+    assert_includes(error.to_s, path)
   end
 
   test('#initialize requires compile library if spec has one') do
@@ -31,26 +37,30 @@ class AssetTest < Minitest::Test
     refute(defined?(DummyCompile), 'Expected DummyCompile to be undefined when an asset of that type has '\
       'not be initialized yet.')
 
-    get_asset('/app.dummy-compile', process: false)
+    new_asset('/app.dummy-compile')
 
     assert(defined?(DummyCompile), 'Expected DummyCompile to be defined.')
+  ensure
+    Darkroom::Asset.class_variable_get(:@@specs).delete('.dummy-compile')
   end
 
   test('#initialize requires minify library if spec has one and minification is enabled') do
     Darkroom::Asset.add_spec('.dummy-minify', 'text/dummy-minify', minify_lib: 'dummy_minify')
 
-    get_asset('/app.dummy-minify', process: false)
+    new_asset('/app.dummy-minify')
     refute(defined?(DummyMinify), 'Expected DummyMinify to be undefined when minification is not enabled.')
 
-    get_asset('/app.dummy-minify', minify: true, process: false)
+    new_asset('/app.dummy-minify', minify: true)
     assert(defined?(DummyMinify), 'Expected DummyMinify to be defined.')
+  ensure
+    Darkroom::Asset.class_variable_get(:@@specs).delete('.dummy-minify')
   end
 
   test('#initialize raises MissingLibraryError if compile library is not available') do
     Darkroom::Asset.add_spec('.bad-compile', 'text/bad-compile', compile_lib: 'bad_compile')
 
     error = assert_raises(Darkroom::MissingLibraryError) do
-      get_asset('/app.bad-compile')
+      new_asset('/app.bad-compile')
     end
 
     assert_includes(error.inspect, Darkroom::Asset.spec('.bad-compile').compile_lib)
@@ -62,13 +72,13 @@ class AssetTest < Minitest::Test
     Darkroom::Asset.add_spec('.bad-minify', 'text/bad-minify', minify_lib: 'bad_minify')
 
     begin
-      get_asset('/app.bad-minify', process: false)
+      new_asset('/app.bad-minify')
     rescue Darkroom::MissingLibraryError => e
       assert(false, 'Expected minify library to not be required when minification is not enabled')
     end
 
     error = assert_raises(Darkroom::MissingLibraryError) do
-      get_asset('/app.bad-minify', minify: true)
+      new_asset('/app.bad-minify', minify: true)
     end
 
     assert_includes(error.inspect, Darkroom::Asset.spec('.bad-minify').minify_lib)
@@ -82,56 +92,82 @@ class AssetTest < Minitest::Test
 
   test('#process compiles content if compilation is part of spec') do
     path = '/template.htx'
-    file = file_for(path)
-    asset = get_asset(path)
+    content = '<div>${this.hello}</div>'
+    asset = new_asset(path, content)
 
-    assert_equal("[htx:compile #{path.inspect}, #{File.read(file).inspect}]", asset.content)
+    HTX.stub(:compile, ->(*args) do
+      assert_equal(path, args[0])
+      assert_equal(content, args[1])
+
+      '[compiled]'
+    end) do
+      asset.process
+    end
+
+    assert_equal('[compiled]', asset.content)
   end
 
-  test('#process minifies content if minification is part of spec and minification is enabled') do
-    [
-      ['/app.css', 'css:minify'],
-      ['/app.js', 'javascript:minify'],
-      ['/template.htx', 'javascript:minify'],
-    ].each do |path, ident|
-      content = get_asset(path).content
-      asset = get_asset(path, minify: true)
+  test('#process minifies content if implemented in spec and minification is enabled') do
+    content = 'body { background: white; }'
+    asset = new_asset('/app.css', content, minify: true)
 
-      assert_equal("[#{ident} #{content.inspect}]", asset.content)
+    SassC::Engine.stub(:new, ->(*args) do
+      assert_equal(content, args[0])
+      assert_equal({style: :compressed}, args[1])
+
+      sassc_mock = Minitest::Mock.new
+      def sassc_mock.render() '[minified]' end
+
+      sassc_mock
+    end) do
+      asset.process
     end
+
+    assert_equal('[minified]', asset.content)
   end
 
   test('#process merges dependencies with own content') do
-    imported = get_asset('/app.js')
-    asset = get_asset('/good-import.js', {'/app.js' => imported})
+    import_content = "console.log('Import')"
+    asset_body = "console.log('App')"
 
-    imported_own_content = imported.send(:own_content)
-    asset_own_content = asset.send(:own_content)
+    import = new_asset('/import.js', import_content)
+    asset = new_asset('/app.js', "import '/import.js'\n\n#{asset_body}")
 
-    assert(asset.content.start_with?(imported_own_content))
-    assert(asset.content.end_with?(asset_own_content))
+    asset.process
+
+    assert_equal(import_content, asset.content[0...import_content.size])
+    assert_equal(asset_body, asset.content[-asset_body.size..-1])
   end
 
   test('#process gracefully handles asset file being deleted on disk') do
-    asset = get_asset('/deleted.js', process: false)
+    asset = new_asset('/deleted.js')
     asset.process
 
     assert_empty(asset.content)
   end
 
   test('#process does not register any errors if successful') do
-    asset = get_asset(minify: true)
+    asset = new_asset('/app.js', "console.log('Hello')")
+    asset.process
 
     assert_nil(asset.error)
     assert_empty(asset.errors)
   end
 
-  test('#process registers an error when a dependency is not found') do
-    asset = get_asset('/bad-import.js')
+  test('#process registers an error when an import is not found') do
+    path = '/bad-import.js'
+    content = <<~EOS
+      import '/does-not-exist.js'
+
+      console.log('Hello')
+    EOS
+
+    asset = new_asset(path, content)
+    asset.process
 
     assert_equal(1, asset.errors.size)
     assert_instance_of(Darkroom::AssetNotFoundError, asset.errors.first)
-    assert_includes(asset.errors.first.inspect, '/bad-import.js')
+    assert_includes(asset.errors.first.inspect, path)
     assert_includes(asset.errors.first.inspect, '/does-not-exist.js')
 
     assert_instance_of(Darkroom::ProcessingError, asset.error)
@@ -140,31 +176,40 @@ class AssetTest < Minitest::Test
   end
 
   test('#process registers an error when compilation raises an exception') do
-    asset = get_asset('/template.htx', process: false)
+    asset = new_asset('/template.htx', '<div>${this.hello}</div>')
 
-    HTX.stub(:compile, -> (*args) { raise('[HTX Error]') }) do
+    HTX.stub(:compile, ->(*) { raise('[HTX Error]') }) do
       asset.process
     end
 
     assert(asset.error)
-    assert_includes(asset.error.message, '[HTX Error]')
+    assert_equal(1, asset.errors.size)
+    assert_equal('[HTX Error]', asset.errors.first.to_s)
   end
 
   test('#process registers an error when minification raises an exception') do
-    asset = get_asset('/app.js', minify: true, process: false)
+    asset = new_asset('/app.js', "console.log('Hello')", minify: true)
 
-    Uglifier.stub(:compile, -> (*args) { raise('[Uglifier Error]') }) do
+    Uglifier.stub(:compile, ->(*) { raise('[Uglifier Error]') }) do
       asset.process
     end
 
     assert(asset.error)
-    assert_includes(asset.error.message, '[Uglifier Error]')
+    assert_equal(1, asset.errors.size)
+    assert_equal('[Uglifier Error]', asset.errors.first.to_s)
   end
 
   test('#process accumulates multiple errors') do
-    asset = get_asset('/bad-imports.js', minify: true, process: false)
+    path = '/bad-imports.js'
+    content = <<~EOS
+      import '/does-not-exist.js'
+      import '/also-does-not-exist.js'
 
-    Uglifier.stub(:compile, -> (*args) { raise('[Uglifier Error]') }) do
+      console.log('Hello')
+    EOS
+    asset = new_asset(path, content, minify: true)
+
+    Uglifier.stub(:compile, ->(*) { raise('[Uglifier Error]') }) do
       asset.process
     end
 
@@ -174,10 +219,10 @@ class AssetTest < Minitest::Test
     assert_instance_of(Darkroom::AssetNotFoundError, asset.errors[1])
     assert_instance_of(RuntimeError, asset.errors[2])
 
-    assert_includes(asset.errors[0].inspect, '/bad-imports.js')
+    assert_includes(asset.errors[0].inspect, path)
     assert_includes(asset.errors[0].inspect, '/does-not-exist.js')
 
-    assert_includes(asset.errors[1].inspect, '/bad-imports.js')
+    assert_includes(asset.errors[1].inspect, path)
     assert_includes(asset.errors[1].inspect, '/also-does-not-exist.js')
 
     assert_includes(asset.errors[2].inspect, '[Uglifier Error]')
@@ -188,12 +233,10 @@ class AssetTest < Minitest::Test
   end
 
   test('#process handles circular dependencies') do
-    manifest = {}
-    manifest.merge!(
-      '/circular1.css' => asset1 = get_asset('/circular1.css', manifest, process: false),
-      '/circular2.css' => asset2 = get_asset('/circular2.css', manifest, process: false),
-      '/circular3.css' => asset3 = get_asset('/circular3.css', manifest, process: false),
-    )
+    asset1 = new_asset('/circular1.css', "@import '/circular2.css';\n\n.circular1 { }")
+    asset2 = new_asset('/circular2.css', "@import '/circular3.css';\n\n.circular2 { }")
+    asset3 = new_asset('/circular3.css', "@import '/circular1.css';\n\n.circular3 { }")
+
     asset1.process
 
     assert(asset1.content.start_with?(asset3.send(:own_content)))
@@ -206,18 +249,20 @@ class AssetTest < Minitest::Test
   ##########################################################################################################
 
   test('#content_type returns the HTTP MIME type string for the asset') do
-    assert_equal('text/css', get_asset('/app.css', process: false).content_type)
-    assert_equal('text/html', get_asset('/index.html', process: false).content_type)
-    assert_equal('text/javascript', get_asset('/template.htx', process: false).content_type)
-    assert_equal('image/x-icon', get_asset('/favicon.ico', process: false).content_type)
-    assert_equal('text/javascript', get_asset('/app.js', process: false).content_type)
-    assert_equal('image/jpeg', get_asset('/photo.jpg', process: false).content_type)
-    assert_equal('application/json', get_asset('/data.json', process: false).content_type)
-    assert_equal('image/png', get_asset('/graphic.png', process: false).content_type)
-    assert_equal('image/svg+xml', get_asset('/graphic.svg', process: false).content_type)
-    assert_equal('text/plain', get_asset('/robots.txt', process: false).content_type)
-    assert_equal('font/woff', get_asset('/font.woff', process: false).content_type)
-    assert_equal('font/woff2', get_asset('/font.woff2', process: false).content_type)
+    assert_equal('text/css',         new_asset('/app.css').content_type)
+    assert_equal('text/html',        new_asset('/index.htm').content_type)
+    assert_equal('text/html',        new_asset('/index.html').content_type)
+    assert_equal('text/javascript',  new_asset('/template.htx').content_type)
+    assert_equal('image/x-icon',     new_asset('/favicon.ico').content_type)
+    assert_equal('text/javascript',  new_asset('/app.js').content_type)
+    assert_equal('image/jpeg',       new_asset('/photo.jpg').content_type)
+    assert_equal('image/jpeg',       new_asset('/photo.jpeg').content_type)
+    assert_equal('application/json', new_asset('/data.json').content_type)
+    assert_equal('image/png',        new_asset('/graphic.png').content_type)
+    assert_equal('image/svg+xml',    new_asset('/graphic.svg').content_type)
+    assert_equal('text/plain',       new_asset('/robots.txt').content_type)
+    assert_equal('font/woff',        new_asset('/font.woff').content_type)
+    assert_equal('font/woff2',       new_asset('/font.woff2').content_type)
   end
 
   ##########################################################################################################
@@ -225,14 +270,26 @@ class AssetTest < Minitest::Test
   ##########################################################################################################
 
   test('#headers includes Content-Type header') do
-    Darkroom::Asset.extensions.each do |extension|
-      asset = get_asset("/hello#{extension}", process: false)
-      assert_equal(asset.content_type, asset.headers['Content-Type'])
-    end
+    assert_equal('text/css',         new_asset('/app.css').headers['Content-Type'])
+    assert_equal('text/html',        new_asset('/index.htm').headers['Content-Type'])
+    assert_equal('text/html',        new_asset('/index.html').headers['Content-Type'])
+    assert_equal('text/javascript',  new_asset('/template.htx').headers['Content-Type'])
+    assert_equal('image/x-icon',     new_asset('/favicon.ico').headers['Content-Type'])
+    assert_equal('text/javascript',  new_asset('/app.js').headers['Content-Type'])
+    assert_equal('image/jpeg',       new_asset('/photo.jpg').headers['Content-Type'])
+    assert_equal('image/jpeg',       new_asset('/photo.jpeg').headers['Content-Type'])
+    assert_equal('application/json', new_asset('/data.json').headers['Content-Type'])
+    assert_equal('image/png',        new_asset('/graphic.png').headers['Content-Type'])
+    assert_equal('image/svg+xml',    new_asset('/graphic.svg').headers['Content-Type'])
+    assert_equal('text/plain',       new_asset('/robots.txt').headers['Content-Type'])
+    assert_equal('font/woff',        new_asset('/font.woff').headers['Content-Type'])
+    assert_equal('font/woff2',       new_asset('/font.woff2').headers['Content-Type'])
   end
 
   test('#headers includes Cache-Control header if :versioned is not specified') do
-    asset = get_asset
+    asset = new_asset('/app.js', "console.log('Hello')")
+    asset.process
+
     headers = asset.headers
 
     assert_equal('public, max-age=31536000', headers['Cache-Control'])
@@ -240,7 +297,9 @@ class AssetTest < Minitest::Test
   end
 
   test('#headers includes Cache-Control header if :versioned is true') do
-    asset = get_asset
+    asset = new_asset('/app.js', "console.log('Hello')")
+    asset.process
+
     headers = asset.headers(versioned: true)
 
     assert_equal('public, max-age=31536000', headers['Cache-Control'])
@@ -248,10 +307,12 @@ class AssetTest < Minitest::Test
   end
 
   test('#headers includes ETag header if :versioned is false') do
-    asset = get_asset
+    asset = new_asset('/app.js', "console.log('Hello')")
+    asset.process
+
     headers = asset.headers(versioned: false)
 
-    assert_equal('"25f290825cb44d4cf57632abfa82c37e"', headers['ETag'])
+    assert_equal('"ef0f76b822009ab847bd6a370e911556"', headers['ETag'])
     assert_nil(headers['Cache-Control'])
   end
 
@@ -260,25 +321,32 @@ class AssetTest < Minitest::Test
   ##########################################################################################################
 
   test('#integrity returns subresource integrity string according to algorithm argument') do
-    asset = get_asset
+    asset = new_asset('/app.js', "console.log('Hello')")
+    asset.process
 
-    assert_equal(JS_ASSET_SHA256, asset.integrity(:sha256))
-    assert_equal(JS_ASSET_SHA384, asset.integrity(:sha384))
-    assert_equal(JS_ASSET_SHA512, asset.integrity(:sha512))
+    assert_equal('sha256-S9v8mQ0Xba2sG+AEXC4IpdFUM2EX/oRNADEeJ5MpV3s=', asset.integrity(:sha256))
+    assert_equal('sha384-2nxTl5wRLPxsDXWEi27WU3OmaXL2BxWbycv+O0ICyA11sCQMbb1K/uREBxvBKaMT',
+      asset.integrity(:sha384))
+    assert_equal('sha512-VAhb8yjzGIyuPN8kosvMhu7ix55T8eLHdOqrYNcXwA6rPUlt1/420xdSzl2SNHOp93piKyjcNkQwh2Lw8'\
+      'imrQA==', asset.integrity(:sha512))
   end
 
   test('#integrity returns sha384 subresource integrity string by default') do
-    asset = get_asset
+    asset = new_asset('/app.js', "console.log('Hello')")
+    asset.process
 
-    assert_equal(JS_ASSET_SHA384, asset.integrity)
+    assert_equal('sha384-2nxTl5wRLPxsDXWEi27WU3OmaXL2BxWbycv+O0ICyA11sCQMbb1K/uREBxvBKaMT', asset.integrity)
   end
 
   test('#integrity raises error if algorithm argument is not recognized') do
-    asset = get_asset
+    asset = new_asset('/app.js', "console.log('Hello')")
+    asset.process
 
-    assert_raises(RuntimeError) do
+    error = assert_raises(RuntimeError) do
       asset.integrity(:sha)
     end
+
+    assert_equal('Unrecognized integrity algorithm: sha', error.to_s)
   end
 
   ##########################################################################################################
@@ -286,19 +354,22 @@ class AssetTest < Minitest::Test
   ##########################################################################################################
 
   test('#internal? returns true if asset was initialized as internal') do
-    asset = get_asset(internal: true)
+    asset = new_asset('/app.js', "console.log('Hello')", internal: true)
+    asset.process
 
     assert(asset.internal?)
   end
 
   test('#internal? returns false if asset was initialized as non-internal') do
-    asset = get_asset(internal: false)
+    asset = new_asset('/app.js', "console.log('Hello')", internal: false)
+    asset.process
 
     refute(asset.internal?)
   end
 
   test('#internal? returns false if asset was initialized without specifying internal status') do
-    asset = get_asset
+    asset = new_asset('/app.js', "console.log('Hello')")
+    asset.process
 
     refute(asset.internal?)
   end
@@ -308,13 +379,15 @@ class AssetTest < Minitest::Test
   ##########################################################################################################
 
   test('#error? returns false if there were no errors during processing') do
-    asset = get_asset
+    asset = new_asset('/app.js', "console.log('Hello')")
+    asset.process
 
     refute(asset.error?)
   end
 
   test('#error? returns true if there were one or more errors during processing') do
-    asset = get_asset('/bad-import.js')
+    asset = new_asset('/bad-import.js', "import '/does-not-exist.js'")
+    asset.process
 
     assert(asset.error?)
   end
@@ -324,18 +397,25 @@ class AssetTest < Minitest::Test
   ##########################################################################################################
 
   test('#inspect returns a high-level object info string') do
-    asset = get_asset('/bad-import.js', prefix: '/static')
-    file = file_for(asset.path)
+    path = '/bad-import.js'
+    content = <<~EOS
+      import '/does-not-exist.js'
+
+      console.log('Hello')
+    EOS
+
+    asset = new_asset(path, content, prefix: '/static')
+    asset.process
 
     assert_equal('#<Darkroom::Asset: '\
       '@errors=[#<Darkroom::AssetNotFoundError: Asset not found (referenced from /bad-import.js:1): '\
         '/does-not-exist.js>], '\
       '@extension=".js", '\
-      "@file=\"#{file}\", "\
+      "@file=\"#{full_path(path)}\", "\
       '@fingerprint="afa0a5ffe7423f4b568f19a39b53b122", '\
       '@internal=false, '\
       '@minify=false, '\
-      "@mtime=#{File.mtime(file).inspect}, "\
+      "@mtime=#{File.mtime(full_path(path)).inspect}, "\
       '@path="/bad-import.js", '\
       '@path_unversioned="/static/bad-import.js", '\
       '@path_versioned="/static/bad-import-afa0a5ffe7423f4b568f19a39b53b122.js", '\
@@ -423,28 +503,17 @@ class AssetTest < Minitest::Test
   ##########################################################################################################
 
   class DarkroomMock
-    def initialize(manifest = {}) @manifest = manifest end
+    def initialize() @manifest = {} end
     def manifest(path) @manifest[path] end
     def process_key() 1 end
   end
 
-  def get_asset(*args, **options)
-    path = args.first.kind_of?(String) ? args.first : JS_ASSET_PATH
-    file = file_for(path)
-    manifest = args.last.kind_of?(Hash) ? args.last : {}
-    process = options.delete(:process)
+  def new_asset(path, content = nil, **options)
+    asset = Darkroom::Asset.new(path, full_path(path), @@darkroom, **options)
 
-    asset = Darkroom::Asset.new(path, file, DarkroomMock.new(manifest), **options)
-
-    unless process == false
-      raise("File not found: #{file}") unless File.exists?(file)
-      asset.process
-    end
+    write_files(path => content) if content
+    @@darkroom.instance_variable_get(:@manifest)[asset.path] = asset
 
     asset
-  end
-
-  def file_for(path)
-    File.join(path.start_with?('/bad-') ? BAD_ASSET_DIR : ASSET_DIR, path)
   end
 end
