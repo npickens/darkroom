@@ -10,7 +10,7 @@ class Darkroom
     ##
     # Creates a new instance.
     #
-    # * +path+ - The path of the asset with the invalid character(s).
+    # * +path+ - Path of the asset with the invalid character(s).
     # * +index+ - Position of the first bad character in the path.
     #
     def initialize(path, index)

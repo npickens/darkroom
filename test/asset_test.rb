@@ -21,25 +21,20 @@ class AssetTest < Minitest::Test
   ## Test #initialize                                                                                     ##
   ##########################################################################################################
 
-  test('#initialize raises SpecNotDefinedError if no spec is defined for a file extension') do
-    path = '/app.undefined'
-
-    error = assert_raises(Darkroom::SpecNotDefinedError) do
-      new_asset(path)
+  test('#initialize raises UnrecognizedExtensionError if file extension is not registered') do
+    error = assert_raises(Darkroom::UnrecognizedExtensionError) do
+      new_asset('/app.undefined')
     end
 
-    assert_includes(error.to_s, path)
+    assert_equal('File extension not recognized: /app.undefined', error.to_s)
   end
 
   test('#initialize requires compile library if spec has one') do
     Darkroom::Asset.add_spec('.dummy-compile', 'text/dummy-compile', compile_lib: 'dummy_compile')
 
-    refute(defined?(DummyCompile), 'Expected DummyCompile to be undefined when an asset of that type has '\
-      'not be initialized yet.')
-
+    refute(defined?(DummyCompile), 'Expected DummyCompile to be undefined before asset is initialized.')
     new_asset('/app.dummy-compile')
-
-    assert(defined?(DummyCompile), 'Expected DummyCompile to be defined.')
+    assert(defined?(DummyCompile), 'Expected DummyCompile to be defined after asset is initialized.')
   ensure
     Darkroom::Asset.class_variable_get(:@@specs).delete('.dummy-compile')
   end
@@ -51,7 +46,7 @@ class AssetTest < Minitest::Test
     refute(defined?(DummyMinify), 'Expected DummyMinify to be undefined when minification is not enabled.')
 
     new_asset('/app.dummy-minify', minify: true)
-    assert(defined?(DummyMinify), 'Expected DummyMinify to be defined.')
+    assert(defined?(DummyMinify), 'Expected DummyMinify to be defined when minification is enabled.')
   ensure
     Darkroom::Asset.class_variable_get(:@@specs).delete('.dummy-minify')
   end
@@ -63,7 +58,8 @@ class AssetTest < Minitest::Test
       new_asset('/app.bad-compile')
     end
 
-    assert_includes(error.inspect, Darkroom::Asset.spec('.bad-compile').compile_lib)
+    assert_equal('Cannot compile .bad-compile file(s): bad_compile library not available [hint: try '\
+      'adding gem(\'bad_compile\') to your Gemfile]', error.to_s)
   ensure
     Darkroom::Asset.class_variable_get(:@@specs).delete('.bad-compile')
   end
@@ -81,7 +77,8 @@ class AssetTest < Minitest::Test
       new_asset('/app.bad-minify', minify: true)
     end
 
-    assert_includes(error.inspect, Darkroom::Asset.spec('.bad-minify').minify_lib)
+    assert_equal('Cannot minify .bad-minify file(s): bad_minify library not available [hint: try adding '\
+      'gem(\'bad_minify\') to your Gemfile]', error.to_s)
   ensure
     Darkroom::Asset.class_variable_get(:@@specs).delete('.bad-minify')
   end
@@ -155,22 +152,20 @@ class AssetTest < Minitest::Test
   end
 
   test('#process registers an error when an import is not found') do
-    path = '/bad-import.js'
     content = <<~EOS
       import '/does-not-exist.js'
 
       console.log('Hello')
     EOS
 
-    asset = new_asset(path, content)
+    asset = new_asset('/bad-import.js', content)
     asset.process
 
     assert_equal(1, asset.errors.size)
-    assert_instance_of(Darkroom::AssetNotFoundError, asset.errors.first)
-    assert_includes(asset.errors.first.inspect, path)
-    assert_includes(asset.errors.first.inspect, '/does-not-exist.js')
+    assert_kind_of(Darkroom::AssetNotFoundError, asset.errors.first)
+    assert_equal('/bad-import.js:1: Asset not found: /does-not-exist.js', asset.errors.first.to_s)
 
-    assert_instance_of(Darkroom::ProcessingError, asset.error)
+    assert_kind_of(Darkroom::ProcessingError, asset.error)
     assert_equal(1, asset.error.size)
     assert_equal(asset.errors, asset.error.instance_variable_get(:@errors))
   end
@@ -200,14 +195,13 @@ class AssetTest < Minitest::Test
   end
 
   test('#process accumulates multiple errors') do
-    path = '/bad-imports.js'
     content = <<~EOS
       import '/does-not-exist.js'
       import '/also-does-not-exist.js'
 
       console.log('Hello')
     EOS
-    asset = new_asset(path, content, minify: true)
+    asset = new_asset('/bad-imports.js', content, minify: true)
 
     Uglifier.stub(:compile, ->(*) { raise('[Uglifier Error]') }) do
       asset.process
@@ -215,19 +209,15 @@ class AssetTest < Minitest::Test
 
     assert_equal(3, asset.errors.size)
 
-    assert_instance_of(Darkroom::AssetNotFoundError, asset.errors[0])
-    assert_instance_of(Darkroom::AssetNotFoundError, asset.errors[1])
-    assert_instance_of(RuntimeError, asset.errors[2])
+    assert_kind_of(Darkroom::AssetNotFoundError, asset.errors[0])
+    assert_kind_of(Darkroom::AssetNotFoundError, asset.errors[1])
+    assert_kind_of(RuntimeError, asset.errors[2])
 
-    assert_includes(asset.errors[0].inspect, path)
-    assert_includes(asset.errors[0].inspect, '/does-not-exist.js')
+    assert_equal('/bad-imports.js:1: Asset not found: /does-not-exist.js', asset.errors[0].to_s)
+    assert_equal('/bad-imports.js:2: Asset not found: /also-does-not-exist.js', asset.errors[1].to_s)
+    assert_equal('[Uglifier Error]', asset.errors[2].to_s)
 
-    assert_includes(asset.errors[1].inspect, path)
-    assert_includes(asset.errors[1].inspect, '/also-does-not-exist.js')
-
-    assert_includes(asset.errors[2].inspect, '[Uglifier Error]')
-
-    assert_instance_of(Darkroom::ProcessingError, asset.error)
+    assert_kind_of(Darkroom::ProcessingError, asset.error)
     assert_equal(3, asset.error.size)
     assert_equal(asset.errors, asset.error.instance_variable_get(:@errors))
   end
@@ -238,6 +228,10 @@ class AssetTest < Minitest::Test
     asset3 = new_asset('/circular3.css', "@import '/circular1.css';\n\n.circular3 { }")
 
     asset1.process
+
+    refute(asset1.error)
+    refute(asset2.error)
+    refute(asset3.error)
 
     assert(asset1.content.start_with?(asset3.send(:own_content)))
     assert(asset2.content.start_with?(asset1.send(:own_content)))
@@ -408,8 +402,7 @@ class AssetTest < Minitest::Test
     asset.process
 
     assert_equal('#<Darkroom::Asset: '\
-      '@errors=[#<Darkroom::AssetNotFoundError: Asset not found (referenced from /bad-import.js:1): '\
-        '/does-not-exist.js>], '\
+      '@errors=[#<Darkroom::AssetNotFoundError: /bad-import.js:1: Asset not found: /does-not-exist.js>], '\
       '@extension=".js", '\
       "@file=\"#{full_path(path)}\", "\
       '@fingerprint="afa0a5ffe7423f4b568f19a39b53b122", '\

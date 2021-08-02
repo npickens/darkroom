@@ -10,9 +10,9 @@ class Darkroom
     ##
     # Creates a new instance.
     #
-    # * +library+ - The name of the library that's missing.
-    # * +need+ - The reason the library is needed ('compile' or 'minify').
-    # * +extension+ - The extenion of the type of asset that needs the library.
+    # * +library+ - Name of the library that's missing.
+    # * +need+ - Reason the library is needed ('compile' or 'minify').
+    # * +extension+ - Extension of the type of asset that needs the library.
     #
     def initialize(library, need, extension)
       @library = library

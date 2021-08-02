@@ -1,33 +1,22 @@
 # frozen_string_literal: true
 
+require_relative('asset_error')
+
 class Darkroom
   ##
-  # Error class used when an asset requested explicitly or specified as a dependency of another cannot be
-  # found.
+  # Error class used when an asset requested explicitly or specified as a dependency of another doesn't
+  # exist.
   #
-  class AssetNotFoundError < StandardError
-    attr_reader(:path, :referenced_from, :referenced_from_line)
-
+  class AssetNotFoundError < AssetError
     ##
     # Creates a new instance.
     #
-    # * +path+ - The path of the asset that cannot be found.
-    # * +referenced_from+ - The path of the asset the not-found asset was referenced from.
-    # * +referenced_from_line+ - The line number where the not-found asset was referenced.
+    # * +path+ - Path of asset that doesn't exist.
+    # * +source_path+ - Path of the asset that contains the error (optional).
+    # * +source_line_num+ - Line number in the asset where the error is located (optional).
     #
-    def initialize(path, referenced_from = nil, referenced_from_line = nil)
-      @path = path
-      @referenced_from = referenced_from
-      @referenced_from_line = referenced_from_line
-    end
-
-    ##
-    # Returns a string representation of the error.
-    #
-    def to_s
-      "Asset not found#{
-        " (referenced from #{@referenced_from}:#{@referenced_from_line || '?'})" if @referenced_from
-      }: #{@path}"
+    def initialize(path, source_path = nil, source_line_num = nil)
+      super('Asset not found', path, source_path, source_line_num)
     end
   end
 end

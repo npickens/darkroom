@@ -4,12 +4,13 @@ require('darkroom/asset')
 require('darkroom/darkroom')
 require('darkroom/version')
 
+require('darkroom/errors/asset_error')
 require('darkroom/errors/asset_not_found_error')
 require('darkroom/errors/duplicate_asset_error')
 require('darkroom/errors/invalid_path_error')
 require('darkroom/errors/missing_library_error')
 require('darkroom/errors/processing_error')
-require('darkroom/errors/spec_not_defined_error')
+require('darkroom/errors/unrecognized_extension_error')
 
 class Darkroom
   QUOTED_PATH = '(?<quote>[\'"])(?<path>[^\'"]*)\k<quote>'

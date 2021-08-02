@@ -74,7 +74,8 @@ class DarkroomTest < Minitest::Test
 
     paths.each.with_index do |path, i|
       assert_kind_of(Darkroom::InvalidPathError, darkroom.errors[i])
-      assert_includes(darkroom.errors[i].inspect, path)
+      assert_equal("Asset path contains one or more invalid characters ('\"`=<> ): #{path}",
+        darkroom.errors[i].to_s)
     end
   end
 
@@ -88,7 +89,8 @@ class DarkroomTest < Minitest::Test
     darkroom.process
 
     assert_kind_of(Darkroom::DuplicateAssetError, darkroom.errors.first)
-    assert_includes(darkroom.errors.first.to_s, '/app.js')
+    assert_equal("Asset file exists in both #{full_path('/assets')} and #{full_path('/other-assets')}: "\
+      '/app.js', darkroom.errors.first.to_s)
   end
 
   ##########################################################################################################
@@ -110,8 +112,12 @@ class DarkroomTest < Minitest::Test
       darkroom.process!
     end
 
-    assert_includes(error.inspect, '/does-not-exist.js')
-    assert_includes(error.inspect, '/also-does-not-exist.js')
+    assert_equal(
+      "Errors were encountered while processing assets:\n"\
+      "  /bad-imports.js:1: Asset not found: /does-not-exist.js\n"\
+      "  /bad-imports.js:2: Asset not found: /also-does-not-exist.js",
+      error.to_s
+    )
   end
 
   ##########################################################################################################
@@ -228,7 +234,7 @@ class DarkroomTest < Minitest::Test
       darkroom.asset_path('/does-not-exist.js')
     end
 
-    assert_includes(error.inspect, '/does-not-exist.js')
+    assert_equal('Asset not found: /does-not-exist.js', error.to_s)
   end
 
   test('#asset_path returns versioned path by default if asset is not pristine') do
@@ -368,7 +374,7 @@ class DarkroomTest < Minitest::Test
       darkroom.asset_integrity('/does-not-exist.js')
     end
 
-    assert_includes(error.to_s, '/does-not-exist.js')
+    assert_equal('Asset not found: /does-not-exist.js', error.to_s)
   end
 
   ##########################################################################################################
@@ -553,12 +559,9 @@ class DarkroomTest < Minitest::Test
 
     assert_equal('#<Darkroom: '\
       '@errors=['\
-        '#<Darkroom::AssetNotFoundError: Asset not found (referenced from /bad-import.js:1): '\
-          '/does-not-exist.js>, '\
-        '#<Darkroom::AssetNotFoundError: Asset not found (referenced from /bad-imports.js:1): '\
-          '/does-not-exist.js>, '\
-        '#<Darkroom::AssetNotFoundError: Asset not found (referenced from /bad-imports.js:2): '\
-          '/also-does-not-exist.js>'\
+        '#<Darkroom::AssetNotFoundError: /bad-import.js:1: Asset not found: /does-not-exist.js>, '\
+        '#<Darkroom::AssetNotFoundError: /bad-imports.js:1: Asset not found: /does-not-exist.js>, '\
+        '#<Darkroom::AssetNotFoundError: /bad-imports.js:2: Asset not found: /also-does-not-exist.js>'\
       '], '\
       "@globs={\"#{full_path('/assets')}\"=>\"#{full_path('/assets')}/**/*{.css,.js,.htx,.htm,.html,.ico,"\
         '.jpg,.jpeg,.json,.png,.svg,.txt,.woff,.woff2}"}, '\

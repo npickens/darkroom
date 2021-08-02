@@ -89,7 +89,7 @@ class Darkroom
 
       @path_unversioned = "#{@prefix}#{@path}"
       @extension = File.extname(@path).downcase
-      @spec = self.class.spec(@extension) or raise(SpecNotDefinedError.new(@extension, @file))
+      @spec = self.class.spec(@extension) or raise(UnrecognizedExtensionError.new(@path))
 
       require_libs
       clear

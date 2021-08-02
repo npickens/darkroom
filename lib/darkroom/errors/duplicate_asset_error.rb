@@ -2,7 +2,7 @@
 
 class Darkroom
   ##
-  # Error class used when an asset exists in multiple load paths.
+  # Error class used when an asset exists under multiple load paths.
   #
   class DuplicateAssetError < StandardError
     attr_reader(:path, :first_load_path, :second_load_path)
@@ -10,9 +10,9 @@ class Darkroom
     ##
     # Creates a new instance.
     #
-    # * +path+ - The path of the asset that has the same path as another asset.
-    # * +first_load_path+ - The load path where the first asset with the path was found.
-    # * +second_load_path+ - The load path where the second asset with the path was found.
+    # * +path+ - Path of the asset that exists under multiple load paths.
+    # * +first_load_path+ - Load path where the asset was first found.
+    # * +second_load_path+ - Load path where the asset was subsequently found.
     #
     def initialize(path, first_load_path, second_load_path)
       @path = path
