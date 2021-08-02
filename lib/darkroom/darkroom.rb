@@ -210,6 +210,8 @@ class Darkroom
   #   included).
   #
   def dump(dir, clear: false, include_pristine: true)
+    require('fileutils')
+
     dir = File.expand_path(dir)
 
     FileUtils.mkdir_p(dir)
