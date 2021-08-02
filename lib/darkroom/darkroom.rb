@@ -11,11 +11,46 @@ class Darkroom
   PRISTINE = Set.new(%w[/favicon.ico /mask-icon.svg /humans.txt /robots.txt]).freeze
   MIN_PROCESS_INTERVAL = 0.5
 
-  DISALLOWED_PATH_CHARS = '\'"`=<> '
+  DISALLOWED_PATH_CHARS = '\'"`=<>? '
   INVALID_PATH = /[#{DISALLOWED_PATH_CHARS}]/.freeze
   TRAILING_SLASHES = /\/+$/.freeze
 
+  @@delegates = {}
+  @@glob = ''
+
   attr_reader(:error, :errors, :process_key)
+
+  ##
+  # Registers an asset delegate.
+  #
+  # * +delegate+ - An HTTP MIME type string, a Hash of Delegate parameters, or a Delegate instance.
+  # * +extensions+ - File extension(s) to associate with this delegate.
+  #
+  def self.register(*extensions, delegate)
+    case delegate
+    when String
+      delegate = Asset::Delegate.new(content_type: delegate.freeze)
+    when Hash
+      delegate = Asset::Delegate.new(**delegate)
+    end
+
+    extensions.each do |extension|
+      @@delegates[extension] = delegate
+    end
+
+    @@glob = "**/*{#{@@delegates.keys.sort.join(',')}}"
+
+    delegate
+  end
+
+  ##
+  # Returns the delegate associated with a file extension.
+  #
+  # * +extension+ - File extension of the desired delegate.
+  #
+  def self.delegate(extension)
+    @@delegates[extension]
+  end
 
   ##
   # Creates a new instance.
@@ -37,9 +72,7 @@ class Darkroom
   def initialize(*load_paths, host: nil, hosts: nil, prefix: nil, pristine: nil, minify: false,
       minified_pattern: DEFAULT_MINIFIED_PATTERN, internal_pattern: DEFAULT_INTERNAL_PATTERN,
       min_process_interval: MIN_PROCESS_INTERVAL)
-    @globs = load_paths.each_with_object({}) do |path, globs|
-      globs[path.chomp('/')] = File.join(path, '**', "*{#{Asset.extensions.join(',')}}")
-    end
+    @load_paths = load_paths.map { |load_path| load_path.chomp('/') }
 
     @hosts = (Array(host) + Array(hosts)).map! { |host| host.sub(TRAILING_SLASHES, '') }
     @minify = minify
@@ -82,8 +115,8 @@ class Darkroom
       @errors.clear
       found = {}
 
-      @globs.each do |load_path, glob|
-        Dir.glob(glob).sort.each do |file|
+      @load_paths.each do |load_path|
+        Dir.glob(File.join(load_path, @@glob)).sort.each do |file|
           path = file.sub(load_path, '')
 
           if index = (path =~ INVALID_PATH)
@@ -147,7 +180,7 @@ class Darkroom
   #   darkroom.asset('/assets/js/app.<hash>.js')
   #   darkroom.asset('/assets/js/app.js')
   #
-  # * +path+ - The external path of the asset.
+  # * +path+ - External path of the asset.
   #
   def asset(path)
     @manifest_versioned[path] || @manifest_unversioned[path]
@@ -164,7 +197,7 @@ class Darkroom
   #
   # Raises an AssetNotFoundError if the asset doesn't exist.
   #
-  # * +path+ - The internal path of the asset.
+  # * +path+ - Internal path of the asset.
   # * +versioned+ - Boolean indicating whether the versioned or unversioned path should be returned.
   #
   def asset_path(path, versioned: !@pristine.include?(path))
@@ -180,8 +213,8 @@ class Darkroom
   # Returns an asset's subresource integrity string. Raises an AssetNotFoundError if the asset doesn't
   # exist.
   #
-  # * +path+ - The internal path of the asset.
-  # * +algorithm+ - The hash algorithm to use to generate the integrity string (see Asset#integrity).
+  # * +path+ - Internal path of the asset.
+  # * +algorithm+ - Hash algorithm to use to generate the integrity string (see Asset#integrity).
   #
   def asset_integrity(path, algorithm = nil)
     asset = @manifest[path] or raise(AssetNotFoundError.new(path))
@@ -192,7 +225,7 @@ class Darkroom
   ##
   # Returns the asset from the manifest hash associated with the given path.
   #
-  # * +path+ - The internal path of the asset.
+  # * +path+ - Internal path of the asset.
   #
   def manifest(path)
     @manifest[path]
@@ -236,10 +269,10 @@ class Darkroom
   def inspect
     "#<#{self.class}: "\
       "@errors=#{@errors.inspect}, "\
-      "@globs=#{@globs.inspect}, "\
       "@hosts=#{@hosts.inspect}, "\
       "@internal_pattern=#{@internal_pattern.inspect}, "\
       "@last_processed_at=#{@last_processed_at.inspect}, "\
+      "@load_paths=#{@load_paths.inspect}, "\
       "@min_process_interval=#{@min_process_interval.inspect}, "\
       "@minified_pattern=#{@minified_pattern.inspect}, "\
       "@minify=#{@minify.inspect}, "\

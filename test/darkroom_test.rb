@@ -13,14 +13,6 @@ class DarkroomTest < Minitest::Test
   end
 
   ##########################################################################################################
-  ## Hooks                                                                                                ##
-  ##########################################################################################################
-
-  def setup
-    @@darkroom = nil
-  end
-
-  ##########################################################################################################
   ## Test #process                                                                                        ##
   ##########################################################################################################
 
@@ -64,6 +56,7 @@ class DarkroomTest < Minitest::Test
       '/equal=sign.js',
       '/less<than.js',
       '/greater>than.js',
+      '/question?mark.js',
       '/spa ce.js',
     ].sort
 
@@ -74,7 +67,7 @@ class DarkroomTest < Minitest::Test
 
     paths.each.with_index do |path, i|
       assert_kind_of(Darkroom::InvalidPathError, darkroom.errors[i])
-      assert_equal("Asset path contains one or more invalid characters ('\"`=<> ): #{path}",
+      assert_equal("Asset path contains one or more invalid characters ('\"`=<>? ): #{path}",
         darkroom.errors[i].to_s)
     end
   end
@@ -563,11 +556,10 @@ class DarkroomTest < Minitest::Test
         '#<Darkroom::AssetNotFoundError: /bad-imports.js:1: Asset not found: /does-not-exist.js>, '\
         '#<Darkroom::AssetNotFoundError: /bad-imports.js:2: Asset not found: /also-does-not-exist.js>'\
       '], '\
-      "@globs={\"#{full_path('/assets')}\"=>\"#{full_path('/assets')}/**/*{.css,.js,.htx,.htm,.html,.ico,"\
-        '.jpg,.jpeg,.json,.png,.svg,.txt,.woff,.woff2}"}, '\
       '@hosts=["https://cdn1.hello.world"], '\
       '@internal_pattern=/^\\/private\\//, '\
       "@last_processed_at=#{darkroom.instance_variable_get(:@last_processed_at)}, "\
+      "@load_paths=[\"#{full_path('/assets')}\"], "\
       '@min_process_interval=1, '\
       '@minified_pattern=/\\.minified\\.*/, '\
       '@minify=false, '\

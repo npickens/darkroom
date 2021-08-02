@@ -10,14 +10,6 @@ class AssetTest < Minitest::Test
   end
 
   ##########################################################################################################
-  ## Hooks                                                                                                ##
-  ##########################################################################################################
-
-  def setup
-    @@darkroom = DarkroomMock.new
-  end
-
-  ##########################################################################################################
   ## Test #initialize                                                                                     ##
   ##########################################################################################################
 
@@ -29,18 +21,24 @@ class AssetTest < Minitest::Test
     assert_equal('File extension not recognized: /app.undefined', error.to_s)
   end
 
-  test('#initialize requires compile library if spec has one') do
-    Darkroom::Asset.add_spec('.dummy-compile', 'text/dummy-compile', compile_lib: 'dummy_compile')
+  test('#initialize requires compile library if delegate specifies one') do
+    Darkroom.register('.dummy-compile',
+      content_type: 'text/dummy-compile',
+      compile_lib: 'dummy_compile'
+    )
 
     refute(defined?(DummyCompile), 'Expected DummyCompile to be undefined before asset is initialized.')
     new_asset('/app.dummy-compile')
     assert(defined?(DummyCompile), 'Expected DummyCompile to be defined after asset is initialized.')
   ensure
-    Darkroom::Asset.class_variable_get(:@@specs).delete('.dummy-compile')
+    unregister('.dummy-compile')
   end
 
-  test('#initialize requires minify library if spec has one and minification is enabled') do
-    Darkroom::Asset.add_spec('.dummy-minify', 'text/dummy-minify', minify_lib: 'dummy_minify')
+  test('#initialize requires minify library if delegate specifies one and minification is enabled') do
+    Darkroom.register('.dummy-minify',
+      content_type: 'text/dummy-minify',
+      minify_lib: 'dummy_minify',
+    )
 
     new_asset('/app.dummy-minify')
     refute(defined?(DummyMinify), 'Expected DummyMinify to be undefined when minification is not enabled.')
@@ -48,11 +46,14 @@ class AssetTest < Minitest::Test
     new_asset('/app.dummy-minify', minify: true)
     assert(defined?(DummyMinify), 'Expected DummyMinify to be defined when minification is enabled.')
   ensure
-    Darkroom::Asset.class_variable_get(:@@specs).delete('.dummy-minify')
+    unregister('.dummy-minify')
   end
 
   test('#initialize raises MissingLibraryError if compile library is not available') do
-    Darkroom::Asset.add_spec('.bad-compile', 'text/bad-compile', compile_lib: 'bad_compile')
+    Darkroom.register('.bad-compile',
+      content_type: 'text/bad-compile',
+      compile_lib: 'bad_compile',
+    )
 
     error = assert_raises(Darkroom::MissingLibraryError) do
       new_asset('/app.bad-compile')
@@ -61,11 +62,14 @@ class AssetTest < Minitest::Test
     assert_equal('Cannot compile .bad-compile file(s): bad_compile library not available [hint: try '\
       'adding gem(\'bad_compile\') to your Gemfile]', error.to_s)
   ensure
-    Darkroom::Asset.class_variable_get(:@@specs).delete('.bad-compile')
+    unregister('.bad-compile')
   end
 
   test('#initialize raises MissingLibraryError if minification is enabled and minify library is missing') do
-    Darkroom::Asset.add_spec('.bad-minify', 'text/bad-minify', minify_lib: 'bad_minify')
+    Darkroom.register('.bad-minify',
+      content_type: 'text/bad-minify',
+      minify_lib: 'bad_minify',
+    )
 
     begin
       new_asset('/app.bad-minify')
@@ -80,14 +84,14 @@ class AssetTest < Minitest::Test
     assert_equal('Cannot minify .bad-minify file(s): bad_minify library not available [hint: try adding '\
       'gem(\'bad_minify\') to your Gemfile]', error.to_s)
   ensure
-    Darkroom::Asset.class_variable_get(:@@specs).delete('.bad-minify')
+    unregister('.bad-minify')
   end
 
   ##########################################################################################################
   ## Test #process                                                                                        ##
   ##########################################################################################################
 
-  test('#process compiles content if compilation is part of spec') do
+  test('#process compiles content if implemented in delegate') do
     path = '/template.htx'
     content = '<div>${this.hello}</div>'
     asset = new_asset(path, content)
@@ -104,7 +108,7 @@ class AssetTest < Minitest::Test
     assert_equal('[compiled]', asset.content)
   end
 
-  test('#process minifies content if implemented in spec and minification is enabled') do
+  test('#process minifies content if implemented in delegate and minification is enabled') do
     content = 'body { background: white; }'
     asset = new_asset('/app.css', content, minify: true)
 
@@ -123,7 +127,7 @@ class AssetTest < Minitest::Test
     assert_equal('[minified]', asset.content)
   end
 
-  test('#process merges dependencies with own content') do
+  test('#process merges imported content with own content') do
     import_content = "console.log('Import')"
     asset_body = "console.log('App')"
 
@@ -134,6 +138,164 @@ class AssetTest < Minitest::Test
 
     assert_equal(import_content, asset.content[0...import_content.size])
     assert_equal(asset_body, asset.content[-asset_body.size..-1])
+  end
+
+  test('#process registers error when reference does not exist') do
+    content = <<~EOS
+      <body>
+        <img src='/logo.svg?asset-path'>
+        <img src='/graphic.svg?asset-content'>
+      </body>
+    EOS
+
+    asset = new_asset('/index.html', content)
+    asset.process
+
+    assert_equal(2, asset.errors.size)
+
+    assert_kind_of(Darkroom::AssetNotFoundError, asset.errors[0])
+    assert_kind_of(Darkroom::AssetNotFoundError, asset.errors[1])
+
+    assert_equal('/index.html:2: Asset not found: /logo.svg', asset.errors[0].to_s)
+    assert_equal('/index.html:3: Asset not found: /graphic.svg', asset.errors[1].to_s)
+  end
+
+  test('#process registers error when reference format is invalid') do
+    new_asset('/logo.svg', '<svg></svg>')
+    new_asset('/graphic.svg', '<svg></svg>')
+
+    content = <<~EOS
+      <body>
+        <img src='/logo.svg?asset-path=invalid'>
+        <img src='/graphic.svg?asset-content=invalid'>
+      </body>
+    EOS
+
+    asset = new_asset('/index.html', content)
+    asset.process
+
+    assert_equal(2, asset.errors.size)
+
+    assert_kind_of(Darkroom::AssetError, asset.errors[0])
+    assert_kind_of(Darkroom::AssetError, asset.errors[1])
+
+    assert_equal("/index.html:2: Invalid reference format 'invalid' (must be one of 'versioned', "\
+      "'unversioned'): <img src='/logo.svg?asset-path=invalid'>", asset.errors[0].to_s)
+    assert_equal("/index.html:3: Invalid reference format 'invalid' (must be one of 'base64', 'utf8', "\
+      "'displace'): <img src='/graphic.svg?asset-content=invalid'>", asset.errors[1].to_s)
+  end
+
+  test('#process registers error when reference is binary and format is not base64') do
+    new_asset('/logo.png')
+    new_asset('/graphic.png')
+
+    content = <<~EOS
+      <body>
+        <img src='/logo.png?asset-content=utf8'>
+        <img src='/graphic.png?asset-content=displace'>
+      </body>
+    EOS
+
+    asset = new_asset('/index.html', content)
+    asset.process
+
+    assert_equal(2, asset.errors.size)
+
+    assert_kind_of(Darkroom::AssetError, asset.errors[0])
+    assert_kind_of(Darkroom::AssetError, asset.errors[1])
+
+    assert_equal('/index.html:2: Base64 encoding is required for binary assets: '\
+      "<img src='/logo.png?asset-content=utf8'>", asset.errors[0].to_s)
+    assert_equal('/index.html:3: Base64 encoding is required for binary assets: '\
+      "<img src='/graphic.png?asset-content=displace'>", asset.errors[1].to_s)
+  end
+
+  test('#process registers error when reference delegate validation fails') do
+    new_asset('/robots.txt')
+
+    asset = new_asset('/app.css', 'body { background: url(/robots.txt?asset-path); }')
+    asset.process
+
+    assert_equal(1, asset.errors.size)
+    assert_kind_of(Darkroom::AssetError, asset.errors[0])
+    assert_equal('/app.css:1: Referenced asset must be an image or font type: '\
+      'url(/robots.txt?asset-path)', asset.errors[0].to_s)
+  end
+
+  test('#process registers error when reference would result in a circular reference chain') do
+    circular1 = new_asset('/circular1.html', "<body><a href='/circular2.html?asset-path'>Link</a></body>")
+    circular2 = new_asset('/circular2.html', "<body><a href='/circular3.html?asset-path'>Link</a></body>")
+    circular3 = new_asset('/circular3.html', "<body><a href='/circular1.html?asset-path'>Link</a></body>")
+
+    circular1.process
+
+    assert_equal(1, circular1.errors.size)
+    assert_kind_of(Darkroom::AssetError, circular1.errors[0])
+    assert_equal('/circular1.html:1: Reference would result in a circular reference chain: '\
+      "<a href='/circular2.html?asset-path'>", circular1.errors[0].to_s)
+  end
+
+  test('#process substitutes versioned path of reference when path format is unspecified') do
+    logo = new_asset('/logo.svg', '<svg></svg>')
+    asset = new_asset('/index.html', "<body><img src='/logo.svg?asset-path'></body>")
+
+    asset.process
+
+    assert_equal("<body><img src='/logo-7b56e1eab00ec8000da9331a4888cb35.svg'></body>", asset.content)
+  end
+
+  test('#process substitutes versioned path of reference when path format is versioned') do
+    logo = new_asset('/logo.svg', '<svg></svg>')
+    asset = new_asset('/index.html', "<body><img src='/logo.svg?asset-path=versioned'></body>")
+
+    asset.process
+
+    assert_equal("<body><img src='/logo-7b56e1eab00ec8000da9331a4888cb35.svg'></body>", asset.content)
+  end
+
+  test('#process substitutes unversioned path of reference when path format is unversioned') do
+    logo = new_asset('/logo.svg', '<svg></svg>')
+    asset = new_asset('/index.html', "<body><img src='/logo.svg?asset-path=unversioned'></body>")
+
+    asset.process
+
+    assert_equal("<body><img src='/logo.svg'></body>", asset.content)
+  end
+
+  test('#process substitutes base64-encoded content of reference when content format is unspecified') do
+    logo = new_asset('/logo.svg', '<svg></svg>')
+    asset = new_asset('/index.html', "<body><img src='/logo.svg?asset-content'></body>")
+
+    asset.process
+
+    assert_equal("<body><img src='data:image/svg+xml;base64,PHN2Zz48L3N2Zz4='></body>", asset.content)
+  end
+
+  test('#process substitutes base64-encoded content of reference when content format is base64') do
+    logo = new_asset('/logo.svg', '<svg></svg>')
+    asset = new_asset('/index.html', "<body><img src='/logo.svg?asset-content=base64'></body>")
+
+    asset.process
+
+    assert_equal("<body><img src='data:image/svg+xml;base64,PHN2Zz48L3N2Zz4='></body>", asset.content)
+  end
+
+  test('#process substitutes utf8-encoded content of reference when content format is utf8') do
+    logo = new_asset('/logo.svg', '<svg></svg>')
+    asset = new_asset('/index.html', "<body><img src='/logo.svg?asset-content=utf8'></body>")
+
+    asset.process
+
+    assert_equal("<body><img src='data:image/svg+xml;utf8,<svg></svg>'></body>", asset.content)
+  end
+
+  test('#process displaces content with reference content when content format is displace') do
+    logo = new_asset('/logo.svg', '<svg></svg>')
+    asset = new_asset('/index.html', "<body><img src='/logo.svg?asset-content=displace'></body>")
+
+    asset.process
+
+    assert_equal('<body><svg></svg></body>', asset.content)
   end
 
   test('#process gracefully handles asset file being deleted on disk') do
@@ -222,7 +384,7 @@ class AssetTest < Minitest::Test
     assert_equal(asset.errors, asset.error.instance_variable_get(:@errors))
   end
 
-  test('#process handles circular dependencies') do
+  test('#process handles circular imports') do
     asset1 = new_asset('/circular1.css', "@import '/circular2.css';\n\n.circular1 { }")
     asset2 = new_asset('/circular2.css', "@import '/circular3.css';\n\n.circular2 { }")
     asset3 = new_asset('/circular3.css', "@import '/circular1.css';\n\n.circular3 { }")
@@ -477,108 +639,22 @@ class AssetTest < Minitest::Test
       '@errors=[#<Darkroom::AssetNotFoundError: /bad-import.js:1: Asset not found: /does-not-exist.js>], '\
       '@extension=".js", '\
       "@file=\"#{full_path(path)}\", "\
-      '@fingerprint="afa0a5ffe7423f4b568f19a39b53b122", '\
+      '@fingerprint="5f3acf6b7220af7a522fab7b95e47333", '\
       '@internal=false, '\
       '@minify=false, '\
       "@mtime=#{File.mtime(full_path(path)).inspect}, "\
       '@path="/bad-import.js", '\
       '@path_unversioned="/static/bad-import.js", '\
-      '@path_versioned="/static/bad-import-afa0a5ffe7423f4b568f19a39b53b122.js", '\
+      '@path_versioned="/static/bad-import-5f3acf6b7220af7a522fab7b95e47333.js", '\
       '@prefix="/static"'\
     '>', asset)
-  end
-
-  ##########################################################################################################
-  ## Test Specs                                                                                           ##
-  ##########################################################################################################
-
-  test('JavaScript spec dependency regex matches import statements with proper syntax') do
-    regex = Darkroom::Asset.spec('.js').dependency_regex
-
-    assert_match(regex, %q(import ''))
-    assert_match(regex, %q(import ""))
-    assert_match(regex, %q(import '/single-quotes.js'))
-    assert_match(regex, %q(import "/double-quotes.js"))
-    assert_match(regex, %q(import '/single-quotes-semicolon.js';))
-    assert_match(regex, %q(import "/double-quotes-semicolon.js";))
-    assert_match(regex, %q( import  '/whitespace.js' ; ))
-  end
-
-  test('JavaScript spec dependency regex does not match import statements with bad quoting') do
-    regex = Darkroom::Asset.spec('.js').dependency_regex
-
-    # Bad quoting
-    refute_match(regex, %q(import /no-quotes.js))
-    refute_match(regex, %q(import "/mismatched-quotes.js'))
-    refute_match(regex, %q(import '/mismatched-quotes.js"))
-    refute_match(regex, %q(import /missing-open-single-quote.js'))
-    refute_match(regex, %q(import /missing-open-double-quote.js"))
-    refute_match(regex, %q(import '/missing-close-single-quote.js))
-    refute_match(regex, %q(import "/missing-close-double-quote.js))
-
-    # Escaped and unescaped quotes
-    refute_match(regex, %q(import '/unescaped'-single-quote.js'))
-    refute_match(regex, %q(import "/unescaped"-double-quote.js"))
-    refute_match(regex, %q(import '/unescaped\\\\'-single-quote.js'))
-    refute_match(regex, %q(import "/unescaped\\\\"-double-quote.js"))
-    refute_match(regex, %q(import '/escaped\\'-single-quote.js'))
-    refute_match(regex, %q(import '/escaped\\\\\\'-single-quote.js'))
-    refute_match(regex, %q(import "/escaped\\"-double-quote.js"))
-    refute_match(regex, %q(import "/escaped\\\\\\"-double-quote.js"))
-  end
-
-  test('CSS spec dependency regex matches import statements with proper syntax') do
-    regex = Darkroom::Asset.spec('.css').dependency_regex
-
-    assert_match(regex, %q(@import '';))
-    assert_match(regex, %q(@import "";))
-    assert_match(regex, %q(@import '/single-quotes.css';))
-    assert_match(regex, %q(@import "/double-quotes.css";))
-    assert_match(regex, %q( @import  '/whitespace.js' ; ))
-  end
-
-  test('CSS spec dependency regex does not match import statements with bad quoting') do
-    regex = Darkroom::Asset.spec('.css').dependency_regex
-
-    # Bad quoting
-    refute_match(regex, %q(@import /no-quotes.css;))
-    refute_match(regex, %q(@import "/mismatched-quotes.css';))
-    refute_match(regex, %q(@import '/mismatched-quotes.css";))
-    refute_match(regex, %q(@import /missing-open-single-quote.css';))
-    refute_match(regex, %q(@import /missing-open-double-quote.css";))
-    refute_match(regex, %q(@import '/missing-close-single-quote.css;))
-    refute_match(regex, %q(@import "/missing-close-double-quote.css;))
-
-    # Escaped and unescaped quotes
-    refute_match(regex, %q(@import '/unescaped'-single-quote.css';))
-    refute_match(regex, %q(@import "/unescaped"-double-quote.css";))
-    refute_match(regex, %q(@import '/unescaped\\\\'-single-quote.css';))
-    refute_match(regex, %q(@import "/unescaped\\\\"-double-quote.css";))
-    refute_match(regex, %q(@import '/escaped\\'-single-quote.css';))
-    refute_match(regex, %q(@import '/escaped\\\\\\'-single-quote.css';))
-    refute_match(regex, %q(@import "/escaped\\"-double-quote.css";))
-    refute_match(regex, %q(@import "/escaped\\\\\\"-double-quote.css";))
-
-    # Semicolon
-    refute_match(regex, %q(@import '/no-semicolon.css'))
   end
 
   ##########################################################################################################
   ## Helpers                                                                                              ##
   ##########################################################################################################
 
-  class DarkroomMock
-    def initialize() @manifest = {} end
-    def manifest(path) @manifest[path] end
-    def process_key() 1 end
-  end
-
-  def new_asset(path, content = nil, **options)
-    asset = Darkroom::Asset.new(path, full_path(path), @@darkroom, **options)
-
-    write_files(path => content) if content
-    @@darkroom.instance_variable_get(:@manifest)[asset.path] = asset
-
-    asset
+  def unregister(extension)
+    Darkroom.class_variable_get(:@@delegates).delete(extension)
   end
 end

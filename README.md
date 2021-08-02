@@ -178,19 +178,73 @@ Imports can even be cyclical. If `asset-a.css` imports `asset-b.css` and vice-ve
 contain the content of both of those assets (though order will be different as an asset's own content always
 comes after any imported assets' contents).
 
+## Asset References
+
+Asset paths and content can be inserted into an asset by referencing an asset's path and including a query
+parameter.
+
+| String                           | Result                            |
+|----------------------------------|-----------------------------------|
+| /logo.svg?asset-path             | /prefix/logo-[fingerprint].svg    |
+| /logo.svg?asset-path=versioned   | /prefix/logo-[fingerprint].svg    |
+| /logo.svg?asset-path=unversioned | /prefix/logo.svg                  |
+| /logo.svg?asset-content          | data:image/svg+xml;base64,[data]  |
+| /logo.svg?asset-content=base64   | data:image/svg+xml;base64,[data]  |
+| /logo.svg?asset-content=utf8     | data:image/svg+xml;utf8,\<svg>... |
+
+Where these get recognized is specific to each asset type.
+
+* **CSS** - Within `url(...)`, which may be unquoted or quoted with single or double quotes.
+* **HTML** - Values of `href` and `src` attributes on `a`, `area`, `audio`, `base`, `embed`, `iframe`,
+  `img`, `input`, `link`, `script`, `source`, `track`, and `video` tags.
+* **HTX** - Same behavior as HTML.
+
+HTML assets additionally support the `?asset-content=displace` query parameter for use with `<link>`,
+`<script>`, and `<img>` tags with CSS, JavaScript, and SVG asset references, respectively. The entire tag is
+replaced appropriately.
+
+```html
+<!-- Source -->
+<head>
+  <title>My App</title>
+  <link href='/app.css?asset-content=displace' type='text/css'>
+  <script src='/app.js?asset-content=displace'></script>
+</head>
+
+<body>
+  <img src='/logo.svg?asset-content-displace'>
+</body>
+
+<!-- Result -->
+<head>
+  <title>My App</title>
+  <style>/* Content of /app.css */</style>
+  <script>/* Content of /app.js */</script>
+</head>
+
+<body>
+  <svg><!-- ... --></svg>
+</body>
+```
+
 ## Extending
 
 Darkroom is extensible. Support for arbitrary file types can be added as follows (all named parameters are
 optional):
 
 ```ruby
-Darkroom::Asset.add_spec('.extension1', 'extension2', '...', 'content/type',
-  dependency_regex: /import (?<path>.*)/, # Regex for identifying dependencies for bundling;
-                                          # must include `path` named capture group
-  compile_lib: 'some-compile-lib',        # Name of library required for compilation
-  compile: -> (path, content) { '...' },  # Proc that returns compiled content
-  minify_lib: 'some-minify-lib',          # Name of library required for minification
-  minify: -> (content) { '...' },         # Proc that returns minified content
+# Simple type with no special behavior.
+Darkroom.register('.extension1', 'extension2', '...', 'content/type')
+
+# Complex type with special behavior.
+Darkroom::Asset.register('.extension1', 'extension2', '...',
+  content_type: 'content/type',         # HTTP MIME type string
+  import_regex: /import (?<path>.*)/,   # Regex for identifying imports for bundling
+  reference_regex: /ref=(?<path>.*)/,   # Regex for identifying references to other assets
+  compile_lib: 'some-compile-lib',      # Name of library required for compilation
+  compile: ->(path, content) { '...' }, # Lambda that returns compiled content
+  minify_lib: 'some-minify-lib',        # Name of library required for minification
+  minify: ->(content) { '...' },        # Lambda that returns minified content
 )
 
 ```

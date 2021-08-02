@@ -23,8 +23,14 @@ module TestHelper
   module ClassMethods
     def test(name, &block)
       define_method("#{context}#{
-        name.start_with?('self.') ? name.sub('self.', '.') : name[0] == '#' ? '' : ' '
-      }#{name}", &block)
+        if name.start_with?('self.')
+          name.sub('self.', '.')
+        elsif name[0] != '#'
+          " #{name}"
+        else
+          name
+        end
+      }", &block)
     end
 
     # Override of Minitest::Test.runnable_methods
@@ -40,6 +46,10 @@ module TestHelper
   ##########################################################################################################
   ## Hooks                                                                                                ##
   ##########################################################################################################
+
+  def setup
+    @@darkroom = nil
+  end
 
   def teardown
     FileUtils.rm_rf(TMP_DIR)
@@ -62,10 +72,31 @@ module TestHelper
     File.join(TMP_DIR, path)
   end
 
+  def new_asset(path, content = nil, **options)
+    write_files(path => content) if content
+
+    @@darkroom ||= DarkroomMock.new
+    asset = Darkroom::Asset.new(path, full_path(path), @@darkroom, **options)
+
+    @@darkroom.instance_variable_get(:@manifest)[asset.path] = asset
+
+    asset
+  end
+
   def assert_inspect(expected, actual)
     assert_equal(
       expected.split(INSPECT_SPLIT).join(INSPECT_JOIN),
       actual.inspect.split(INSPECT_SPLIT).join(INSPECT_JOIN)
     )
+  end
+
+  ##########################################################################################################
+  ## Mocks                                                                                                ##
+  ##########################################################################################################
+
+  class DarkroomMock
+    def initialize() @manifest = {} end
+    def manifest(path) @manifest[path] end
+    def process_key() 1 end
   end
 end
