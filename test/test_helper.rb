@@ -61,4 +61,11 @@ module TestHelper
   def full_path(path)
     File.join(TMP_DIR, path)
   end
+
+  def assert_inspect(expected, actual)
+    assert_equal(
+      expected.split(INSPECT_SPLIT).join(INSPECT_JOIN),
+      actual.inspect.split(INSPECT_SPLIT).join(INSPECT_JOIN)
+    )
+  end
 end

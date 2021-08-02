@@ -401,7 +401,7 @@ class AssetTest < Minitest::Test
     asset = new_asset(path, content, prefix: '/static')
     asset.process
 
-    assert_equal('#<Darkroom::Asset: '\
+    assert_inspect('#<Darkroom::Asset: '\
       '@errors=[#<Darkroom::AssetNotFoundError: /bad-import.js:1: Asset not found: /does-not-exist.js>], '\
       '@extension=".js", '\
       "@file=\"#{full_path(path)}\", "\
@@ -413,7 +413,7 @@ class AssetTest < Minitest::Test
       '@path_unversioned="/static/bad-import.js", '\
       '@path_versioned="/static/bad-import-afa0a5ffe7423f4b568f19a39b53b122.js", '\
       '@prefix="/static"'\
-    '>'.split(INSPECT_SPLIT).join(INSPECT_JOIN), asset.inspect.split(INSPECT_SPLIT).join(INSPECT_JOIN))
+    '>', asset)
   end
 
   ##########################################################################################################

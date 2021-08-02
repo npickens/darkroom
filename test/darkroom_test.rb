@@ -557,7 +557,7 @@ class DarkroomTest < Minitest::Test
     )
     darkroom.process
 
-    assert_equal('#<Darkroom: '\
+    assert_inspect('#<Darkroom: '\
       '@errors=['\
         '#<Darkroom::AssetNotFoundError: /bad-import.js:1: Asset not found: /does-not-exist.js>, '\
         '#<Darkroom::AssetNotFoundError: /bad-imports.js:1: Asset not found: /does-not-exist.js>, '\
@@ -574,7 +574,7 @@ class DarkroomTest < Minitest::Test
       '@prefix="/static", '\
       '@pristine=#<Set: {"/favicon.ico", "/mask-icon.svg", "/humans.txt", "/robots.txt", "/hi.txt"}>, '\
       '@process_key=1'\
-    '>'.split(INSPECT_SPLIT).join(INSPECT_JOIN), darkroom.inspect.split(INSPECT_SPLIT).join(INSPECT_JOIN))
+    '>', darkroom)
   end
 
   ##########################################################################################################
