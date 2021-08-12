@@ -237,7 +237,7 @@ optional):
 Darkroom.register('.extension1', 'extension2', '...', 'content/type')
 
 # Complex type with special behavior.
-Darkroom::Asset.register('.extension1', 'extension2', '...',
+Darkroom.register('.extension1', 'extension2', '...',
   content_type: 'content/type',         # HTTP MIME type string
   import_regex: /import (?<path>.*)/,   # Regex for identifying imports for bundling
   reference_regex: /ref=(?<path>.*)/,   # Regex for identifying references to other assets
