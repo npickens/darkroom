@@ -67,38 +67,6 @@ class Darkroom
       :reference_content, :compile_lib, :compile, :minify_lib, :minify, keyword_init: true)
 
     ##
-    # DEPRECATED. Use Darkroom.register instead.
-    #
-    # Defines an asset spec.
-    #
-    # * +extensions+ - File extensions to associate with this spec.
-    # * +content_type+ - HTTP MIME type string.
-    # * +other+ - Optional components of the spec (see Spec struct).
-    #
-    def self.add_spec(*extensions, content_type, **other)
-      warn("#{self}.add_spec is deprecated and will be removed soon (use Darkroom.register instead)")
-
-      params = other.dup
-      params[:content_type] = content_type
-      params[:import_regex] = params.delete(:dependency_regex) if params.key?(:dependency_regex)
-
-      Darkroom.register(*extensions, params)
-    end
-
-    ##
-    # DEPRECATED. Use Darkroom.delegate instead.
-    #
-    # Returns the spec associated with a file extension.
-    #
-    # * +extension+ - File extension of the desired spec.
-    #
-    def self.spec(extension)
-      warn("#{self}.spec is deprecated and will be removed soon (use Darkroom.delegate instead)")
-
-      Darkroom.delegate(extension)
-    end
-
-    ##
     # Creates a new instance.
     #
     # * +file+ - Path of file on disk.
