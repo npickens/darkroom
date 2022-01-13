@@ -14,6 +14,8 @@ module TestHelper
   INSPECT_SPLIT = /@(?=\w+=)/.freeze
   INSPECT_JOIN = "\n@"
 
+  MINITEST_TEST_METHOD_REGEX = /^test_/.freeze
+
   $:.unshift(DUMMY_LIBS_DIR)
 
   ##########################################################################################################
@@ -33,9 +35,13 @@ module TestHelper
       }", &block)
     end
 
-    # Override of Minitest::Test.runnable_methods
-    def runnable_methods
-      public_instance_methods(true).grep(/^#{context}/).map(&:to_s)
+    # Override of Minitest::Runnable.methods_matching
+    def methods_matching(regex)
+      if regex == MINITEST_TEST_METHOD_REGEX
+        public_instance_methods(true).grep(/^#{context}/).map(&:to_s)
+      else
+        super
+      end
     end
   end
 
