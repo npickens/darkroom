@@ -3,10 +3,6 @@
 require('fileutils')
 
 module TestHelper
-  ##########################################################################################################
-  ## Constants                                                                                            ##
-  ##########################################################################################################
-
   TEST_DIR = File.expand_path('..', __FILE__).freeze
   DUMMY_LIBS_DIR = File.join(TEST_DIR, 'dummy_libs').freeze
   TMP_DIR = File.join(TEST_DIR, 'tmp').freeze
@@ -19,34 +15,48 @@ module TestHelper
   $:.unshift(DUMMY_LIBS_DIR)
 
   ##########################################################################################################
-  ## Configuration                                                                                        ##
+  ## Testing                                                                                              ##
   ##########################################################################################################
 
+  def self.included(klass)
+    klass.extend(ClassMethods)
+  end
+
   module ClassMethods
-    def test(name, &block)
-      define_method("#{context}#{
-        if name.start_with?('self.')
-          name.sub('self.', '.')
-        elsif name[0] != '#'
-          " #{name}"
-        else
-          name
-        end
-      }", &block)
+    def context(*contexts, &block)
+      contexts.each { |c| context_stack << c.to_s }
+      block.call
+      context_stack.pop(contexts.size)
+    end
+
+    def test(description, &block)
+      method_name = "#{context_string} #{description}"
+      test_methods << method_name
+
+      define_method(method_name, &block)
+    end
+
+    def context_stack
+      @context_stack ||= []
+    end
+
+    def test_methods
+      @test_methods ||= []
+    end
+
+    def context_string
+      context_stack.each_with_object(+'').with_index do |(context, str), i|
+        next_item = context_stack[i + 1]
+
+        str << context
+        str << ' ' unless !next_item || next_item[0] == '#' || next_item.start_with?('::')
+      end
     end
 
     # Override of Minitest::Runnable.methods_matching
     def methods_matching(regex)
-      if regex == MINITEST_TEST_METHOD_REGEX
-        public_instance_methods(true).grep(/^#{context}/).map(&:to_s)
-      else
-        super
-      end
+      regex == MINITEST_TEST_METHOD_REGEX ? test_methods : super
     end
-  end
-
-  def self.included(klass)
-    klass.extend(ClassMethods)
   end
 
   ##########################################################################################################
