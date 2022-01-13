@@ -105,4 +105,15 @@ module TestHelper
     def manifest(path) @manifest[path] end
     def process_key() 1 end
   end
+
+
+  ##########################################################################################################
+  ## Minitest                                                                                             ##
+  ##########################################################################################################
+
+  class Minitest::Result
+    def location
+      super.delete_prefix("#{self.class_name}#")
+    end
+  end
 end

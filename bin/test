@@ -1,45 +1,17 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
-############################################################################################################
-## Constants                                                                                              ##
-############################################################################################################
-
-BASE_DIR = File.expand_path('../..', __FILE__).freeze
-LIB_NAME = File.basename(Dir[File.join(BASE_DIR, '*.gemspec')].first, '.gemspec').freeze
-GLOB = File.expand_path("{test,#{LIB_NAME}-*/test}/**/*_test.rb", BASE_DIR).freeze
-
-############################################################################################################
-## Requires                                                                                               ##
-############################################################################################################
-
-require('bundler')
-
-Dir.chdir(BASE_DIR)
-Bundler.setup(:default, :development)
-
-require(LIB_NAME)
-require('minitest')
-require('minitest/mock')
-
-Dir[GLOB].each do |file|
-  require(file)
-end
-
-############################################################################################################
-## Minitest Setup                                                                                         ##
-############################################################################################################
-
 ENV['MT_NO_PLUGINS'] = 'true'
 
-class Minitest::Result
-  def location
-    super.sub(/^\w+#/, '')
-  end
-end
+BASE_DIR = File.dirname(__dir__).freeze
+LIB_NAME = File.basename(Dir[File.join(BASE_DIR, '*.gemspec')].first, '.gemspec').freeze
+TEST_GLOB = File.expand_path("{test,#{LIB_NAME}-*/test}/**/*_test.rb", BASE_DIR).freeze
 
-############################################################################################################
-## Run                                                                                                    ##
-############################################################################################################
+Dir.chdir(BASE_DIR) # Ensure Bundler always works.
 
-Minitest.autorun
+require('bundler/setup')
+require('minitest/autorun')
+require('minitest/mock')
+
+Bundler.require(:default, :development, :test)
+Dir[TEST_GLOB].each { |file| require(file) }
