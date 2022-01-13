@@ -1,8 +1,6 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
-ENV['MT_NO_PLUGINS'] = 'true'
-
 BASE_DIR = File.dirname(__dir__).freeze
 LIB_NAME = File.basename(Dir[File.join(BASE_DIR, '*.gemspec')].first, '.gemspec').freeze
 TEST_GLOB = File.expand_path("{test,#{LIB_NAME}-*/test}/**/*_test.rb", BASE_DIR).freeze
@@ -11,7 +9,6 @@ Dir.chdir(BASE_DIR) # Ensure Bundler always works.
 
 require('bundler/setup')
 require('minitest/autorun')
-require('minitest/mock')
 
 Bundler.require(:default, :development, :test)
 Dir[TEST_GLOB].each { |file| require(file) }

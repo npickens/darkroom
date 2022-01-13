@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require('darkroom')
+require('minitest/autorun')
 require_relative('test_helper')
 
 class AssetTest < Minitest::Test

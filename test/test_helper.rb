@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require('fileutils')
+require('minitest')
 
 module TestHelper
   TEST_DIR = File.expand_path('..', __FILE__).freeze
