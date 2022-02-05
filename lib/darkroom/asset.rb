@@ -452,6 +452,7 @@ class Darkroom
       instance_variable_get(:"@own_#{name}").each_with_object([]) do |asset, assets|
         next if ignore.include?(asset)
 
+        asset.process
         assets.push(*asset.send(name, ignore), asset)
         assets.uniq!
         assets.delete(self)
