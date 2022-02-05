@@ -366,7 +366,8 @@ class Darkroom
               value || asset.path_unversioned
             when 'content-base64'
               quote = DEFAULT_QUOTE if match[:quote] == ''
-              "#{quote}data:#{asset.content_type};base64,#{Base64.strict_encode64(value || asset.content)}#{quote}"
+              data = Base64.strict_encode64(value || asset.content)
+              "#{quote}data:#{asset.content_type};base64,#{data}#{quote}"
             when 'content-utf8'
               quote = DEFAULT_QUOTE if match[:quote] == ''
               "#{quote}data:#{asset.content_type};utf8,#{value || asset.content}#{quote}"
