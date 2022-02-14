@@ -4,7 +4,7 @@ require('fileutils')
 require('minitest')
 
 module TestHelper
-  TEST_DIR = File.expand_path('..', __FILE__).freeze
+  TEST_DIR = __dir__.freeze
   DUMMY_LIBS_DIR = File.join(TEST_DIR, 'dummy_libs').freeze
   TMP_DIR = File.join(TEST_DIR, 'tmp').freeze
 
