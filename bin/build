@@ -1,116 +1,98 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
-require('open3')
+Dir.chdir(File.dirname(__dir__))
 
-############################################################################################################
-## Command Line Options                                                                                   ##
-############################################################################################################
-
-unless ARGV.size == 1 && [:major, :minor, :patch].include?(bump = ARGV.shift.to_s.strip.to_sym)
-  abort('Usage: bin/build {major|minor|patch}')
+if ARGV.size > 0 && ![:major, :minor, :patch].include?(bump = ARGV[0].to_s.strip.to_sym)
+  abort('Usage: bin/build [major | minor | patch]')
 end
 
-############################################################################################################
-## Constants                                                                                              ##
-############################################################################################################
-
-BASE_DIR = File.expand_path(File.join('..', '..'), __FILE__).freeze
-VERSION_FILE = File.join(BASE_DIR, 'VERSION').freeze
-GEMSPEC_FILE = Dir[File.join(BASE_DIR, '*.gemspec')].first.freeze
-LIB_NAME = File.basename(GEMSPEC_FILE, '.gemspec').freeze
-RUBY_FILE_WITH_VERSION = File.join(BASE_DIR, 'lib', LIB_NAME, 'version.rb').freeze
+BASE_DIR = Dir.pwd.freeze
+LIB_NAME = File.basename(Dir[File.join(BASE_DIR, '*.gemspec')].first, '.gemspec').freeze
+GEMSPEC_FILES = (Dir[File.join(BASE_DIR, '*.gemspec')] +
+  Dir[File.join(BASE_DIR, "#{LIB_NAME}-*", '*.gemspec')]).freeze
+VERSION_FILES = Dir[File.join(BASE_DIR, "{.,#{LIB_NAME}-*}", 'VERSION')].freeze
+VERSION_FILE_RUBY = File.join(BASE_DIR, 'lib', LIB_NAME, 'version.rb').freeze
 TEST_COMMAND = File.join(BASE_DIR, 'bin', 'test').freeze
 
-OLD_VERSION = File.read(VERSION_FILE).strip.freeze
+OLD_VERSION = File.read(VERSION_FILES.first).strip.freeze
 major, minor, patch = OLD_VERSION.split('.').map(&:to_i)
 NEW_VERSION =
-  case bump
+  case bump || :patch
   when :major then "#{major + 1}.0.0"
   when :minor then "#{major}.#{minor + 1}.0"
   when :patch then "#{major}.#{minor}.#{patch + 1}"
   end
 
 ############################################################################################################
-## Test                                                                                                   ##
+## Tasks                                                                                                  ##
 ############################################################################################################
 
 def test
-  begin_task('Running tests...')
-
-  status = command(TEST_COMMAND)
-
-  finish_task(status, 'Tests passed', 'Build aborted')
+  task(
+    preamble: 'Running tests...',
+    command: TEST_COMMAND,
+    success: 'Tests passed',
+  )
 end
-
-############################################################################################################
-## Update Version                                                                                         ##
-############################################################################################################
 
 def update_version(version = NEW_VERSION, quiet = false)
   begin_task('Updating version number...') unless quiet
 
-  ruby = File.read(RUBY_FILE_WITH_VERSION)
-  ruby.sub!(/(?<var>VERSION\s*=\s*)(?<quote>['"])(\d+\.\d+\.\d+)\g<quote>/) do
-    "#{$~[:var]}#{$~[:quote]}#{version}#{$~[:quote]}"
+  VERSION_FILES.each do |version_file|
+    File.write(version_file, "#{version}\n")
   end
 
-  File.write(RUBY_FILE_WITH_VERSION, ruby)
-  File.write(VERSION_FILE, "#{version}\n")
+  ruby = File.read(VERSION_FILE_RUBY)
+  ruby.sub!(/(?<=VERSION = (['"]))(\d+\.\d+\.\d+)(?=\1)/, version)
+  File.write(VERSION_FILE_RUBY, ruby)
 
   finish_task('Version number updated') unless quiet
 end
 
-############################################################################################################
-## Build                                                                                                  ##
-############################################################################################################
-
 def build
-  begin_task('Building Ruby gem...')
+  multiple = GEMSPEC_FILES.size > 1
 
-  status = command("cd #{File.dirname(GEMSPEC_FILE)} && gem build #{File.basename(GEMSPEC_FILE)}")
+  GEMSPEC_FILES.each do |gemspec_file|
+    lib_name = File.basename(gemspec_file, '.gemspec')
 
-  finish_task(status, 'Ruby gem built', 'Build aborted')
+    task(
+      preamble: "Building Ruby gem#{" (#{lib_name})" if multiple}...",
+      command: ["cd #{File.dirname(gemspec_file)}", "gem build #{File.basename(gemspec_file)}"],
+      success: "Ruby gem built (#{lib_name}-#{NEW_VERSION}.gem)",
+    )
+  end
 ensure
-  (update_version(OLD_VERSION, :quiet) rescue nil) if status != 0
+  (update_version(OLD_VERSION, :quiet) rescue nil) if $?.exitstatus != 0
 end
 
 ############################################################################################################
 ## Utils                                                                                                  ##
 ############################################################################################################
 
-def command(command, capture_output: false)
-  Open3.popen2("#{command} 2>&1") do |stdin, stdout_stderr, thread|
-    prefix = '  '
-    output = ''.dup
+def task(preamble: nil, command:, success: nil, failure: nil)
+  begin_task(preamble) if preamble
+  system(Array(command).join(' && '))
 
-    Thread.new do
-      begin
-        while (line = stdout_stderr.gets)
-          capture_output ? (output << line) : puts("#{prefix}#{line}")
-        end
-      rescue IOError => e
-        raise unless stdout_stderr.closed? && e.message == 'stream closed in another thread'
-      end
-    end
-
-    capture_output ? [output, thread.value.exitstatus] : thread.value.exitstatus
+  if $?.exitstatus != 0
+    finish_task($?.exitstatus, failure)
+  elsif success
+    finish_task(success)
   end
 end
 
 def begin_task(str)
-  puts("\e[1;33m\u270e #{str}\e[0m")
+  puts("\e[33m\u270e #{str}\e[39m")
 end
 
 def finish_task(*args)
   status = args.first.kind_of?(Integer) ? args.shift : 0
-  success = args.shift
-  failure = args.shift
+  message = args.shift
 
   if status == 0
-    puts("\e[1;32m\u2714 #{success}\e[0m")
+    puts("\e[32m\u2714 #{message}\e[39m")
   else
-    puts("\e[1;31m\u2718 #{failure}\e[0m")
+    puts("\e[31m\u2718 #{message || 'Build aborted'}\e[39m")
     exit(status)
   end
 end
