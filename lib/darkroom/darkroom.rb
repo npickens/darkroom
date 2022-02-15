@@ -72,7 +72,7 @@ class Darkroom
   def initialize(*load_paths, host: nil, hosts: nil, prefix: nil, pristine: nil, minify: false,
       minified_pattern: DEFAULT_MINIFIED_PATTERN, internal_pattern: DEFAULT_INTERNAL_PATTERN,
       min_process_interval: MIN_PROCESS_INTERVAL)
-    @load_paths = load_paths.map { |load_path| load_path.chomp('/') }
+    @load_paths = load_paths.map { |load_path| File.expand_path(load_path) }
 
     @hosts = (Array(host) + Array(hosts)).map! { |host| host.sub(TRAILING_SLASHES, '') }
     @minify = minify
