@@ -401,6 +401,17 @@ class AssetTest < Minitest::Test
       assert(asset2.content.start_with?(asset1.send(:own_content)))
       assert(asset3.content.start_with?(asset2.send(:own_content)))
     end
+
+    test('determines dependencies by walking dependency chain with self as root') do
+      asset1 = new_asset('/circular1.css', "@import '/circular2.css';\n\n.circular1 { }")
+      asset2 = new_asset('/circular2.css', "@import '/circular3.css';\n\n.circular2 { }")
+      asset3 = new_asset('/circular3.css', "@import '/circular2.css';\n\n.circular3 { }")
+
+      asset1.process
+      asset1.send(:dependencies)
+
+      assert_includes(asset3.send(:dependencies).map(&:path), asset2.path)
+    end
   end
 
   ##########################################################################################################

@@ -241,8 +241,13 @@ class Darkroom
     # * +ignore+ - Assets already accounted for as dependency tree is walked (to prevent infinite loops when
     #   circular chains are encountered).
     #
-    def dependencies(ignore = Set.new)
-      @dependencies ||= accumulate(:dependencies, ignore)
+    def dependencies(ignore = nil)
+      return @dependencies if @dependencies
+
+      dependencies = accumulate(:dependencies, ignore)
+      @dependencies = dependencies unless ignore
+
+      dependencies
     end
 
     ##
@@ -251,8 +256,13 @@ class Darkroom
     # * +ignore+ - Assets already accounted for as import tree is walked (to prevent infinite loops when
     #   circular chains are encountered).
     #
-    def imports(ignore = Set.new)
-      @imports ||= accumulate(:imports, ignore)
+    def imports(ignore = nil)
+      return @imports if @imports
+
+      imports = accumulate(:imports, ignore)
+      @imports = imports unless ignore
+
+      imports
     end
 
     ##
@@ -446,7 +456,9 @@ class Darkroom
     #   circular references are encountered).
     #
     def accumulate(name, ignore)
+      ignore ||= Set.new
       ignore << self
+
       process
 
       instance_variable_get(:"@own_#{name}").each_with_object([]) do |asset, assets|
