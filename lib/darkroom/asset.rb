@@ -5,6 +5,12 @@ require('digest')
 require('set')
 
 require_relative('darkroom')
+require_relative('errors/asset_error')
+require_relative('errors/asset_not_found_error')
+require_relative('errors/circular_reference_error')
+require_relative('errors/missing_library_error')
+require_relative('errors/processing_error')
+require_relative('errors/unrecognized_extension_error')
 
 class Darkroom
   ##
