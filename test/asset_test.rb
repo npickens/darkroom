@@ -349,13 +349,13 @@ class AssetTest < Minitest::Test
     test('registers an error when minification raises an exception') do
       asset = new_asset('/app.js', "console.log('Hello')", minify: true)
 
-      Uglifier.stub(:compile, ->(*) { raise('[Uglifier Error]') }) do
+      Terser.stub(:compile, ->(*) { raise('[Terser Error]') }) do
         asset.process
       end
 
       assert(asset.error)
       assert_equal(1, asset.errors.size)
-      assert_equal('[Uglifier Error]', asset.errors.first.to_s)
+      assert_equal('[Terser Error]', asset.errors.first.to_s)
     end
 
     test('accumulates multiple errors') do
@@ -367,7 +367,7 @@ class AssetTest < Minitest::Test
       EOS
       asset = new_asset('/bad-imports.js', content, minify: true)
 
-      Uglifier.stub(:compile, ->(*) { raise('[Uglifier Error]') }) do
+      Terser.stub(:compile, ->(*) { raise('[Terser Error]') }) do
         asset.process
       end
 
@@ -379,7 +379,7 @@ class AssetTest < Minitest::Test
 
       assert_equal('/bad-imports.js:1: Asset not found: /does-not-exist.js', asset.errors[0].to_s)
       assert_equal('/bad-imports.js:2: Asset not found: /also-does-not-exist.js', asset.errors[1].to_s)
-      assert_equal('[Uglifier Error]', asset.errors[2].to_s)
+      assert_equal('[Terser Error]', asset.errors[2].to_s)
 
       assert_kind_of(Darkroom::ProcessingError, asset.error)
       assert_equal(3, asset.error.size)

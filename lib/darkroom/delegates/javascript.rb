@@ -7,10 +7,8 @@ class Darkroom
     JavaScriptDelegate = Delegate.new(
       content_type: 'text/javascript',
       import_regex: /^ *import +#{QUOTED_PATH.source} *;? *(\n|$)/.freeze,
-      minify_lib: 'uglifier',
-      minify: ->(content) do
-        Uglifier.compile(content, harmony: true)
-      end,
+      minify_lib: 'terser',
+      minify: ->(content) { Terser.compile(content) },
     )
   end
 end

@@ -44,9 +44,9 @@ project includes HTX templates or you wish to minify CSS and/or JavaScript asset
 to be added to your Gemfile:
 
 ```ruby
-gem('htx')      # HTX compilation
-gem('sassc')    # CSS minification
-gem('uglifier') # JavaScript and HTX minification
+gem('htx')    # HTX compilation
+gem('sassc')  # CSS minification
+gem('terser') # JavaScript and HTX minification
 ```
 
 ## Usage

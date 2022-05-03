@@ -429,7 +429,7 @@ class Darkroom
     # Darkroom does not explicitly depend on any libraries necessary for asset compilation or minification,
     # since not every app will use every kind of asset or use minification. It is instead up to each app
     # using Darkroom to specify any needed compilation and minification libraries as direct dependencies
-    # (e.g. specify +gem('uglifier')+ in the app's Gemfile if JavaScript minification is desired).
+    # (e.g. specify +gem('terser')+ in the app's Gemfile if JavaScript minification is desired).
     #
     def require_libs
       begin
