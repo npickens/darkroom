@@ -124,7 +124,7 @@ module TestHelper
 
   class Minitest::Result
     def location
-      super.delete_prefix("#{self.class_name}#")
+      super.delete_prefix("#{class_name}#")
     end
   end
 end
