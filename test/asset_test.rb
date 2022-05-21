@@ -689,6 +689,6 @@ class AssetTest < Minitest::Test
   ##########################################################################################################
 
   def unregister(extension)
-    Darkroom.class_variable_get(:@@delegates).delete(extension)
+    Darkroom::Asset.class_variable_get(:@@delegates).delete(extension)
   end
 end

@@ -21,9 +21,6 @@ class Darkroom
   INVALID_PATH = /[#{DISALLOWED_PATH_CHARS}]/.freeze
   TRAILING_SLASHES = /\/+$/.freeze
 
-  @@delegates = {}
-  @@glob = ''
-
   attr_reader(:error, :errors, :process_key)
 
   ##
@@ -33,20 +30,7 @@ class Darkroom
   # * +extensions+ - File extension(s) to associate with this delegate.
   #
   def self.register(*extensions, delegate)
-    case delegate
-    when String
-      delegate = Asset::Delegate.new(content_type: delegate.freeze)
-    when Hash
-      delegate = Asset::Delegate.new(**delegate)
-    end
-
-    extensions.each do |extension|
-      @@delegates[extension] = delegate
-    end
-
-    @@glob = "**/*{#{@@delegates.keys.sort.join(',')}}"
-
-    delegate
+    Asset.register(*extensions, delegate)
   end
 
   ##
@@ -55,7 +39,9 @@ class Darkroom
   # * +extension+ - File extension of the desired delegate.
   #
   def self.delegate(extension)
-    @@delegates[extension]
+    warn('Darkroom.delegate is deprecated and will be removed in a future version.')
+
+    Asset.class_variable_get(:@@delegates)[extension]
   end
 
   ##
@@ -122,7 +108,7 @@ class Darkroom
       found = {}
 
       @load_paths.each do |load_path|
-        Dir.glob(File.join(load_path, @@glob)).sort.each do |file|
+        Dir.glob(File.join(load_path, Asset.glob)).sort.each do |file|
           path = file.sub(load_path, '')
 
           if index = (path =~ INVALID_PATH)
