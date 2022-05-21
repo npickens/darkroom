@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative('../asset')
+
 class Darkroom
   ##
   # Error class used when an asset's path contains one or more invalid characters.
@@ -22,7 +24,7 @@ class Darkroom
     # Returns a string representation of the error.
     #
     def to_s
-      "Asset path contains one or more invalid characters (#{DISALLOWED_PATH_CHARS}): #{@path}"
+      "Asset path contains one or more invalid characters (#{Asset::DISALLOWED_PATH_CHARS}): #{@path}"
     end
   end
 end

@@ -4,7 +4,6 @@ require('base64')
 require('digest')
 require('set')
 
-require_relative('darkroom')
 require_relative('errors/asset_error')
 require_relative('errors/asset_not_found_error')
 require_relative('errors/circular_reference_error')
@@ -22,6 +21,8 @@ class Darkroom
     IMPORT_JOINER = "\n"
     DEFAULT_QUOTE = '\''
 
+    DISALLOWED_PATH_CHARS = '\'"`=<>? '
+    INVALID_PATH = /[#{DISALLOWED_PATH_CHARS}]/.freeze
     QUOTED_PATH = /(?<quote>['"])(?<path>[^'"]*)\k<quote>/.freeze
     REFERENCE_PATH =
       %r{

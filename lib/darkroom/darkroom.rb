@@ -14,12 +14,9 @@ require_relative('errors/processing_error')
 class Darkroom
   DEFAULT_INTERNAL_PATTERN = nil
   DEFAULT_MINIFIED_PATTERN = /(\.|-)min\.\w+$/.freeze
+  TRAILING_SLASHES = /\/+$/.freeze
   PRISTINE = Set.new(%w[/favicon.ico /mask-icon.svg /humans.txt /robots.txt]).freeze
   MIN_PROCESS_INTERVAL = 0.5
-
-  DISALLOWED_PATH_CHARS = '\'"`=<>? '
-  INVALID_PATH = /[#{DISALLOWED_PATH_CHARS}]/.freeze
-  TRAILING_SLASHES = /\/+$/.freeze
 
   attr_reader(:error, :errors, :process_key)
 
@@ -111,7 +108,7 @@ class Darkroom
         Dir.glob(File.join(load_path, Asset.glob)).sort.each do |file|
           path = file.sub(load_path, '')
 
-          if index = (path =~ INVALID_PATH)
+          if index = (path =~ Asset::INVALID_PATH)
             @errors << InvalidPathError.new(path, index)
           elsif found.key?(path)
             @errors << DuplicateAssetError.new(path, found[path], load_path)
