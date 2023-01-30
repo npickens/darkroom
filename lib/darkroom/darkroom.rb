@@ -136,7 +136,7 @@ class Darkroom
           @manifest_versioned[asset.path_versioned] = asset
         end
 
-        @errors += asset.errors
+        @errors.concat(asset.errors)
       end
     ensure
       @last_processed_at = Time.now.to_f
