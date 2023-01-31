@@ -403,6 +403,24 @@ class AssetTest < Minitest::Test
         assert(asset3.content.start_with?(asset2.send(:own_content)))
       end
 
+      test('compiles circular imports before including their contents') do
+        Darkroom.register('.simple-compile',
+          content_type: 'text/simple-compile',
+          import_regex: /^import '(?<path>.+)'$/.freeze,
+          compile: ->(_, content) { content.upcase },
+        )
+
+        asset1 = new_asset('/circular1.simple-compile', "import '/circular2.simple-compile'\ncircular1")
+        asset2 = new_asset('/circular2.simple-compile', "import '/circular1.simple-compile'\ncircular2")
+
+        asset1.process
+
+        assert_equal("\nCIRCULAR2\n\nCIRCULAR1", asset1.content)
+        assert_equal("\nCIRCULAR1\n\nCIRCULAR2", asset2.content)
+      ensure
+        unregister('.simple-compile')
+      end
+
       test('determines dependencies by walking dependency chain with self as root') do
         asset1 = new_asset('/circular1.css', "@import '/circular2.css';\n\n.circular1 { }")
         asset2 = new_asset('/circular2.css', "@import '/circular3.css';\n\n.circular2 { }")

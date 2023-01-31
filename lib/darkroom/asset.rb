@@ -17,10 +17,7 @@ class Darkroom
   #
   class Asset
     EXTENSION_REGEX = /(?=\.\w+)/.freeze
-
-    IMPORT_JOINER = "\n"
     DEFAULT_QUOTE = '\''
-
     DISALLOWED_PATH_CHARS = '\'"`=<>? '
     INVALID_PATH = /[#{DISALLOWED_PATH_CHARS}]/.freeze
     QUOTED_PATH = /(?<quote>['"])(?<path>[^'"]*)\k<quote>/.freeze
@@ -41,7 +38,7 @@ class Darkroom
     @@delegates = {}
     @@glob = ''
 
-    attr_reader(:content, :error, :errors, :path, :path_unversioned, :path_versioned)
+    attr_reader(:error, :errors, :path, :path_unversioned, :path_versioned)
 
     ##
     # Holds information about how to handle a particular asset type.
@@ -149,14 +146,9 @@ class Darkroom
       build_references
       process_dependencies
       compile
-      minify
-
-      @fingerprint = Digest::MD5.hexdigest(@content)
-      @path_versioned = "#{@prefix}#{@path.sub(EXTENSION_REGEX, "-#{@fingerprint}")}"
+      content unless @internal
 
       @processed
-    rescue Errno::ENOENT
-      # File was deleted. Do nothing.
     ensure
       @error = @errors.empty? ? nil : ProcessingError.new(@errors)
     end
@@ -207,6 +199,35 @@ class Darkroom
     end
 
     ##
+    # Returns full asset content.
+    #
+    # * +minified+ - Boolean indicating whether or not to return minified version if it is available.
+    #
+    def content(minified: true)
+      unless @content
+        @content =
+          if imports.empty?
+            @own_content
+          else
+            (0..imports.size).inject(+'') do |content, i|
+              own_content = (imports[i] || self).own_content
+
+              content << "\n" unless (content[-1] == "\n" && own_content[0] == "\n") || content.empty?
+              content << own_content
+            end
+          end
+
+        unless @internal
+          minify if @minify
+          @fingerprint = Digest::MD5.hexdigest(@content_minified || @content)
+          @path_versioned = "#{@prefix}#{@path.sub(EXTENSION_REGEX, "-#{@fingerprint}")}"
+        end
+      end
+
+      (minified && @content_minified) || @content
+    end
+
+    ##
     # Returns subresource integrity string.
     #
     # * +algorithm+ - Hash algorithm to use to generate the integrity string (one of :sha256, :sha384, or
@@ -215,9 +236,9 @@ class Darkroom
     def integrity(algorithm = :sha384)
       @integrity[algorithm] ||= "#{algorithm}-#{Base64.strict_encode64(
         case algorithm
-        when :sha256 then Digest::SHA256.digest(@content)
-        when :sha384 then Digest::SHA384.digest(@content)
-        when :sha512 then Digest::SHA512.digest(@content)
+        when :sha256 then Digest::SHA256.digest(content)
+        when :sha384 then Digest::SHA384.digest(content)
+        when :sha512 then Digest::SHA512.digest(content)
         else raise("Unrecognized integrity algorithm: #{algorithm}")
         end
       )}".freeze
@@ -318,19 +339,23 @@ class Darkroom
     # Clears content, dependencies, and errors so asset is ready for (re)processing.
     #
     def clear
+      @own_dependencies = []
+      @own_imports = []
+      @dependency_matches = []
+
       @dependencies = nil
       @imports = nil
-      @error = nil
+
+      @own_content = nil
+      @content = nil
+      @content_minified = nil
+
       @fingerprint = nil
       @path_versioned = nil
+      @integrity = {}
 
-      (@own_dependencies ||= []).clear
-      (@own_imports ||= []).clear
-      (@dependency_matches ||= []).clear
-      (@errors ||= []).clear
-      (@content ||= +'').clear
-      (@own_content ||= +'').clear
-      (@integrity ||= {}).clear
+      @error = nil
+      @errors = []
     end
 
     ##
@@ -338,6 +363,9 @@ class Darkroom
     #
     def read
       @own_content = File.read(@file)
+    rescue Errno::ENOENT
+      # Gracefully handle file deletion.
+      @own_content = ''
     end
 
     ##
@@ -426,8 +454,6 @@ class Darkroom
             end
         end
       end
-
-      @content << imports.map { |d| d.own_content }.join(IMPORT_JOINER)
     end
 
     ##
@@ -435,15 +461,9 @@ class Darkroom
     # content to the overall content string.
     #
     def compile
-      if @delegate.compile
-        begin
-          @own_content = @delegate.compile.(@path, @own_content)
-        rescue => e
-          @errors << e
-        end
-      end
-
-      @content << @own_content
+      @own_content = @delegate.compile.(@path, @own_content) if @delegate.compile
+    rescue => e
+      @errors << e
     end
 
     ##
@@ -451,15 +471,9 @@ class Darkroom
     # (i.e. it's not already minified), and the asset is not marked as internal-only.
     #
     def minify
-      if @delegate.minify && @minify && !@internal
-        begin
-          @content = @delegate.minify.(@content)
-        rescue => e
-          @errors << e
-        end
-      end
-
-      @content
+      @content_minified = @delegate.minify.(@content) if @delegate.minify
+    rescue => e
+      @errors << e
     end
 
     ##

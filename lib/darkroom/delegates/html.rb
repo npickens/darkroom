@@ -37,7 +37,7 @@ class Darkroom
             "#{match[0][(match.end(:quoted) + match[:quote].size - offset)..(match.end(0) - offset)]}"\
             "#{asset.content}"
           elsif match[:tag] == 'img' && asset.content_type == 'image/svg+xml'
-            asset.content
+            asset.content(minified: false)
           end
         when 'utf8'
           quote = match[:quote] == '' ? Asset::DEFAULT_QUOTE : match[:quote]
