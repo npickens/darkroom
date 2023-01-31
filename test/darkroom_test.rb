@@ -220,6 +220,15 @@ class DarkroomTest < Minitest::Test
 
         assert_nil(darkroom.asset('/components/header.htx'))
       end
+
+      test('returns asset if path matches internal pattern but is also pristine') do
+        write_files('/assets/pristine.txt' => 'Hello')
+
+        darkroom('/assets', internal_pattern: /.*/, pristine: '/pristine.txt')
+        darkroom.process
+
+        assert(darkroom.asset('/pristine.txt'))
+      end
     end
 
     ########################################################################################################
