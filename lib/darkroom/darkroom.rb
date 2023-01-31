@@ -117,8 +117,8 @@ class Darkroom
 
             @manifest[path] ||= Asset.new(path, file, self,
               prefix: (@prefix unless @pristine.include?(path)),
-              internal: @internal_pattern && path =~ @internal_pattern,
-              minify: @minify && path !~ @minified_pattern,
+              internal: !!@internal_pattern && path.match?(@internal_pattern),
+              minify: @minify && !path.match?(@minified_pattern),
             )
           end
         end
