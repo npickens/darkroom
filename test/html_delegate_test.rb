@@ -48,7 +48,7 @@ class HTMLDelegateTest < Minitest::Test
     context('::validate_reference') do
       test('returns error if <link> tag references non-CSS asset with displace format') do
         error = Darkroom::Asset::HTMLDelegate.validate_reference.(
-          new_asset('/robots.txt'),
+          new_asset('/robots.txt', ''),
           reference_match("<link href='/robots.txt?asset-content=displace'>"),
           'displace',
         )
@@ -58,7 +58,7 @@ class HTMLDelegateTest < Minitest::Test
 
       test('returns no error if <link> tag references CSS asset with displace format') do
         error = Darkroom::Asset::HTMLDelegate.validate_reference.(
-          new_asset('/app.css'),
+          new_asset('/app.css', ''),
           reference_match("<link href='/app.css?asset-content=displace'>"),
           'displace',
         )
@@ -68,7 +68,7 @@ class HTMLDelegateTest < Minitest::Test
 
       test('returns error if <script> tag references non-JavaScript asset with displace format') do
         error = Darkroom::Asset::HTMLDelegate.validate_reference.(
-          new_asset('/robots.txt'),
+          new_asset('/robots.txt', ''),
           reference_match("<script href='/robots.txt?asset-content=displace'></script>"),
           'displace',
         )
@@ -78,7 +78,7 @@ class HTMLDelegateTest < Minitest::Test
 
       test('returns no error if <script> tag references JavaScript asset with displace format') do
         error = Darkroom::Asset::HTMLDelegate.validate_reference.(
-          new_asset('/app.js'),
+          new_asset('/app.js', ''),
           reference_match("<script src='/app.js?asset-content=displace'></script>"),
           'displace',
         )
@@ -88,7 +88,7 @@ class HTMLDelegateTest < Minitest::Test
 
       test('returns error if <img> tag references non-SVG asset with displace format') do
         error = Darkroom::Asset::HTMLDelegate.validate_reference.(
-          new_asset('/robots.txt'),
+          new_asset('/robots.txt', ''),
           reference_match("<img src='/robots.txt?asset-content=displace'>"),
           'displace',
         )
@@ -98,7 +98,7 @@ class HTMLDelegateTest < Minitest::Test
 
       test('returns no error if <img> tag references SVG asset with displace format') do
         error = Darkroom::Asset::HTMLDelegate.validate_reference.(
-          new_asset('/logo.svg'),
+          new_asset('/logo.svg', ''),
           reference_match("<img src='/logo.svg?asset-content=displace'>"),
           'displace',
         )
@@ -109,7 +109,7 @@ class HTMLDelegateTest < Minitest::Test
       test('returns error if tag isn\'t <link>, <script>, or <img> with displace format') do
         %w[a area audio base embed iframe input source track video].each do |tag|
           error = Darkroom::Asset::HTMLDelegate.validate_reference.(
-            new_asset('/logo.svg'),
+            new_asset('/logo.svg', ''),
             reference_match("<#{tag} href='/logo.svg?asset-content=displace'></#{tag}>"),
             'displace',
           )
