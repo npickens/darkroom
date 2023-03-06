@@ -8,7 +8,7 @@ class Darkroom
     ##
     # Creates a new instance.
     #
-    # * +errors+ - Error or array of errors.
+    # [errors] Error or array of errors.
     #
     def initialize(errors)
       @errors = Array(errors)

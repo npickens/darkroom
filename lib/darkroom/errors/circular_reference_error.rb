@@ -10,9 +10,9 @@ class Darkroom
     ##
     # Creates a new instance.
     #
-    # * +snippet+ - Snippet showing the reference.
-    # * +source_path+ - Path of the asset that contains the error.
-    # * +source_line_num+ - Line number in the asset where the error is located.
+    # [snippet] Snippet showing the reference.
+    # [source_path] Path of the asset that contains the error.
+    # [source_line_num] Line number in the asset where the error is located.
     #
     def initialize(snippet, source_path, source_line_num)
       super('Reference would result in a circular reference chain', snippet, source_path, source_line_num)

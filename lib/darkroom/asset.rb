@@ -43,32 +43,35 @@ class Darkroom
     ##
     # Holds information about how to handle a particular asset type.
     #
-    # * +content_type+ - HTTP MIME type string.
-    # * +import_regex+ - Regex to find import statements. Must contain a named component called 'path'
-    #   (e.g. +/^import (?<path>.*)/+).
-    # * +reference_regex+ - Regex to find references to other assets. Must contain three named components:
-    #   * +path+ - Path of the asset being referenced.
-    #   * +entity+ - Desired entity (path or content).
-    #   * +format+ - Format to use (see REFERENCE_FORMATS).
-    # * +validate_reference+ - Lambda to call to validate a reference. Should return nil if there are no
-    #   errors and a string error message if validation fails. Three arguments are passed when called:
-    #   * +asset+ - Asset object of the asset being referenced.
-    #   * +match+ - MatchData object from the match against +reference_regex+.
-    #   * +format+ - Format of the reference (see REFERENCE_FORMATS).
-    # * +reference_content+ - Lambda to call to get the content for a reference. Should return nil if the
-    #   default behavior is desired or a string for custom content. Three arguments are passed when called:
-    #   * +asset+ - Asset object of the asset being referenced.
-    #   * +match+ - MatchData object from the match against +reference_regex+.
-    #   * +format+ - Format of the reference (see REFERENCE_FORMATS).
-    # * +compile_lib+ - Name of a library to +require+ that is needed by the +compile+ lambda.
-    # * +compile+ - Lambda to call that will return the compiled version of the asset's content. Two
-    #   arguments are passed when called:
-    #   * +path+ - Path of the asset being compiled.
-    #   * +content+ - Content to compile.
-    # * +minify_lib+ - Name of a library to +require+ that is needed by the +minify+ lambda.
-    # * +minify+ - Lambda to call that will return the minified version of the asset's content. One argument
-    #   is passed when called:
-    #   * +content+ - Content to minify.
+    # [content_type:] HTTP MIME type string.
+    # [import_regex:] Regex to find import statements (optional). Must contain a named component called
+    #                 +path+ (e.g. <tt>/^import (?<path>.*)/</tt>).
+    # [reference_regex:] Regex to find references to other assets (optional). Must contain three named
+    #                    components:
+    #                    * +path+ - Path of the asset being referenced.
+    #                    * +entity+ - Desired entity (path or content).
+    #                    * +format+ - Format to use (see REFERENCE_FORMATS).
+    # [validate_reference:] Lambda to call to validate a reference (optional). Should return nil if there
+    #                       are no errors and a string error message if validation fails. Three arguments
+    #                       are passed when called:
+    #                       * +asset+ - Asset object of the asset being referenced.
+    #                       * +match+ - MatchData object from the match against +reference_regex+.
+    #                       * +format+ - Format of the reference (see REFERENCE_FORMATS).
+    # [reference_content:] Lambda to call to get the content for a reference (optional). Should return nil
+    #                      if the default behavior is desired or a string for custom content. Three
+    #                      arguments are passed when called:
+    #                      * +asset+ - Asset object of the asset being referenced.
+    #                      * +match+ - MatchData object from the match against +reference_regex+.
+    #                      * +format+ - Format of the reference (see REFERENCE_FORMATS).
+    # [compile_lib:] Name of a library to +require+ that is needed by the +compile+ lambda (optional).
+    # [compile:] Lambda to call that will return the compiled version of the asset's content (optional). Two
+    #            arguments are passed when called:
+    #            * +path+ - Path of the asset being compiled.
+    #            * +content+ - Content to compile.
+    # [minify_lib:] Name of a library to +require+ that is needed by the +minify+ lambda (optional).
+    # [minify:] Lambda to call that will return the minified version of the asset's content (optional). One
+    #           argument is passed when called:
+    #           * +content+ - Content to minify.
     #
     Delegate = Struct.new(:content_type, :import_regex, :reference_regex, :validate_reference,
       :reference_content, :compile_lib, :compile, :minify_lib, :minify, keyword_init: true)
@@ -76,8 +79,8 @@ class Darkroom
     ##
     # Registers a delegate.
     #
-    # * +delegate+ - An HTTP MIME type string, a Hash of Delegate parameters, or a Delegate instance.
-    # * +extensions+ - File extension(s) to associate with this delegate.
+    # [*extensions] One or more file extension(s) to associate with this delegate.
+    # [delegate] An HTTP MIME type string, a Hash of Delegate parameters, or a Delegate instance.
     #
     def self.register(*extensions, delegate)
       case delegate
@@ -106,13 +109,13 @@ class Darkroom
     ##
     # Creates a new instance.
     #
-    # * +file+ - Path of file on disk.
-    # * +path+ - Path this asset will be referenced by (e.g. /js/app.js).
-    # * +darkroom+ - Darkroom instance that the asset is a member of.
-    # * +prefix+ - Prefix to apply to unversioned and versioned paths.
-    # * +minify+ - Boolean specifying whether or not the asset should be minified when processed.
-    # * +internal+ - Boolean indicating whether or not the asset is only accessible internally (i.e. as an
-    #   import or reference).
+    # [file] Path of file on disk.
+    # [path] Path this asset will be referenced by (e.g. /js/app.js).
+    # [darkroom] Darkroom instance that the asset is a member of.
+    # [prefix:] Prefix to apply to unversioned and versioned paths.
+    # [minify:] Boolean specifying whether or not the asset should be minified when processed.
+    # [internal:] Boolean indicating whether or not the asset is only accessible internally (i.e. as an
+    #             import or reference).
     #
     def initialize(path, file, darkroom, prefix: nil, minify: false, internal: false)
       @path = path
@@ -188,7 +191,7 @@ class Darkroom
     ##
     # Returns appropriate HTTP headers.
     #
-    # * +versioned+ - Uses Cache-Control header with max-age if +true+ and ETag header if +false+.
+    # [versioned:] Uses Cache-Control header with max-age if +true+ and ETag header if +false+.
     #
     def headers(versioned: true)
       {
@@ -201,7 +204,7 @@ class Darkroom
     ##
     # Returns full asset content.
     #
-    # * +minified+ - Boolean indicating whether or not to return minified version if it is available.
+    # [minified:] Boolean indicating whether or not to return minified version if it is available.
     #
     def content(minified: true)
       unless @content
@@ -230,8 +233,8 @@ class Darkroom
     ##
     # Returns subresource integrity string.
     #
-    # * +algorithm+ - Hash algorithm to use to generate the integrity string (one of :sha256, :sha384, or
-    #   :sha512).
+    # [algorithm] Hash algorithm to use to generate the integrity string (one of +:sha256+, +:sha384+, or
+    #             +:sha512+).
     #
     def integrity(algorithm = :sha384)
       @integrity[algorithm] ||= "#{algorithm}-#{Base64.strict_encode64(
@@ -299,8 +302,8 @@ class Darkroom
     ##
     # Returns all dependencies (including dependencies of dependencies).
     #
-    # * +ignore+ - Assets already accounted for as dependency tree is walked (to prevent infinite loops when
-    #   circular chains are encountered).
+    # [ignore] Assets already accounted for as dependency tree is walked (to prevent infinite loops when
+    #          circular chains are encountered).
     #
     def dependencies(ignore = nil)
       return @dependencies if @dependencies
@@ -314,8 +317,8 @@ class Darkroom
     ##
     # Returns all imports (including imports of imports).
     #
-    # * +ignore+ - Assets already accounted for as import tree is walked (to prevent infinite loops when
-    #   circular chains are encountered).
+    # [ignore] Assets already accounted for as import tree is walked (to prevent infinite loops when
+    #          circular chains are encountered).
     #
     def imports(ignore = nil)
       return @imports if @imports
@@ -505,9 +508,9 @@ class Darkroom
     ##
     # Utility method used by #dependencies and #imports to recursively build arrays.
     #
-    # * +name+ - Name of the array to accumulate (:dependencies or :imports).
-    # * +ignore+ - Set of assets already accumulated which can be ignored (used to avoid infinite loops when
-    #   circular references are encountered).
+    # [name] Name of the array to accumulate (:dependencies or :imports).
+    # [ignore] Set of assets already accumulated which can be ignored (used to avoid infinite loops when
+    #          circular references are encountered).
     #
     def accumulate(name, ignore)
       ignore ||= Set.new
@@ -528,8 +531,8 @@ class Darkroom
     ##
     # Utility method that returns the appropriate error for a dependency that doesn't exist.
     #
-    # * +path+ - Path of the asset which cannot be found.
-    # * +match+ - MatchData object of the regex for the asset that cannot be found.
+    # [path] Path of the asset which cannot be found.
+    # [match] MatchData object of the regex for the asset that cannot be found.
     #
     def not_found_error(path, match)
       klass = @@delegates[File.extname(path)] ? AssetNotFoundError : UnrecognizedExtensionError
@@ -539,7 +542,7 @@ class Darkroom
     ##
     # Utility method that returns the line number where a regex match was found.
     #
-    # * +match+ - MatchData object of the regex.
+    # [match] MatchData object of the regex.
     #
     def line_num(match)
       @own_content[0..match.begin(:path)].count("\n") + 1

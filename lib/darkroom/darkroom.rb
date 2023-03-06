@@ -23,8 +23,8 @@ class Darkroom
   ##
   # Registers an asset delegate.
   #
-  # * +delegate+ - An HTTP MIME type string, a Hash of Delegate parameters, or a Delegate instance.
-  # * +extensions+ - File extension(s) to associate with this delegate.
+  # [*extensions] File extension(s) to associate with this delegate.
+  # [delegate] An HTTP MIME type string, a Hash of Delegate parameters, or a Delegate instance.
   #
   def self.register(*extensions, delegate)
     Asset.register(*extensions, delegate)
@@ -33,7 +33,7 @@ class Darkroom
   ##
   # Returns the delegate associated with a file extension.
   #
-  # * +extension+ - File extension of the desired delegate.
+  # [extension] File extension of the desired delegate.
   #
   def self.delegate(extension)
     warn('Darkroom.delegate is deprecated and will be removed in a future version.')
@@ -44,19 +44,19 @@ class Darkroom
   ##
   # Creates a new instance.
   #
-  # * +load_paths+ - Path(s) where assets are located on disk.
-  # * +host+ - Host(s) to prepend to paths (useful when serving from a CDN in production). If multiple hosts
-  #   are specified, they will be round-robined within each thread for each call to +#asset_path+.
-  # * +hosts+ - Alias of +host+ parameter.
-  # * +prefix+ - Prefix to prepend to asset paths (e.g. +/assets+).
-  # * +pristine+ - Path(s) that should not include prefix and for which unversioned form should be provided
-  #   by default (e.g. +/favicon.ico+).
-  # * +minify+ - Boolean specifying whether or not to minify assets.
-  # * +minified_pattern+ - Regex used against asset paths to determine if they are already minified and
-  #   should therefore be skipped over for minification.
-  # * +internal_pattern+ - Regex used against asset paths to determine if they should be marked as internal
-  #   and therefore made inaccessible externally.
-  # * +min_process_interval+ - Minimum time required between one run of asset processing and another.
+  # [*load_paths] One or more paths where assets are located on disk.
+  # [host:] Host(s) to prepend to paths (useful when serving from a CDN in production). If multiple hosts
+  #         are specified, they will be round-robined within each thread for each call to +#asset_path+.
+  # [hosts:] Alias of +host:+.
+  # [prefix:] Prefix to prepend to asset paths (e.g. +/assets+).
+  # [pristine:] Path(s) that should not include prefix and for which unversioned form should be provided by
+  #             default (e.g. +/favicon.ico+).
+  # [minify:] Boolean specifying whether or not to minify assets.
+  # [minified_pattern:] Regex used against asset paths to determine if they are already minified and should
+  #                     therefore be skipped over for minification.
+  # [internal_pattern:] Regex used against asset paths to determine if they should be marked as internal and
+  #                     therefore made inaccessible externally.
+  # [min_process_interval:] Minimum time required between one run of asset processing and another.
   #
   def initialize(*load_paths, host: nil, hosts: nil, prefix: nil, pristine: nil, minify: false,
       minified_pattern: DEFAULT_MINIFIED_PATTERN, internal_pattern: DEFAULT_INTERNAL_PATTERN,
@@ -169,7 +169,7 @@ class Darkroom
   #   darkroom.asset('/assets/js/app.<hash>.js')
   #   darkroom.asset('/assets/js/app.js')
   #
-  # * +path+ - External path of the asset.
+  # [path] External path of the asset.
   #
   def asset(path)
     @manifest_versioned[path] || @manifest_unversioned[path]
@@ -186,8 +186,8 @@ class Darkroom
   #
   # Raises an AssetNotFoundError if the asset doesn't exist.
   #
-  # * +path+ - Internal path of the asset.
-  # * +versioned+ - Boolean indicating whether the versioned or unversioned path should be returned.
+  # [path] Internal path of the asset.
+  # [versioned:] Boolean indicating whether the versioned or unversioned path should be returned.
   #
   def asset_path(path, versioned: !@pristine.include?(path))
     asset = @manifest[path] or raise(AssetNotFoundError.new(path))
@@ -202,8 +202,8 @@ class Darkroom
   # Returns an asset's subresource integrity string. Raises an AssetNotFoundError if the asset doesn't
   # exist.
   #
-  # * +path+ - Internal path of the asset.
-  # * +algorithm+ - Hash algorithm to use to generate the integrity string (see Asset#integrity).
+  # [path] Internal path of the asset.
+  # [algorithm] Hash algorithm to use to generate the integrity string (see Asset#integrity).
   #
   def asset_integrity(path, algorithm = nil)
     asset = @manifest[path] or raise(AssetNotFoundError.new(path))
@@ -214,7 +214,7 @@ class Darkroom
   ##
   # Returns the asset from the manifest hash associated with the given path.
   #
-  # * +path+ - Internal path of the asset.
+  # [path] Internal path of the asset.
   #
   def manifest(path)
     @manifest[path]
@@ -224,12 +224,12 @@ class Darkroom
   # Writes assets to disk. This is useful when deploying to a production environment where assets will be
   # uploaded to and served from a CDN or proxy server.
   #
-  # * +dir+ - Directory to write the assets to.
-  # * +clear+ - Boolean indicating whether or not the existing contents of the directory should be deleted
-  #   before performing the dump.
-  # * +include_pristine+ - Boolean indicating whether or not to include pristine assets (when dumping for
-  #   the purpose of uploading to a CDN, assets such as /robots.txt and /favicon.ico don't need to be
-  #   included).
+  # [dir] Directory to write the assets to.
+  # [clear:] Boolean indicating whether or not the existing contents of the directory should be deleted
+  #          before performing the dump.
+  # [include_pristine:] Boolean indicating whether or not to include pristine assets (when dumping for the
+  #                     purpose of uploading to a CDN, assets such as /robots.txt and /favicon.ico don't
+  #                     need to be included).
   #
   def dump(dir, clear: false, include_pristine: true)
     require('fileutils')

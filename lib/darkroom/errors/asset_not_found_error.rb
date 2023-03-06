@@ -11,9 +11,9 @@ class Darkroom
     ##
     # Creates a new instance.
     #
-    # * +path+ - Path of asset that doesn't exist.
-    # * +source_path+ - Path of the asset that contains the error (optional).
-    # * +source_line_num+ - Line number in the asset where the error is located (optional).
+    # [path] Path of asset that doesn't exist.
+    # [source_path] Path of the asset that contains the error.
+    # [source_line_num] Line number in the asset where the error is located.
     #
     def initialize(path, source_path = nil, source_line_num = nil)
       super('Asset not found', path, source_path, source_line_num)

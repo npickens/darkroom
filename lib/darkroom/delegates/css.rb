@@ -4,9 +4,6 @@ require_relative('../asset')
 
 class Darkroom
   class Asset
-    ##
-    # Delegate for CSS assets.
-    #
     CSSDelegate = Delegate.new(
       content_type: 'text/css',
       import_regex: /^ *@import +#{QUOTED_PATH.source} *; *(\n|$)/.freeze,

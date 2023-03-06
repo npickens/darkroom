@@ -10,10 +10,10 @@ class Darkroom
     ##
     # Creates a new instance.
     #
-    # * +message+ - Description of the error.
-    # * +detail+ - Additional detail about the error.
-    # * +source_path+ - Path of the asset that contains the error (optional).
-    # * +source_line_num+ - Line number in the asset where the error is located (optional).
+    # [message] Description of the error.
+    # [detail] Additional detail about the error.
+    # [source_path] Path of the asset that contains the error.
+    # [source_line_num] Line number in the asset where the error is located.
     #
     def initialize(message, detail, source_path = nil, source_line_num = nil)
       super(message)

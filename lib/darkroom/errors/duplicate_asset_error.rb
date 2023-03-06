@@ -10,9 +10,9 @@ class Darkroom
     ##
     # Creates a new instance.
     #
-    # * +path+ - Path of the asset that exists under multiple load paths.
-    # * +first_load_path+ - Load path where the asset was first found.
-    # * +second_load_path+ - Load path where the asset was subsequently found.
+    # [path] Path of the asset that exists under multiple load paths.
+    # [first_load_path] Load path where the asset was first found.
+    # [second_load_path] Load path where the asset was subsequently found.
     #
     def initialize(path, first_load_path, second_load_path)
       @path = path
