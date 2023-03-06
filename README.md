@@ -51,7 +51,7 @@ gem('terser') # JavaScript and HTX minification
 
 ## Usage
 
-To create and start using a Darkroom instance, specify one or more load paths (all other arguments are
+To create and start using a Darkroom instance, specify one or more load paths (all keyword arguments are
 optional):
 
 ```ruby
@@ -229,8 +229,8 @@ replaced appropriately.
 
 ## Extending
 
-Darkroom is extensible. Support for arbitrary file types can be added as follows (all named parameters are
-optional):
+Darkroom is extensible. Support for arbitrary file types can be added as follows (`content_type` is required
+but all other keyword arguments are optional):
 
 ```ruby
 # Simple type with no special behavior.
