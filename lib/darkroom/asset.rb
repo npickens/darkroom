@@ -74,7 +74,7 @@ class Darkroom
     #           * +content+ - Content to minify.
     #
     Delegate = Struct.new(:content_type, :import_regex, :reference_regex, :validate_reference,
-      :reference_content, :compile_lib, :compile, :minify_lib, :minify, keyword_init: true)
+      :reference_content, :compile_lib, :compile, :compiled, :minify_lib, :minify, keyword_init: true)
 
     ##
     # Registers a delegate.
@@ -116,8 +116,10 @@ class Darkroom
     # [minify:] Boolean specifying whether or not the asset should be minified when processed.
     # [internal:] Boolean indicating whether or not the asset is only accessible internally (i.e. as an
     #             import or reference).
+    # [intermediate:] Boolean indicating whether or not the asset exists solely to provide an intermediate
+    #                 form (e.g. compiled) to another asset instance.
     #
-    def initialize(path, file, darkroom, prefix: nil, minify: false, internal: false)
+    def initialize(path, file, darkroom, prefix: nil, minify: false, internal: false, intermediate: false)
       @path = path
       @file = file
       @darkroom = darkroom
@@ -128,6 +130,16 @@ class Darkroom
       @path_unversioned = "#{@prefix}#{@path}"
       @extension = File.extname(@path).downcase
       @delegate = @@delegates[@extension] or raise(UnrecognizedExtensionError.new(@path))
+
+      if @delegate.compiled && !intermediate
+        @delegate = @delegate.compiled
+        @intermediate_asset = Asset.new(@path, @file, @darkroom,
+          prefix: @prefix,
+          minify: false,
+          internal: true,
+          intermediate: true,
+        )
+      end
 
       require_libs
       clear
@@ -144,6 +156,12 @@ class Darkroom
       modified? ? (@processed = true) : (return @processed = false)
 
       clear
+
+      if @intermediate_asset
+        @intermediate_asset.process
+        @errors.concat(@intermediate_asset.errors)
+      end
+
       read
       build_imports
       build_references
@@ -292,7 +310,8 @@ class Darkroom
 
       begin
         @modified = !!@error
-        @modified ||= @mtime != (@mtime = File.mtime(@file))
+        @modified ||= !!@intermediate_asset && @intermediate_asset.modified?
+        @modified ||= !@intermediate_asset && (@mtime != (@mtime = File.mtime(@file)))
         @modified ||= dependencies.any? { |d| d.modified? }
       rescue Errno::ENOENT
         @modified = true
@@ -365,7 +384,7 @@ class Darkroom
     # Reads the asset file into memory.
     #
     def read
-      @own_content = File.read(@file)
+      @own_content = @intermediate_asset ? @intermediate_asset.own_content : File.read(@file)
     rescue Errno::ENOENT
       # Gracefully handle file deletion.
       @own_content = ''

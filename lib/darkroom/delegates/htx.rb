@@ -14,8 +14,7 @@ class Darkroom
       reference_content: HTMLDelegate.reference_content,
       compile_lib: 'htx',
       compile: ->(path, content) { HTX.compile(path, content) },
-      minify_lib: JavaScriptDelegate.minify_lib,
-      minify: JavaScriptDelegate.minify,
+      compiled: JavaScriptDelegate,
     )
   end
 end

@@ -111,6 +111,19 @@ class AssetTest < Minitest::Test
         assert_equal('[compiled]', asset.content)
       end
 
+      test('processes using compiled delegate if one is implemented') do
+        asset = new_asset('/template.htx', '<div>${this.hello}</div>')
+        import = new_asset('/import.js', '[import]')
+
+        HTX.stub(:compile, ->(*args) do
+          +"import '/import.js'\n\n[compiled]"
+        end) do
+          asset.process
+        end
+
+        assert_equal("[import]\n\n[compiled]", asset.content)
+      end
+
       test('minifies content if implemented in delegate and minification is enabled') do
         content = 'body { background: white; }'
         asset = new_asset('/app.css', content, minify: true)
@@ -236,6 +249,29 @@ class AssetTest < Minitest::Test
         assert_kind_of(Darkroom::AssetError, circular1.errors[0])
         assert_equal('/circular1.html:1: Reference would result in a circular reference chain: '\
           "<a href='/circular2.html?asset-path'>", circular1.errors[0].to_s)
+      end
+
+      test('registers errors of intermediate asset') do
+        content = <<~EOS
+          <body>
+            <img src='/logo.svg?asset-path'>
+            <img src='/graphic.svg?asset-content'>
+          </body>
+        EOS
+
+        asset = new_asset('/index.htx', content)
+
+        HTX.stub(:compile, ->(*args) { '[compiled]' }) do
+          asset.process
+        end
+
+        assert_equal(2, asset.errors.size)
+
+        assert_kind_of(Darkroom::AssetNotFoundError, asset.errors[0])
+        assert_kind_of(Darkroom::AssetNotFoundError, asset.errors[1])
+
+        assert_equal('/index.htx:2: Asset not found: /logo.svg', asset.errors[0].to_s)
+        assert_equal('/index.htx:3: Asset not found: /graphic.svg', asset.errors[1].to_s)
       end
 
       test('substitutes versioned path of reference when path format is unspecified') do
