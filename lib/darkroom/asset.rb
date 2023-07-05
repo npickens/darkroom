@@ -460,8 +460,7 @@ class Darkroom
     end
 
     ##
-    # Compiles the asset if compilation is supported for the asset's type and appends the asset's own
-    # content to the overall content string.
+    # Compiles the asset if compilation is supported for the asset's type.
     #
     def compile
       @own_content = @delegate.compile.(@path, @own_content) if @delegate.compile
@@ -470,8 +469,7 @@ class Darkroom
     end
 
     ##
-    # Minifies the asset if minification is supported for the asset's type, asset is marked as minifiable
-    # (i.e. it's not already minified), and the asset is not marked as internal-only.
+    # Minifies the asset if minification is supported for the asset's type.
     #
     def minify
       @content_minified = @delegate.minify.(@content) if @delegate.minify
