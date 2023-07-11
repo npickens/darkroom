@@ -452,8 +452,8 @@ class DarkroomTest < Minitest::Test
         darkroom.process
         darkroom.dump(DUMP_DIR)
 
-        assert(File.exists?("#{DUMP_DIR}/app-ef0f76b822009ab847bd6a370e911556.js"))
-        refute(File.exists?("#{DUMP_DIR}/components/header-e84f21b5c4ce60bb92d2e61e2b4d11f1.htx"))
+        assert(File.exist?("#{DUMP_DIR}/app-ef0f76b822009ab847bd6a370e911556.js"))
+        refute(File.exist?("#{DUMP_DIR}/components/header-e84f21b5c4ce60bb92d2e61e2b4d11f1.htx"))
       ensure
         FileUtils.rm_rf(DUMP_DIR)
       end
@@ -467,7 +467,7 @@ class DarkroomTest < Minitest::Test
         darkroom.process
         darkroom.dump(DUMP_DIR)
 
-        assert(File.exists?(DUMP_DIR_EXISTING_FILE))
+        assert(File.exist?(DUMP_DIR_EXISTING_FILE))
       ensure
         FileUtils.rm_rf(DUMP_DIR)
       end
@@ -481,7 +481,7 @@ class DarkroomTest < Minitest::Test
         darkroom.process
         darkroom.dump(DUMP_DIR, clear: true)
 
-        refute(File.exists?(DUMP_DIR_EXISTING_FILE))
+        refute(File.exist?(DUMP_DIR_EXISTING_FILE))
       ensure
         FileUtils.rm_rf(DUMP_DIR)
       end
@@ -495,7 +495,7 @@ class DarkroomTest < Minitest::Test
         darkroom.process
         darkroom.dump(DUMP_DIR, clear: false)
 
-        assert(File.exists?(DUMP_DIR_EXISTING_FILE))
+        assert(File.exist?(DUMP_DIR_EXISTING_FILE))
       ensure
         FileUtils.rm_rf(DUMP_DIR)
       end
@@ -509,7 +509,7 @@ class DarkroomTest < Minitest::Test
         darkroom.process
         darkroom.dump(DUMP_DIR)
 
-        assert(File.exists?("#{DUMP_DIR}/robots.txt"))
+        assert(File.exist?("#{DUMP_DIR}/robots.txt"))
       ensure
         FileUtils.rm_rf(DUMP_DIR)
       end
@@ -523,7 +523,7 @@ class DarkroomTest < Minitest::Test
         darkroom.process
         darkroom.dump(DUMP_DIR, include_pristine: true)
 
-        assert(File.exists?("#{DUMP_DIR}/robots.txt"))
+        assert(File.exist?("#{DUMP_DIR}/robots.txt"))
       ensure
         FileUtils.rm_rf(DUMP_DIR)
       end
@@ -537,7 +537,7 @@ class DarkroomTest < Minitest::Test
         darkroom.process
         darkroom.dump(DUMP_DIR, include_pristine: false)
 
-        refute(File.exists?("#{DUMP_DIR}/robots.txt"))
+        refute(File.exist?("#{DUMP_DIR}/robots.txt"))
       ensure
         FileUtils.rm_rf(DUMP_DIR)
       end
