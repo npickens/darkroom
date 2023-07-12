@@ -240,7 +240,6 @@ class Darkroom
     Dir.each_child(dir) { |child| FileUtils.rm_rf(File.join(dir, child)) } if clear
 
     @manifest_versioned.each do |path, asset|
-      next if asset.internal?
       next if @pristine.include?(asset.path) && !include_pristine
 
       file_path = File.join(dir,
