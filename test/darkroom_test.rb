@@ -16,20 +16,30 @@ class DarkroomTest < Minitest::Test
     ########################################################################################################
 
     context('#process') do
-      test('skips processing if minimum process interval has not elapsed since last call') do
+      test('returns true if processing was performed') do
         write_files('/assets/app.js' => "console.log('Hello')")
 
-        darkroom('/assets', min_process_interval: 2)
+        darkroom('/assets')
+        did_process = darkroom.process
+
+        assert(did_process)
+      end
+
+      test('skips processing and returns false if last run was less than min_process_interval ago') do
+        write_files('/assets/app.js' => "console.log('Hello')")
+
+        darkroom('/assets', min_process_interval: 9999)
         darkroom.process
 
         write_files('/assets/tmp.txt' => 'Temporary...')
-        darkroom.process
+        did_process = darkroom.process
 
+        refute(did_process)
         assert(darkroom.asset('/app.js'))
         assert_nil(darkroom.asset('/tmp.txt'))
       end
 
-      test('skips processing if another thread is currently processing') do
+      test('skips processing and returns false if another thread is currently processing') do
         mutex_mock = Minitest::Mock.new
         def mutex_mock.locked?() (@locked_calls = (@locked_calls || 0) + 1) == 2 end
         def mutex_mock.synchronize(&block) block.call end
@@ -38,10 +48,12 @@ class DarkroomTest < Minitest::Test
           write_files('/assets/app.js' => "console.log('Hello')")
 
           darkroom('/assets', min_process_interval: 0)
-          darkroom.process
+          did_process = darkroom.process
+          assert(did_process)
 
           write_files('/assets/tmp.txt' => 'Temporary...')
-          darkroom.process
+          did_process = darkroom.process
+          refute(did_process)
         end
 
         assert(darkroom.asset('/app.js'))
@@ -92,6 +104,10 @@ class DarkroomTest < Minitest::Test
     ########################################################################################################
 
     context('#process!') do
+      test('calls #process and returns its return value') do
+        assert_equal('some value', darkroom.stub(:process, 'some value') { darkroom.process! })
+      end
+
       test('raises ProcessingError if there were one or more errors during processing') do
         write_files(
           '/assets/bad-imports.js' => <<~EOS,
@@ -113,6 +129,19 @@ class DarkroomTest < Minitest::Test
           "  /bad-imports.js:2: Asset not found: /also-does-not-exist.js",
           error.to_s
         )
+      end
+
+      test('does not raise ProcessingError if last run was less than min_process_interval ago') do
+        write_files('/assets/bad-imports.js' => 'import \'/does-not-exist.js\'')
+
+        darkroom('/assets', min_process_interval: 9999)
+        darkroom.process! rescue nil
+
+        begin
+          darkroom.process!
+        rescue Darkroom::ProcessingError => e
+          flunk('Darkroom::ProcessingError not expected but was raised')
+        end
       end
     end
 

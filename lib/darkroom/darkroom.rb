@@ -89,14 +89,15 @@ class Darkroom
 
   ##
   # Walks all load paths and refreshes any assets that have been modified on disk since the last call to
-  # this method.
+  # this method. Returns false if processing was skipped due to previous call happening less than
+  # min_process_interval ago or because another thread was already processing; returns true otherwise.
   #
   def process
-    return if Time.now.to_f - @last_processed_at < @min_process_interval
+    return false if Time.now.to_f - @last_processed_at < @min_process_interval
 
     if @mutex.locked?
       @mutex.synchronize {}
-      return
+      return false
     end
 
     @mutex.synchronize do
@@ -138,6 +139,8 @@ class Darkroom
 
         @errors.concat(asset.errors)
       end
+
+      true
     ensure
       @last_processed_at = Time.now.to_f
       @error = @errors.empty? ? nil : ProcessingError.new(@errors)
@@ -145,12 +148,13 @@ class Darkroom
   end
 
   ##
-  # Does the same thing as #process, but raises an exception if any errors were encountered.
+  # Calls #process. If processing was skipped, returns false. If processing was performed, raises an
+  # exception if any errors were encountered and returns true otherwise.
   #
   def process!
-    process
+    result = process
 
-    raise(@error) if @error
+    (result && @error) ? raise(@error) : result
   end
 
   ##
