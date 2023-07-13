@@ -7,12 +7,12 @@ require_relative('asset_test')
 class HTMLDelegateTest < Minitest::Test
   include(TestHelper)
 
-  context('Darkroom::Asset::HTMLDelegate') do
+  context('Darkroom::HTMLDelegate') do
     ########################################################################################################
-    ## ::reference_regex                                                                                  ##
+    ## ::regex(:reference)                                                                                ##
     ########################################################################################################
 
-    context('::reference_regex') do
+    context('::regex(:reference)') do
       test('matches references with proper syntax') do
         {
           %q(<img src=/logo.svg?asset-path>)               => ['/logo.svg', 'path', nil],
@@ -25,7 +25,7 @@ class HTMLDelegateTest < Minitest::Test
           %q(<img src='/logo.svg?asset-content=utf8'>)     => ['/logo.svg', 'content', 'utf8'],
           %q(<img src='/logo.svg?asset-content=displace'>) => ['/logo.svg', 'content', 'displace'],
         }.each do |content, (path, entity, format)|
-          match = content.match(Darkroom::Asset::HTMLDelegate.reference_regex)
+          match = content.match(Darkroom::HTMLDelegate.regex(:reference))
 
           assert(match)
           assert_equal(path, match[:path])
@@ -35,140 +35,121 @@ class HTMLDelegateTest < Minitest::Test
       end
 
       test('does not match references with bad syntax') do
-        regex = Darkroom::Asset::HTMLDelegate.reference_regex
+        regex = Darkroom::HTMLDelegate.regex(:reference)
 
         refute_match(regex, %q(<img src= '/logo.svg?asset-path'>))
       end
     end
 
     ########################################################################################################
-    ## ::validate_reference                                                                               ##
+    ## ::handler(:reference)                                                                              ##
     ########################################################################################################
 
-    context('::validate_reference') do
-      test('returns error if <link> tag references non-CSS asset with displace format') do
-        error = Darkroom::Asset::HTMLDelegate.validate_reference.(
-          new_asset('/robots.txt', ''),
-          reference_match("<link href='/robots.txt?asset-content=displace'>"),
-          'displace',
-        )
+    context('::handler(:reference)') do
+      test('throws error if <link> tag references non-CSS asset with displace format') do
+        error = catch(:error) do
+          Darkroom::HTMLDelegate.handler(:reference).call(
+            parse_data: {},
+            match: reference_match("<link href='/robots.txt?asset-content=displace'>"),
+            asset: new_asset('/robots.txt', ''),
+            format: 'displace',
+          ); nil
+        end
 
-        assert_equal('Asset type must be text/css', error)
+        assert_equal('Asset content type must be text/css', error)
       end
 
-      test('returns no error if <link> tag references CSS asset with displace format') do
-        error = Darkroom::Asset::HTMLDelegate.validate_reference.(
-          new_asset('/app.css', ''),
-          reference_match("<link href='/app.css?asset-content=displace'>"),
-          'displace',
-        )
+      test('throws error if <script> tag references non-JavaScript asset with displace format') do
+        error = catch(:error) do
+          Darkroom::HTMLDelegate.handler(:reference).call(
+            parse_data: {},
+            match: reference_match("<script href='/robots.txt?asset-content=displace'></script>"),
+            asset: new_asset('/robots.txt', ''),
+            format: 'displace',
+          ); nil
+        end
 
-        refute(error)
+        assert_equal('Asset content type must be text/javascript', error)
       end
 
-      test('returns error if <script> tag references non-JavaScript asset with displace format') do
-        error = Darkroom::Asset::HTMLDelegate.validate_reference.(
-          new_asset('/robots.txt', ''),
-          reference_match("<script href='/robots.txt?asset-content=displace'></script>"),
-          'displace',
-        )
+      test('throws error if <img> tag references non-SVG asset with displace format') do
+        error = catch(:error) do
+          Darkroom::HTMLDelegate.handler(:reference).call(
+            parse_data: {},
+            match: reference_match("<img src='/robots.txt?asset-content=displace'>"),
+            asset: new_asset('/robots.txt', ''),
+            format: 'displace',
+          ); nil
+        end
 
-        assert_equal('Asset type must be text/javascript', error)
+        assert_equal('Asset content type must be image/svg+xml', error)
       end
 
-      test('returns no error if <script> tag references JavaScript asset with displace format') do
-        error = Darkroom::Asset::HTMLDelegate.validate_reference.(
-          new_asset('/app.js', ''),
-          reference_match("<script src='/app.js?asset-content=displace'></script>"),
-          'displace',
-        )
-
-        refute(error)
-      end
-
-      test('returns error if <img> tag references non-SVG asset with displace format') do
-        error = Darkroom::Asset::HTMLDelegate.validate_reference.(
-          new_asset('/robots.txt', ''),
-          reference_match("<img src='/robots.txt?asset-content=displace'>"),
-          'displace',
-        )
-
-        assert_equal('Asset type must be image/svg+xml', error)
-      end
-
-      test('returns no error if <img> tag references SVG asset with displace format') do
-        error = Darkroom::Asset::HTMLDelegate.validate_reference.(
-          new_asset('/logo.svg', ''),
-          reference_match("<img src='/logo.svg?asset-content=displace'>"),
-          'displace',
-        )
-
-        refute(error)
-      end
-
-      test('returns error if tag isn\'t <link>, <script>, or <img> with displace format') do
+      test('throws error if tag is not <link>, <script>, or <img> with displace format') do
         %w[a area audio base embed iframe input source track video].each do |tag|
-          error = Darkroom::Asset::HTMLDelegate.validate_reference.(
-            new_asset('/logo.svg', ''),
-            reference_match("<#{tag} href='/logo.svg?asset-content=displace'></#{tag}>"),
-            'displace',
-          )
+          error = catch(:error) do
+            Darkroom::HTMLDelegate.handler(:reference).call(
+              parse_data: {},
+              match: reference_match("<#{tag} href='/logo.svg?asset-content=displace'></#{tag}>"),
+              asset: new_asset('/logo.svg', ''),
+              format: 'displace',
+            ); nil
+          end
 
           assert_equal("Cannot displace <#{tag}> tags", error)
         end
       end
-    end
 
-    ########################################################################################################
-    ## ::reference_content                                                                                ##
-    ########################################################################################################
-
-    context('::reference_content') do
       test('returns <style>...</style> for <link> tag reference with displace format') do
-        result = Darkroom::Asset::HTMLDelegate.reference_content.(
-          new_asset('/app.css', 'body { background: white; }'),
-          reference_match("<link href='/app.css?asset-content=displace'>"),
-          'displace',
+        result = Darkroom::HTMLDelegate.handler(:reference).call(
+          parse_data: {},
+          match: reference_match("<link href='/app.css?asset-content=displace'>"),
+          asset: new_asset('/app.css', 'body { background: white; }'),
+          format: 'displace',
         )
 
         assert_equal("<style>body { background: white; }</style>", result)
       end
 
       test('returns <script>... for <script> tag reference with displace format') do
-        result = Darkroom::Asset::HTMLDelegate.reference_content.(
-          new_asset('/app.js', "console.log('Hello')"),
-          reference_match("<script src='/app.js?asset-content=displace'></script>"),
-          'displace',
+        result = Darkroom::HTMLDelegate.handler(:reference).call(
+          parse_data: {},
+          match: reference_match("<script src='/app.js?asset-content=displace'></script>"),
+          asset: new_asset('/app.js', "console.log('Hello')"),
+          format: 'displace',
         )
 
         assert_equal('<script>console.log(\'Hello\')', result)
       end
 
       test('returns SVG content for <img> tag reference with displace format') do
-        result = Darkroom::Asset::HTMLDelegate.reference_content.(
-          new_asset('/logo.svg', "<svg><circle r='16' fill='#fff'/></svg>"),
-          reference_match("<img src='/logo.svg?asset-content=displace'>"),
-          'displace',
+        result = Darkroom::HTMLDelegate.handler(:reference).call(
+          parse_data: {},
+          match: reference_match("<img src='/logo.svg?asset-content=displace'>"),
+          asset: new_asset('/logo.svg', "<svg><circle r='16' fill='#fff'/></svg>"),
+          format: 'displace',
         )
 
         assert_equal("<svg><circle r='16' fill='#fff'/></svg>", result)
       end
 
-      test('escapes # characters with utf8 format') do
-        result = Darkroom::Asset::HTMLDelegate.reference_content.(
-          new_asset('/logo.svg', "<svg><circle r='16' fill='#fff'/></svg>"),
-          reference_match('<img src="/logo.svg?asset-content=utf8">'),
-          'utf8',
+      test('encodes # characters with utf8 format') do
+        result = Darkroom::HTMLDelegate.handler(:reference).call(
+          parse_data: {},
+          match: reference_match('<img src="/logo.svg?asset-content=utf8">'),
+          asset: new_asset('/logo.svg', "<svg><circle r=16 fill=#fff/></svg>"),
+          format: 'utf8',
         )
 
-        assert_equal("<svg><circle r='16' fill='%23fff'/></svg>", result)
+        assert_equal("<svg><circle r=16 fill=%23fff/></svg>", result)
       end
 
       test('substitutes quotes if needed with utf8 format') do
-        result = Darkroom::Asset::HTMLDelegate.reference_content.(
-          new_asset('/logo.svg', '<svg><circle r=\'16\' fill="white"/></svg>'),
-          reference_match("<img src='/logo.svg?asset-content=utf8'>"),
-          'utf8',
+        result = Darkroom::HTMLDelegate.handler(:reference).call(
+          parse_data: {},
+          match: reference_match("<img src='/logo.svg?asset-content=utf8'>"),
+          asset: new_asset('/logo.svg', '<svg><circle r=\'16\' fill="white"/></svg>'),
+          format: 'utf8',
         )
 
         assert_equal('<svg><circle r="16" fill="white"/></svg>', result)
@@ -188,6 +169,6 @@ class HTMLDelegateTest < Minitest::Test
   end
 
   def reference_match(content)
-    content.match(Darkroom::Asset::HTMLDelegate.reference_regex)
+    content.match(Darkroom::HTMLDelegate.regex(:reference))
   end
 end

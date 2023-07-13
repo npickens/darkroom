@@ -1,53 +1,55 @@
 # frozen_string_literal: true
 
 require_relative('../asset')
+require_relative('../delegate')
 
 class Darkroom
-  class Asset
-    HTMLDelegate = Delegate.new(
-      content_type: 'text/html',
-      reference_regex: %r{
-        <(?<tag>a|area|audio|base|embed|iframe|img|input|link|script|source|track|video)\s+[^>]*
-        (?<attr>href|src)=#{REFERENCE_PATH.source}[^>]*>
-      }x.freeze,
+  class HTMLDelegate < Delegate
+    REFERENCE_REGEX = /
+      <(?<tag>a|area|audio|base|embed|iframe|img|input|link|script|source|track|video)\s+[^>]*
+      (?<attr>href|src)=#{Asset::REFERENCE_REGEX.source}[^>]*>
+    /x.freeze
 
-      validate_reference: ->(asset, match, format) do
-        return unless format == 'displace'
+    content_type('text/html')
 
-        if match[:tag] == 'link'
-          'Asset type must be text/css' unless asset.content_type == 'text/css'
-        elsif match[:tag] == 'script'
-          'Asset type must be text/javascript' unless asset.content_type == 'text/javascript'
-        elsif match[:tag] == 'img'
-          'Asset type must be image/svg+xml' unless asset.content_type == 'image/svg+xml'
-        else
-          "Cannot displace <#{match[:tag]}> tags"
-        end
-      end,
-
-      reference_content: ->(asset, match, format) do
-        case format
-        when 'displace'
-          if match[:tag] == 'link' && asset.content_type == 'text/css'
+    reference(REFERENCE_REGEX) do |parse_data:, match:, asset:, format:|
+      case format
+      when 'displace'
+        case match[:tag]
+        when 'link'
+          if asset.content_type == 'text/css'
             "<style>#{asset.content}</style>"
-          elsif match[:tag] == 'script' && asset.content_type == 'text/javascript'
+          else
+            error('Asset content type must be text/css')
+          end
+        when 'script'
+          if asset.content_type == 'text/javascript'
             offset = match.begin(0)
 
             "#{match[0][0..(match.begin(:attr) - 2 - offset)]}"\
             "#{match[0][(match.end(:quoted) + match[:quote].size - offset)..(match.end(0) - offset)]}"\
             "#{asset.content}"
-          elsif match[:tag] == 'img' && asset.content_type == 'image/svg+xml'
-            asset.content(minified: false)
+          else
+            error('Asset content type must be text/javascript')
           end
-        when 'utf8'
-          quote = match[:quote] == '' ? Asset::DEFAULT_QUOTE : match[:quote]
-
-          content = asset.content.gsub('#', '%23')
-          content.gsub!(quote, quote == "'" ? '"' : "'")
-
-          content
+        when 'img'
+          if asset.content_type == 'image/svg+xml'
+            asset.content(minified: false)
+          else
+            error('Asset content type must be image/svg+xml')
+          end
+        else
+          error("Cannot displace <#{match[:tag]}> tags")
         end
-      end,
-    )
+      when 'utf8'
+        quote = match[:quote] == '' ? Asset::DEFAULT_QUOTE : match[:quote]
+
+        content = asset.content.dup
+        content.gsub!('#', '%23')
+        content.gsub!(quote, quote == "'" ? '"' : "'")
+
+        content
+      end
+    end
   end
 end

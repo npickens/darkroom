@@ -7,12 +7,12 @@ require_relative('test_helper')
 class JavaScriptDelegateTest < Minitest::Test
   include(TestHelper)
 
-  context('Darkroom::Asset::JavaScriptDelegate') do
+  context('Darkroom::JavaScriptDelegate') do
     ########################################################################################################
-    ## ::import_regex                                                                                     ##
+    ## ::regex(:import)                                                                                   ##
     ########################################################################################################
 
-    context('::import_regex') do
+    context('::regex(:import)') do
       test('matches import statements with proper syntax') do
         assert_equal('',                            import_path(%q(import '')))
         assert_equal('',                            import_path(%q(import "")))
@@ -24,7 +24,7 @@ class JavaScriptDelegateTest < Minitest::Test
       end
 
       test('does not match import statements with bad syntax') do
-        regex = Darkroom::Asset::JavaScriptDelegate.import_regex
+        regex = Darkroom::JavaScriptDelegate.regex(:import)
 
         # Bad quoting
         refute_match(regex, %q(import /no-quotes.js))
@@ -53,6 +53,6 @@ class JavaScriptDelegateTest < Minitest::Test
   ##########################################################################################################
 
   def import_path(content)
-    content.match(Darkroom::Asset::JavaScriptDelegate.import_regex)&.[](:path)
+    content.match(Darkroom::JavaScriptDelegate.regex(:import))&.[](:path)
   end
 end

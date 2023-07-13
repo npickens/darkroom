@@ -19,15 +19,14 @@ class Darkroom
     EXTENSION_REGEX = /(?=\.\w+)/.freeze
     DEFAULT_QUOTE = '\''
     DISALLOWED_PATH_CHARS = '\'"`=<>? '
-    INVALID_PATH = /[#{DISALLOWED_PATH_CHARS}]/.freeze
-    QUOTED_PATH = /(?<quote>['"])(?<path>[^'"]*)\k<quote>/.freeze
-    REFERENCE_PATH =
-      %r{
-        (?<quote>['"]?)(?<quoted>
-          (?<path>[^#{DISALLOWED_PATH_CHARS}]+)
-          \?asset-(?<entity>path|content)(=(?<format>\w*))?
-        )\k<quote>
-      }x.freeze
+    INVALID_PATH_REGEX = /[#{DISALLOWED_PATH_CHARS}]/.freeze
+    PATH_REGEX = /(?<path>[^#{DISALLOWED_PATH_CHARS}]*)/.freeze
+    QUOTED_PATH_REGEX = /(?<quote>['"])#{PATH_REGEX.source}\k<quote>/.freeze
+    REFERENCE_REGEX = /
+      (?<quote>['"]?)
+        (?<quoted>#{PATH_REGEX.source}\?asset-(?<entity>path|content)(=(?<format>\w*))?)
+      \k<quote>
+    /x.freeze
 
     # First item of each set is used as default, so order is important.
     REFERENCE_FORMATS = {
@@ -36,42 +35,6 @@ class Darkroom
     }.freeze
 
     attr_reader(:errors, :path, :path_unversioned)
-
-    ##
-    # Holds information about how to handle a particular asset type.
-    #
-    # [content_type:] HTTP MIME type string.
-    # [import_regex:] Regex to find import statements (optional). Must contain a named component called
-    #                 +path+ (e.g. <tt>/^import (?<path>.*)/</tt>).
-    # [reference_regex:] Regex to find references to other assets (optional). Must contain three named
-    #                    components:
-    #                    * +path+ - Path of the asset being referenced.
-    #                    * +entity+ - Desired entity (path or content).
-    #                    * +format+ - Format to use (see REFERENCE_FORMATS).
-    # [validate_reference:] Lambda to call to validate a reference (optional). Should return nil if there
-    #                       are no errors and a string error message if validation fails. Three arguments
-    #                       are passed when called:
-    #                       * +asset+ - Asset object of the asset being referenced.
-    #                       * +match+ - MatchData object from the match against +reference_regex+.
-    #                       * +format+ - Format of the reference (see REFERENCE_FORMATS).
-    # [reference_content:] Lambda to call to get the content for a reference (optional). Should return nil
-    #                      if the default behavior is desired or a string for custom content. Three
-    #                      arguments are passed when called:
-    #                      * +asset+ - Asset object of the asset being referenced.
-    #                      * +match+ - MatchData object from the match against +reference_regex+.
-    #                      * +format+ - Format of the reference (see REFERENCE_FORMATS).
-    # [compile_lib:] Name of a library to +require+ that is needed by the +compile+ lambda (optional).
-    # [compile:] Lambda to call that will return the compiled version of the asset's content (optional). Two
-    #            arguments are passed when called:
-    #            * +path+ - Path of the asset being compiled.
-    #            * +content+ - Content to compile.
-    # [minify_lib:] Name of a library to +require+ that is needed by the +minify+ lambda (optional).
-    # [minify:] Lambda to call that will return the minified version of the asset's content (optional). One
-    #           argument is passed when called:
-    #           * +content+ - Content to minify.
-    #
-    Delegate = Struct.new(:content_type, :import_regex, :reference_regex, :validate_reference,
-      :reference_content, :compile_lib, :compile, :compiled, :minify_lib, :minify, keyword_init: true)
 
     ##
     # Creates a new instance.
@@ -99,8 +62,8 @@ class Darkroom
 
       @keys = {}
 
-      if @delegate.compiled && !intermediate
-        @delegate = @delegate.compiled
+      if @delegate.compile_delegate && !intermediate
+        @delegate = @delegate.compile_delegate
         @intermediate_asset = Asset.new(@path, @file, @darkroom,
           prefix: @prefix,
           entry: false,
@@ -256,20 +219,39 @@ class Darkroom
               content << own_content
             end
           end
-      end
 
-      if @delegate.minify && !@content_minified && (minified || @minify)
         begin
-          @content_minified = @delegate.minify.call(@content)
+          finalized = @delegate.finalize_handler&.call(
+            parse_data: @parse_data,
+            path: @path,
+            content: @content,
+          )
+
+          @content = finalized if finalized.kind_of?(String)
         rescue => e
           @errors << e
         end
       end
 
-      @fingerprint ||= Digest::MD5.hexdigest((@minify && @content_minified) || @content)
+      if @delegate.minify_handler && !@content_minified && (minified || @minify)
+        begin
+          @content_minified = @delegate.minify_handler.call(
+            parse_data: @parse_data,
+            path: @path,
+            content: @content,
+          )
+        rescue => e
+          @errors << e
+        end
+      end
+
+      @fingerprint ||= Digest::MD5.hexdigest((@minify && @content_minified) || @content).freeze
       @path_versioned ||= "#{@prefix}#{@path.sub(EXTENSION_REGEX, "-#{@fingerprint}")}"
 
       (minified && @content_minified) || @content
+    ensure
+      @content.freeze
+      @content_minified.freeze
     end
 
     ##
@@ -320,6 +302,7 @@ class Darkroom
       @own_dependencies = []
       @own_imports = []
       @parse_matches = []
+      @parse_data = {}
 
       @dependencies = nil
       @imports = nil
@@ -365,20 +348,22 @@ class Darkroom
 
       read
 
-      {
-        import: @delegate.import_regex,
-        reference: @delegate.reference_regex
-      }.compact.each do |kind, regex|
+      @delegate.each_parser do |kind, regex, _|
         @own_content.scan(regex) do
           match = Regexp.last_match
+          asset = nil
 
-          if (asset = @darkroom.manifest(match[:path]))
-            @own_dependencies << asset
-            @own_imports << asset if kind == :import
-            @parse_matches << [kind, match, asset]
-          else
-            @errors << not_found_error(match[:path], match)
+          if kind == :import || kind == :reference
+            if (asset = @darkroom.manifest(match[:path]))
+              @own_dependencies << asset
+              @own_imports << asset if kind == :import
+            else
+              @errors << not_found_error(match[:path], match)
+              next
+            end
           end
+
+          @parse_matches << [kind, match, asset]
         end
       end
     end
@@ -429,30 +414,43 @@ class Darkroom
       @parse_matches.sort_by! { |_, match| -match.begin(0) }.each do |kind, match, asset|
         format = nil
 
-        if kind == :import
-          @own_content[match.begin(0)...match.end(0)] = ''
-        else
+        handler = @delegate.handler(kind)
+        handler_args = {
+          parse_data: @parse_data,
+          match: match,
+        }
+        handler_args[:asset] = asset if asset
+
+        if kind == :reference
           format = match[:format]
           format = REFERENCE_FORMATS[match[:entity]].first if format.nil? || format == ''
 
+          handler_args[:format] = format
+
           if asset.dependencies.include?(self)
             errors << CircularReferenceError.new(*line_info(match))
+            next
           elsif !REFERENCE_FORMATS[match[:entity]].include?(format)
             errors << AssetError.new("Invalid reference format '#{format}' (must be one of "\
               "'#{REFERENCE_FORMATS[match[:entity]].join("', '")}')", *line_info(match))
+            next
           elsif match[:entity] == 'content' && format != 'base64' && asset.binary?
             errors << AssetError.new('Base64 encoding is required for binary assets', *line_info(match))
-          elsif (error = @delegate.validate_reference&.(asset, match, format))
-            @errors << AssetError.new(error, *line_info(match))
-          else
-            value, start, finish = @delegate.reference_content&.call(asset, match, format)
-            min_start, max_finish = match.offset(0)
-            start ||= (!format || format == 'displace') ? min_start : match.begin(:quoted)
-            finish ||= (!format || format == 'displace') ? max_finish : match.end(:quoted)
-            start = [[start, min_start].max, max_finish].min
-            finish = [[finish, max_finish].min, min_start].max
+            next
+          end
+        end
 
-            @own_content[start...finish] =
+        error = catch(:error) do
+          value, start, finish = handler&.call(**handler_args)
+
+          min_start, max_finish = match.offset(0)
+          start ||= (!format || format == 'displace') ? min_start : match.begin(:quoted)
+          finish ||= (!format || format == 'displace') ? max_finish : match.end(:quoted)
+          start = [[start, min_start].max, max_finish].min
+          finish = [[finish, max_finish].min, min_start].max
+
+          @own_content[start...finish] =
+            if kind == :reference
               case "#{match[:entity]}-#{format}"
               when 'path-versioned'
                 value || asset.path_versioned
@@ -468,8 +466,14 @@ class Darkroom
               when 'content-displace'
                 value || asset.content
               end
-          end
+            else
+              value || ''
+            end
+
+          nil
         end
+
+        errors << AssetError.new(error, *line_info(match)) if error
       end
 
       @errors.concat(errors.reverse)
@@ -483,12 +487,16 @@ class Darkroom
 
       substitute
 
-      if @delegate.compile
-        begin
-          @own_content = @delegate.compile.call(@path, @own_content) || @own_content
-        rescue => e
-          @errors << e
-        end
+      begin
+        compiled = @delegate.compile_handler&.call(
+          parse_data: @parse_data,
+          path: @path,
+          own_content: @own_content
+        )
+
+        @own_content = compiled if compiled.kind_of?(String)
+      rescue => e
+        @errors << e
       end
     ensure
       @own_content.freeze

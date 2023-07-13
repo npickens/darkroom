@@ -22,10 +22,9 @@ class AssetTest < Minitest::Test
       end
 
       test('requires compile library if delegate specifies one') do
-        Darkroom.register('.dummy-compile',
-          content_type: 'text/dummy-compile',
-          compile_lib: 'dummy_compile'
-        )
+        Darkroom.register('.dummy-compile', 'text/dummy-compile') do
+          compile(lib: 'dummy_compile')
+        end
 
         refute(defined?(DummyCompile), 'Expected DummyCompile to be undefined before asset is initialized.')
         new_asset('/app.dummy-compile')
@@ -35,10 +34,9 @@ class AssetTest < Minitest::Test
       end
 
       test('requires minify library if delegate specifies one and minification is enabled') do
-        Darkroom.register('.dummy-minify',
-          content_type: 'text/dummy-minify',
-          minify_lib: 'dummy_minify',
-        )
+        Darkroom.register('.dummy-minify', 'text/dummy-minify') do
+          minify(lib: 'dummy_minify')
+        end
 
         new_asset('/app.dummy-minify')
         refute(defined?(DummyMinify), 'Expected DummyMinify to be undefined when minification is not '\
@@ -51,10 +49,9 @@ class AssetTest < Minitest::Test
       end
 
       test('raises MissingLibraryError if compile library is not available') do
-        Darkroom.register('.bad-compile',
-          content_type: 'text/bad-compile',
-          compile_lib: 'bad_compile',
-        )
+        Darkroom.register('.bad-compile', 'text/bad-compile') do
+          compile(lib: 'bad_compile')
+        end
 
         error = assert_raises(Darkroom::MissingLibraryError) do
           new_asset('/app.bad-compile')
@@ -67,10 +64,9 @@ class AssetTest < Minitest::Test
       end
 
       test('raises MissingLibraryError if minification is enabled and minify library is missing') do
-        Darkroom.register('.bad-minify',
-          content_type: 'text/bad-minify',
-          minify_lib: 'bad_minify',
-        )
+        Darkroom.register('.bad-minify', 'text/bad-minify') do
+          minify(lib: 'bad_minify')
+        end
 
         begin
           new_asset('/app.bad-minify')
@@ -440,11 +436,10 @@ class AssetTest < Minitest::Test
       end
 
       test('compiles circular imports before including their contents') do
-        Darkroom.register('.simple-compile',
-          content_type: 'text/simple-compile',
-          import_regex: /^import '(?<path>.+)'$/.freeze,
-          compile: ->(_, content) { content.upcase },
-        )
+        Darkroom.register('.simple-compile', 'text/simple-compile') do
+          import(/^import (?<quote>')(?<path>.+)\k<quote>$/.freeze)
+          compile { |parse_data:, path:, own_content:| own_content.upcase }
+        end
 
         asset1 = new_asset('/circular1.simple-compile', "import '/circular2.simple-compile'\ncircular1")
         asset2 = new_asset('/circular2.simple-compile', "import '/circular1.simple-compile'\ncircular2")

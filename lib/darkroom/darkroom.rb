@@ -26,12 +26,25 @@ class Darkroom
   # Registers an asset delegate.
   #
   # [*extensions] One or more file extension(s) to associate with this delegate.
-  # [delegate] An HTTP MIME type string, a Hash of Delegate parameters, or a Delegate instance.
+  # [delegate] An HTTP MIME type string or a Delegate subclass.
   #
-  def self.register(*extensions, delegate)
-    case delegate
-    when String then delegate = Asset::Delegate.new(content_type: delegate.freeze)
-    when Hash then  delegate = Asset::Delegate.new(**delegate)
+  def self.register(*extensions, delegate, &block)
+    if delegate.kind_of?(String)
+      content_type = delegate
+
+      if delegate[0] == '.'
+        extensions << delegate
+        content_type = nil
+      end
+
+      delegate = Class.new(Delegate, &block)
+      delegate.content_type(content_type) if content_type && !delegate.content_type
+    elsif delegate.kind_of?(Hash)
+      deprecated("#{self.name}.register with a Hash is deprecated: use the Delegate DSL inside a block "\
+        'instead')
+      delegate = Delegate.deprecated_from_hash(**delegate)
+    elsif delegate && delegate < Delegate
+      delegate = block ? Class.new(delegate, &block) : delegate
     end
 
     extensions.each do |extension|
@@ -145,7 +158,7 @@ class Darkroom
         Dir.glob(File.join(load_path, @@glob)).sort.each do |file|
           path = file.sub(load_path, '')
 
-          if index = (path =~ Asset::INVALID_PATH)
+          if index = (path =~ Asset::INVALID_PATH_REGEX)
             @errors << InvalidPathError.new(path, index)
           elsif found.key?(path)
             @errors << DuplicateAssetError.new(path, found[path], load_path)

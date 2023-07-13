@@ -7,12 +7,12 @@ require_relative('test_helper')
 class CSSDelegateTest < Minitest::Test
   include(TestHelper)
 
-  context('Darkroom::Asset::CSSDelegate') do
+  context('Darkroom::CSSDelegate') do
     ########################################################################################################
-    ## ::import_regex                                                                                     ##
+    ## ::regex(:import)                                                                                   ##
     ########################################################################################################
 
-    context('::import_regex') do
+    context('::regex(:import)') do
       test('matches import statements with proper syntax') do
         assert_equal('',                   import_path(%q(@import '';)))
         assert_equal('',                   import_path(%q(@import "";)))
@@ -22,7 +22,7 @@ class CSSDelegateTest < Minitest::Test
       end
 
       test('does not match import statements with bad syntax') do
-        regex = Darkroom::Asset::CSSDelegate.import_regex
+        regex = Darkroom::CSSDelegate.regex(:import)
 
         # Bad quoting
         refute_match(regex, %q(@import /no-quotes.css;))
@@ -49,10 +49,10 @@ class CSSDelegateTest < Minitest::Test
     end
 
     ########################################################################################################
-    ## ::reference_regex                                                                                  ##
+    ## ::regex(:reference)                                                                                ##
     ########################################################################################################
 
-    context('::reference_regex') do
+    context('::regex(:reference)') do
       test('matches references with proper syntax') do
         {
           %q<background: url(/logo.svg?asset-path);>               => ['/logo.svg', 'path', nil],
@@ -68,9 +68,9 @@ class CSSDelegateTest < Minitest::Test
           %q<background: url('/logo.svg?asset-content=utf8');>     => ['/logo.svg', 'content', 'utf8'],
           %q<background: url('/logo.svg?asset-content=displace');> => ['/logo.svg', 'content', 'displace'],
         }.each do |content, (path, entity, format)|
-          match = content.match(Darkroom::Asset::CSSDelegate.reference_regex)
+          match = content.match(Darkroom::CSSDelegate.regex(:reference))
 
-          assert(match)
+          assert_match(Darkroom::CSSDelegate.regex(:reference), content)
           assert_equal(path, match[:path])
           assert_equal(entity, match[:entity])
           format ? assert_equal(format, match[:format]) : assert_nil(match[:format])
@@ -78,7 +78,7 @@ class CSSDelegateTest < Minitest::Test
       end
 
       test('does not match references with bad syntax') do
-        regex = Darkroom::Asset::CSSDelegate.reference_regex
+        regex = Darkroom::CSSDelegate.regex(:reference)
 
         refute_match(regex, %q<background: url '/logo.svg?asset-path'>)
         refute_match(regex, %q<background: url ('/logo.svg?asset-path')>)
@@ -87,61 +87,64 @@ class CSSDelegateTest < Minitest::Test
     end
 
     ########################################################################################################
-    ## ::validate_reference                                                                               ##
+    ## ::handler(:reference)                                                                              ##
     ########################################################################################################
 
-    context('::validate_reference') do
-      test('returns error with displace format') do
-        error = Darkroom::Asset::CSSDelegate.validate_reference.(
-          new_asset('/bg.png', ''),
-          reference_match("body { background: url('/bg.png?asset-content=displace'); }"),
-          'displace',
-        )
+    context('::handler(:reference)') do
+      test('throws error with displace format') do
+        error = catch(:error) do
+          Darkroom::CSSDelegate.handler(:reference).call(
+            parse_data: {},
+            match: reference_match("body { background: url('/bg.png?asset-content=displace'); }"),
+            asset: new_asset('/bg.png', ''),
+            format: 'displace',
+          ); nil
+        end
 
         assert_equal('Cannot displace in CSS files', error)
       end
 
-      test('returns error if asset is not an image or font') do
-        error = Darkroom::Asset::CSSDelegate.validate_reference.(
-          new_asset('/robots.txt', ''),
-          reference_match("body { background: url('/robots.txt?asset-content'); }"),
-          'base64',
-        )
+      test('throws error if asset is not an image or font') do
+        error = catch(:error) do
+          Darkroom::CSSDelegate.handler(:reference).call(
+            parse_data: {},
+            match: reference_match("body { background: url('/robots.txt?asset-content'); }"),
+            asset: new_asset('/robots.txt', ''),
+            format: 'base64',
+          ); nil
+        end
 
         assert_equal('Referenced asset must be an image or font type', error)
       end
-    end
 
-    ########################################################################################################
-    ## ::reference_content                                                                                ##
-    ########################################################################################################
-
-    context('::reference_content') do
       test('escapes # characters with utf8 format') do
-        result = Darkroom::Asset::CSSDelegate.reference_content.(
-          new_asset('/logo.svg', '<svg><!-- # --></svg>'),
-          reference_match("#logo { background: url('/logo.svg?asset-content=utf8'>); }"),
-          'utf8',
+        result = Darkroom::CSSDelegate.handler(:reference).call(
+          parse_data: {},
+          match: reference_match("#logo { background: url('/logo.svg?asset-content=utf8'>); }"),
+          asset: new_asset('/logo.svg', '<svg><!-- # --></svg>'),
+          format: 'utf8',
         )
 
         assert_equal('<svg><!-- %23 --></svg>', result)
       end
 
       test('escapes quotes with utf8 format') do
-        result = Darkroom::Asset::CSSDelegate.reference_content.(
-          new_asset('/logo.svg', '<svg><circle r=\'16\' fill="white"/></svg>'),
-          reference_match("#logo { background: url('/logo.svg?asset-content=utf8'); }"),
-          'utf8',
+        result = Darkroom::CSSDelegate.handler(:reference).call(
+          parse_data: {},
+          match: reference_match("#logo { background: url('/logo.svg?asset-content=utf8'); }"),
+          asset: new_asset('/logo.svg', '<svg><circle r=\'16\' fill="white"/></svg>'),
+          format: 'utf8',
         )
 
         assert_equal('<svg><circle r=\\\'16\\\' fill=\\"white\\"/></svg>', result)
       end
 
       test('escapes newlines with utf8 format') do
-        result = Darkroom::Asset::CSSDelegate.reference_content.(
-          new_asset('/logo.svg', "<svg>\n</svg>"),
-          reference_match("#logo { background: url('/logo.svg?asset-content=utf8'); }"),
-          'utf8',
+        result = Darkroom::CSSDelegate.handler(:reference).call(
+          parse_data: {},
+          match: reference_match("#logo { background: url('/logo.svg?asset-content=utf8'); }"),
+          asset: new_asset('/logo.svg', "<svg>\n</svg>"),
+          format: 'utf8',
         )
 
         assert_equal("<svg>\\\n</svg>", result)
@@ -161,10 +164,10 @@ class CSSDelegateTest < Minitest::Test
   end
 
   def import_path(content)
-    content.match(Darkroom::Asset::CSSDelegate.import_regex)&.[](:path)
+    content.match(Darkroom::CSSDelegate.regex(:import))&.[](:path)
   end
 
   def reference_match(content)
-    content.match(Darkroom::Asset::CSSDelegate.reference_regex)
+    content.match(Darkroom::CSSDelegate.regex(:reference))
   end
 end
