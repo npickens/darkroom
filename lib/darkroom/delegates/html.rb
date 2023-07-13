@@ -46,7 +46,7 @@ class Darkroom
 
         content = asset.content.dup
         content.gsub!('#', '%23')
-        content.gsub!(quote, quote == "'" ? '"' : "'")
+        content.gsub!(quote, quote == '"' ? "&#34;" : '&#39;')
 
         content
       end

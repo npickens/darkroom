@@ -144,15 +144,37 @@ class HTMLDelegateTest < Minitest::Test
         assert_equal("<svg><circle r=16 fill=%23fff/></svg>", result)
       end
 
-      test('substitutes quotes if needed with utf8 format') do
+      test('substitutes single quotes when reference is unquoted with utf8 format') do
         result = Darkroom::HTMLDelegate.handler(:reference).call(
           parse_data: {},
-          match: reference_match("<img src='/logo.svg?asset-content=utf8'>"),
+          match: reference_match('<img src=/logo.svg?asset-content=utf8>'),
           asset: new_asset('/logo.svg', '<svg><circle r=\'16\' fill="white"/></svg>'),
           format: 'utf8',
         )
 
-        assert_equal('<svg><circle r="16" fill="white"/></svg>', result)
+        assert_equal('<svg><circle r=&#39;16&#39; fill="white"/></svg>', result)
+      end
+
+      test('substitutes single quotes when reference is single-quoted with utf8 format') do
+        result = Darkroom::HTMLDelegate.handler(:reference).call(
+          parse_data: {},
+          match: reference_match('<img src=\'/logo.svg?asset-content=utf8\'>'),
+          asset: new_asset('/logo.svg', '<svg><circle r=\'16\' fill="white"/></svg>'),
+          format: 'utf8',
+        )
+
+        assert_equal('<svg><circle r=&#39;16&#39; fill="white"/></svg>', result)
+      end
+
+      test('substitutes double quotes when reference is double-quoted with utf8 format') do
+        result = Darkroom::HTMLDelegate.handler(:reference).call(
+          parse_data: {},
+          match: reference_match('<img src="/logo.svg?asset-content=utf8">'),
+          asset: new_asset('/logo.svg', '<svg><circle r=\'16\' fill="white"/></svg>'),
+          format: 'utf8',
+        )
+
+        assert_equal('<svg><circle r=\'16\' fill=&#34;white&#34;/></svg>', result)
       end
     end
   end
