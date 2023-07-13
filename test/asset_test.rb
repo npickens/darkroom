@@ -163,13 +163,11 @@ class AssetTest < Minitest::Test
         asset = new_asset('/index.html', content)
         asset.process
 
-        assert_equal(2, asset.errors.size)
-
-        assert_kind_of(Darkroom::AssetNotFoundError, asset.errors[0])
-        assert_kind_of(Darkroom::AssetNotFoundError, asset.errors[1])
-
-        assert_equal('/index.html:2: Asset not found: /logo.svg', asset.errors[0].to_s)
-        assert_equal('/index.html:3: Asset not found: /graphic.svg', asset.errors[1].to_s)
+        assert_error(
+          '#<Darkroom::AssetNotFoundError: /index.html:2: Asset not found: /logo.svg>',
+          '#<Darkroom::AssetNotFoundError: /index.html:3: Asset not found: /graphic.svg>',
+          asset.errors
+        )
       end
 
       test('registers error when reference format is invalid') do
@@ -186,15 +184,13 @@ class AssetTest < Minitest::Test
         asset = new_asset('/index.html', content)
         asset.process
 
-        assert_equal(2, asset.errors.size)
-
-        assert_kind_of(Darkroom::AssetError, asset.errors[0])
-        assert_kind_of(Darkroom::AssetError, asset.errors[1])
-
-        assert_equal("/index.html:2: Invalid reference format 'invalid' (must be one of 'versioned', "\
-          "'unversioned'): <img src='/logo.svg?asset-path=invalid'>", asset.errors[0].to_s)
-        assert_equal("/index.html:3: Invalid reference format 'invalid' (must be one of 'base64', 'utf8', "\
-          "'displace'): <img src='/graphic.svg?asset-content=invalid'>", asset.errors[1].to_s)
+        assert_error(
+          "#<Darkroom::AssetError: /index.html:2: Invalid reference format 'invalid' (must be one of "\
+            "'versioned', 'unversioned'): <img src='/logo.svg?asset-path=invalid'>>",
+          "#<Darkroom::AssetError: /index.html:3: Invalid reference format 'invalid' (must be one of "\
+            "'base64', 'utf8', 'displace'): <img src='/graphic.svg?asset-content=invalid'>>",
+          asset.errors
+        )
       end
 
       test('registers error when reference is binary and format is not base64') do
@@ -211,15 +207,13 @@ class AssetTest < Minitest::Test
         asset = new_asset('/index.html', content)
         asset.process
 
-        assert_equal(2, asset.errors.size)
-
-        assert_kind_of(Darkroom::AssetError, asset.errors[0])
-        assert_kind_of(Darkroom::AssetError, asset.errors[1])
-
-        assert_equal('/index.html:2: Base64 encoding is required for binary assets: '\
-          "<img src='/logo.png?asset-content=utf8'>", asset.errors[0].to_s)
-        assert_equal('/index.html:3: Base64 encoding is required for binary assets: '\
-          "<img src='/graphic.png?asset-content=displace'>", asset.errors[1].to_s)
+        assert_error(
+          "#<Darkroom::AssetError: /index.html:2: Base64 encoding is required for binary assets: <img "\
+            "src='/logo.png?asset-content=utf8'>>",
+          "#<Darkroom::AssetError: /index.html:3: Base64 encoding is required for binary assets: <img "\
+            "src='/graphic.png?asset-content=displace'>>",
+          asset.errors
+        )
       end
 
       test('registers error when reference delegate validation fails') do
@@ -228,10 +222,11 @@ class AssetTest < Minitest::Test
         asset = new_asset('/app.css', 'body { background: url(/robots.txt?asset-path); }')
         asset.process
 
-        assert_equal(1, asset.errors.size)
-        assert_kind_of(Darkroom::AssetError, asset.errors[0])
-        assert_equal('/app.css:1: Referenced asset must be an image or font type: '\
-          'url(/robots.txt?asset-path)', asset.errors[0].to_s)
+        assert_error(
+          '#<Darkroom::AssetError: /app.css:1: Referenced asset must be an image or font type: '\
+            'url(/robots.txt?asset-path)>',
+          asset.errors
+        )
       end
 
       test('registers error when reference would result in a circular reference chain') do
@@ -241,10 +236,11 @@ class AssetTest < Minitest::Test
 
         circular1.process
 
-        assert_equal(1, circular1.errors.size)
-        assert_kind_of(Darkroom::AssetError, circular1.errors[0])
-        assert_equal('/circular1.html:1: Reference would result in a circular reference chain: '\
-          "<a href='/circular2.html?asset-path'>", circular1.errors[0].to_s)
+        assert_error(
+          '#<Darkroom::CircularReferenceError: /circular1.html:1: Reference would result in a circular '\
+            "reference chain: <a href='/circular2.html?asset-path'>>",
+          circular1.errors
+        )
       end
 
       test('registers errors of intermediate asset') do
@@ -261,13 +257,11 @@ class AssetTest < Minitest::Test
           asset.process
         end
 
-        assert_equal(2, asset.errors.size)
-
-        assert_kind_of(Darkroom::AssetNotFoundError, asset.errors[0])
-        assert_kind_of(Darkroom::AssetNotFoundError, asset.errors[1])
-
-        assert_equal('/index.htx:2: Asset not found: /logo.svg', asset.errors[0].to_s)
-        assert_equal('/index.htx:3: Asset not found: /graphic.svg', asset.errors[1].to_s)
+        assert_error(
+          '#<Darkroom::AssetNotFoundError: /index.htx:2: Asset not found: /logo.svg>',
+          '#<Darkroom::AssetNotFoundError: /index.htx:3: Asset not found: /graphic.svg>',
+          asset.errors
+        )
       end
 
       test('substitutes versioned path of reference when path format is unspecified') do
@@ -358,13 +352,10 @@ class AssetTest < Minitest::Test
         asset = new_asset('/bad-import.js', content)
         asset.process
 
-        assert_equal(1, asset.errors.size)
-        assert_kind_of(Darkroom::AssetNotFoundError, asset.errors.first)
-        assert_equal('/bad-import.js:1: Asset not found: /does-not-exist.js', asset.errors.first.to_s)
-
-        assert_kind_of(Darkroom::ProcessingError, asset.error)
-        assert_equal(1, asset.error.size)
-        assert_equal(asset.errors, asset.error.instance_variable_get(:@errors))
+        assert_error(
+          '#<Darkroom::AssetNotFoundError: /bad-import.js:1: Asset not found: /does-not-exist.js>',
+          asset.errors
+        )
       end
 
       test('registers an error when compilation raises an exception') do
@@ -374,9 +365,7 @@ class AssetTest < Minitest::Test
           asset.process
         end
 
-        assert(asset.error)
-        assert_equal(1, asset.errors.size)
-        assert_equal('[HTX Error]', asset.errors.first.to_s)
+        assert_error('#<RuntimeError: [HTX Error]>', asset.errors)
       end
 
       test('registers an error when minification raises an exception') do
@@ -386,9 +375,7 @@ class AssetTest < Minitest::Test
           asset.process
         end
 
-        assert(asset.error)
-        assert_equal(1, asset.errors.size)
-        assert_equal('[Terser Error]', asset.errors.first.to_s)
+        assert_error('#<RuntimeError: [Terser Error]>', asset.errors)
       end
 
       test('accumulates multiple errors') do
@@ -404,35 +391,28 @@ class AssetTest < Minitest::Test
           asset.process
         end
 
-        assert_equal(3, asset.errors.size)
-
-        assert_kind_of(Darkroom::AssetNotFoundError, asset.errors[0])
-        assert_kind_of(Darkroom::AssetNotFoundError, asset.errors[1])
-        assert_kind_of(RuntimeError, asset.errors[2])
-
-        assert_equal('/bad-imports.js:1: Asset not found: /does-not-exist.js', asset.errors[0].to_s)
-        assert_equal('/bad-imports.js:2: Asset not found: /also-does-not-exist.js', asset.errors[1].to_s)
-        assert_equal('[Terser Error]', asset.errors[2].to_s)
-
-        assert_kind_of(Darkroom::ProcessingError, asset.error)
-        assert_equal(3, asset.error.size)
-        assert_equal(asset.errors, asset.error.instance_variable_get(:@errors))
+        assert_error(
+          '#<Darkroom::AssetNotFoundError: /bad-imports.js:1: Asset not found: /does-not-exist.js>',
+          '#<Darkroom::AssetNotFoundError: /bad-imports.js:2: Asset not found: /also-does-not-exist.js>',
+          '#<RuntimeError: [Terser Error]>',
+          asset.errors
+        )
       end
 
       test('handles circular imports') do
-        asset1 = new_asset('/circular1.css', "@import '/circular2.css';\n\n.circular1 { }")
-        asset2 = new_asset('/circular2.css', "@import '/circular3.css';\n\n.circular2 { }")
-        asset3 = new_asset('/circular3.css', "@import '/circular1.css';\n\n.circular3 { }")
+        asset1 = new_asset('/circular1.css', "@import '/circular2.css';\n\n.circular1 {}")
+        asset2 = new_asset('/circular2.css', "@import '/circular3.css';\n\n.circular2 {}")
+        asset3 = new_asset('/circular3.css', "@import '/circular1.css';\n\n.circular3 {}")
 
         asset1.process
 
-        refute(asset1.error)
-        refute(asset2.error)
-        refute(asset3.error)
+        assert_empty(asset1.errors)
+        assert_empty(asset2.errors)
+        assert_empty(asset3.errors)
 
-        assert(asset1.content.start_with?(asset3.send(:own_content)))
-        assert(asset2.content.start_with?(asset1.send(:own_content)))
-        assert(asset3.content.start_with?(asset2.send(:own_content)))
+        assert_equal("\n.circular3 {}\n\n.circular2 {}\n\n.circular1 {}", asset1.content)
+        assert_equal("\n.circular1 {}\n\n.circular3 {}\n\n.circular2 {}", asset2.content)
+        assert_equal("\n.circular2 {}\n\n.circular1 {}\n\n.circular3 {}", asset3.content)
       end
 
       test('compiles circular imports before including their contents') do
@@ -453,9 +433,9 @@ class AssetTest < Minitest::Test
       end
 
       test('determines dependencies by walking dependency chain with self as root') do
-        asset1 = new_asset('/circular1.css', "@import '/circular2.css';\n\n.circular1 { }")
-        asset2 = new_asset('/circular2.css', "@import '/circular3.css';\n\n.circular2 { }")
-        asset3 = new_asset('/circular3.css', "@import '/circular2.css';\n\n.circular3 { }")
+        asset1 = new_asset('/circular1.css', "@import '/circular2.css';\n\n.circular1 {}")
+        asset2 = new_asset('/circular2.css', "@import '/circular3.css';\n\n.circular2 {}")
+        asset3 = new_asset('/circular3.css', "@import '/circular2.css';\n\n.circular3 {}")
 
         asset1.process
         asset1.send(:dependencies)

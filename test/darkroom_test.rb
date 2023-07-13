@@ -77,11 +77,14 @@ class DarkroomTest < Minitest::Test
         darkroom('/assets')
         darkroom.process
 
-        paths.each.with_index do |path, i|
-          assert_kind_of(Darkroom::InvalidPathError, darkroom.errors[i])
-          assert_equal("Asset path contains one or more invalid characters ('\"`=<>? ): #{path}",
-            darkroom.errors[i].to_s)
-        end
+        assert_error(
+          paths.map do |path|
+            '#<Darkroom::InvalidPathError: Asset path contains one or more invalid characters '\
+              "('\"`=<>? ): #{path}>"
+          end,
+
+          darkroom.errors
+        )
       end
 
       test('registers DuplicateAssetError if an asset with the same path is in multiple load paths') do
@@ -93,9 +96,8 @@ class DarkroomTest < Minitest::Test
         darkroom('/assets', '/other-assets')
         darkroom.process
 
-        assert_kind_of(Darkroom::DuplicateAssetError, darkroom.errors.first)
-        assert_equal("Asset file exists in both #{full_path('/assets')} and "\
-          "#{full_path('/other-assets')}: /app.js", darkroom.errors.first.to_s)
+        assert_error("#<Darkroom::DuplicateAssetError: Asset file exists in both #{full_path('/assets')} "\
+          "and #{full_path('/other-assets')}: /app.js>", darkroom.errors)
       end
 
       test('minifies asset if and only if it matches :entry and does not match :minified') do

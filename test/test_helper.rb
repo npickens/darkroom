@@ -100,6 +100,13 @@ module TestHelper
     asset
   end
 
+  def assert_error(*expected, actual)
+    expected.flatten!
+    actual = Array(actual).map { |e| "#<#{e.class}: #{e.message}>" }
+
+    assert_equal(*[expected, actual].map { |a| "#{a.map { |l| "\n  #{l}," }.join}\n" })
+  end
+
   def assert_inspect(expected, actual)
     assert_equal(
       expected.split(INSPECT_SPLIT).join(INSPECT_JOIN),
