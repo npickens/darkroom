@@ -270,8 +270,10 @@ class DarkroomTest < Minitest::Test
       test('returns nil if asset is internal') do
         write_files('/assets/components/header.htx' => '<header>${this.title}</header>')
 
-        darkroom('/assets', internal_pattern: /^\/components\/.*$/)
-        darkroom.process
+        Darkroom.stub(:warn, nil) do
+          darkroom('/assets', internal_pattern: /^\/components\/.*$/)
+          darkroom.process
+        end
 
         assert_nil(darkroom.asset('/components/header.htx'))
       end
@@ -288,8 +290,10 @@ class DarkroomTest < Minitest::Test
       test('returns asset if path matches internal pattern but is also pristine') do
         write_files('/assets/pristine.txt' => 'Hello')
 
-        darkroom('/assets', internal_pattern: /.*/, pristine: '/pristine.txt')
-        darkroom.process
+        Darkroom.stub(:warn, nil) do
+          darkroom('/assets', internal_pattern: /.*/, pristine: '/pristine.txt')
+          darkroom.process
+        end
 
         assert(darkroom.asset('/pristine.txt'))
       end
@@ -521,9 +525,11 @@ class DarkroomTest < Minitest::Test
 
         setup_dump_dir
 
-        darkroom('/assets', internal_pattern: /^\/components\/.*$/)
-        darkroom.process
-        darkroom.dump(DUMP_DIR)
+        Darkroom.stub(:warn, nil) do
+          darkroom('/assets', internal_pattern: /^\/components\/.*$/)
+          darkroom.process
+          darkroom.dump(DUMP_DIR)
+        end
 
         assert(File.exist?("#{DUMP_DIR}/app-ef0f76b822009ab847bd6a370e911556.js"))
         refute(File.exist?("#{DUMP_DIR}/components/header-e84f21b5c4ce60bb92d2e61e2b4d11f1.htx"))
@@ -655,16 +661,18 @@ class DarkroomTest < Minitest::Test
           EOS
         )
 
-        darkroom('/assets',
-          hosts: 'https://cdn1.hello.world',
-          prefix: '/static',
-          pristine: '/hi.txt',
-          entries: /^\/[^\/]+$/,
-          minified_pattern: /\.minified\.*/,
-          internal_pattern: /^\/private\//,
-          min_process_interval: 1,
-        )
-        darkroom.process
+        Darkroom.stub(:warn, nil) do
+          darkroom('/assets',
+            hosts: 'https://cdn1.hello.world',
+            prefix: '/static',
+            pristine: '/hi.txt',
+            entries: /^\/[^\/]+$/,
+            minified_pattern: /\.minified\.*/,
+            internal_pattern: /^\/private\//,
+            min_process_interval: 1,
+          )
+          darkroom.process
+        end
 
         assert_inspect('#<Darkroom: '\
           '@entries=[/^\\/[^\\/]+$/], '\
