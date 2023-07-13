@@ -53,6 +53,15 @@ class Darkroom
   end
 
   ##
+  # Utility method that prints a warning with file and line number of a deprecated call.
+  #
+  def self.deprecated(message)
+    location = caller_locations(2, 1).first
+
+    warn("#{location.path}:#{location.lineno}: #{message}")
+  end
+
+  ##
   # Creates a new instance.
   #
   # [*load_paths] One or more paths where assets are located on disk.
@@ -84,15 +93,15 @@ class Darkroom
     @internal_pattern = internal_pattern
 
     if minified_pattern
-      warn('Darkroom :minified_pattern is deprecated: use :minified instead and pass a string, regex, or '\
-        'array of strings and regexes')
+      self.class.deprecated("#{self.class.name} :minified_pattern is deprecated: use :minified instead "\
+        'and pass a string, regex, or array of strings and regexes')
       @minified = [minified_pattern]
     end
 
     if @internal_pattern
-      warn('Darkroom :internal_pattern is deprecated: use :entries to instead specify which assets are '\
-        'entry points (i.e. available externally) and pass a string, regex, or array of strings and '\
-        'regexes')
+      self.class.deprecated("#{self.class.name} :internal_pattern is deprecated: use :entries to instead "\
+        'specify which assets are entry points (i.e. available externally) and pass a string, regex, or '\
+        'array of strings and regexes')
     end
 
     @prefix = prefix&.sub(TRAILING_SLASHES, '')
