@@ -35,9 +35,6 @@ class Darkroom
       'content' => Set.new(%w[base64 utf8 displace]),
     }.freeze
 
-    @@delegates = {}
-    @@glob = ''
-
     attr_reader(:errors, :path, :path_unversioned)
 
     ##
@@ -77,36 +74,6 @@ class Darkroom
       :reference_content, :compile_lib, :compile, :compiled, :minify_lib, :minify, keyword_init: true)
 
     ##
-    # Registers a delegate.
-    #
-    # [*extensions] One or more file extension(s) to associate with this delegate.
-    # [delegate] An HTTP MIME type string, a Hash of Delegate parameters, or a Delegate instance.
-    #
-    def self.register(*extensions, delegate)
-      case delegate
-      when String
-        delegate = Delegate.new(content_type: delegate.freeze)
-      when Hash
-        delegate = Delegate.new(**delegate)
-      end
-
-      extensions.each do |extension|
-        @@delegates[extension] = delegate
-      end
-
-      @@glob = "**/*{#{@@delegates.keys.sort.join(',')}}"
-
-      delegate
-    end
-
-    ##
-    # Returns glob for files of all registered delegates.
-    #
-    def self.glob
-      @@glob
-    end
-
-    ##
     # Creates a new instance.
     #
     # [file] Path of file on disk.
@@ -128,7 +95,7 @@ class Darkroom
 
       @path_unversioned = "#{@prefix}#{@path}"
       @extension = File.extname(@path).downcase
-      @delegate = @@delegates[@extension] or raise(UnrecognizedExtensionError.new(@path))
+      @delegate = Darkroom.delegate(@extension) or raise(UnrecognizedExtensionError.new(@path))
 
       @keys = {}
 
@@ -608,7 +575,7 @@ class Darkroom
     # [match] MatchData object of the regex for the asset that cannot be found.
     #
     def not_found_error(path, match)
-      klass = @@delegates[File.extname(path)] ? AssetNotFoundError : UnrecognizedExtensionError
+      klass = Darkroom.delegate(File.extname(path)) ? AssetNotFoundError : UnrecognizedExtensionError
       klass.new(path, @path, line_num(match))
     end
 

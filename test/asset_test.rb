@@ -31,7 +31,7 @@ class AssetTest < Minitest::Test
         new_asset('/app.dummy-compile')
         assert(defined?(DummyCompile), 'Expected DummyCompile to be defined after asset is initialized.')
       ensure
-        unregister('.dummy-compile')
+        Darkroom.register('.dummy-compile', nil)
       end
 
       test('requires minify library if delegate specifies one and minification is enabled') do
@@ -47,7 +47,7 @@ class AssetTest < Minitest::Test
         new_asset('/app.dummy-minify', minify: true)
         assert(defined?(DummyMinify), 'Expected DummyMinify to be defined when minification is enabled.')
       ensure
-        unregister('.dummy-minify')
+        Darkroom.register('.dummy-minify', nil)
       end
 
       test('raises MissingLibraryError if compile library is not available') do
@@ -63,7 +63,7 @@ class AssetTest < Minitest::Test
         assert_equal('Cannot compile .bad-compile file(s): bad_compile library not available [hint: try '\
           'adding gem(\'bad_compile\') to your Gemfile]', error.to_s)
       ensure
-        unregister('.bad-compile')
+        Darkroom.register('.bad-compile', nil)
       end
 
       test('raises MissingLibraryError if minification is enabled and minify library is missing') do
@@ -85,7 +85,7 @@ class AssetTest < Minitest::Test
         assert_equal('Cannot minify .bad-minify file(s): bad_minify library not available [hint: try '\
           'adding gem(\'bad_minify\') to your Gemfile]', error.to_s)
       ensure
-        unregister('.bad-minify')
+        Darkroom.register('.bad-minify', nil)
       end
     end
 
@@ -454,7 +454,7 @@ class AssetTest < Minitest::Test
         assert_equal("\nCIRCULAR2\n\nCIRCULAR1", asset1.content)
         assert_equal("\nCIRCULAR1\n\nCIRCULAR2", asset2.content)
       ensure
-        unregister('.simple-compile')
+        Darkroom.register('.simple-compile', nil)
       end
 
       test('determines dependencies by walking dependency chain with self as root') do
@@ -765,13 +765,5 @@ class AssetTest < Minitest::Test
         '>', asset)
       end
     end
-  end
-
-  ##########################################################################################################
-  ## Helpers                                                                                              ##
-  ##########################################################################################################
-
-  def unregister(extension)
-    Darkroom::Asset.class_variable_get(:@@delegates).delete(extension)
   end
 end

@@ -17,16 +17,30 @@ class Darkroom
   PRISTINE = Set.new(%w[/favicon.ico /mask-icon.svg /humans.txt /robots.txt]).freeze
   MIN_PROCESS_INTERVAL = 0.5
 
+  @@delegates = {}
+  @@glob = ''
+
   attr_reader(:error, :errors, :process_key)
 
   ##
   # Registers an asset delegate.
   #
-  # [*extensions] File extension(s) to associate with this delegate.
+  # [*extensions] One or more file extension(s) to associate with this delegate.
   # [delegate] An HTTP MIME type string, a Hash of Delegate parameters, or a Delegate instance.
   #
   def self.register(*extensions, delegate)
-    Asset.register(*extensions, delegate)
+    case delegate
+    when String then delegate = Asset::Delegate.new(content_type: delegate.freeze)
+    when Hash then  delegate = Asset::Delegate.new(**delegate)
+    end
+
+    extensions.each do |extension|
+      @@delegates[extension] = delegate
+    end
+
+    @@glob = "**/*{#{@@delegates.keys.sort.join(',')}}"
+
+    delegate
   end
 
   ##
@@ -35,9 +49,7 @@ class Darkroom
   # [extension] File extension of the desired delegate.
   #
   def self.delegate(extension)
-    warn('Darkroom.delegate is deprecated and will be removed in a future version.')
-
-    Asset.class_variable_get(:@@delegates)[extension]
+    @@delegates[extension]
   end
 
   ##
@@ -121,7 +133,7 @@ class Darkroom
       found = {}
 
       @load_paths.each do |load_path|
-        Dir.glob(File.join(load_path, Asset.glob)).sort.each do |file|
+        Dir.glob(File.join(load_path, @@glob)).sort.each do |file|
           path = file.sub(load_path, '')
 
           if index = (path =~ Asset::INVALID_PATH)
