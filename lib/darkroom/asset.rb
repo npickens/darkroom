@@ -38,7 +38,7 @@ class Darkroom
     @@delegates = {}
     @@glob = ''
 
-    attr_reader(:error, :errors, :path, :path_unversioned, :path_versioned)
+    attr_reader(:errors, :path, :path_unversioned)
 
     ##
     # Holds information about how to handle a particular asset type.
@@ -130,6 +130,8 @@ class Darkroom
       @extension = File.extname(@path).downcase
       @delegate = @@delegates[@extension] or raise(UnrecognizedExtensionError.new(@path))
 
+      @keys = {}
+
       if @delegate.compiled && !intermediate
         @delegate = @delegate.compiled
         @intermediate_asset = Asset.new(@path, @file, @darkroom,
@@ -145,32 +147,16 @@ class Darkroom
     end
 
     ##
-    # Processes the asset if modified (see #modified? for how modification is determined). File is read from
-    # disk, references are substituted (if supported), content is compiled (if required), imports are
-    # prefixed to its content (if supported), and content is minified (if supported and enabled). Returns
-    # true if asset was modified since it was last processed and false otherwise.
+    # Processes the asset if modified since the last run (see #modified? for how modification is
+    # determined). File is read from disk, references are substituted (if supported), content is compiled
+    # (if required), imports are prefixed to its content (if supported), and content is minified
+    # (if supported and enabled and the asset is an entry point).
     #
     def process
-      @process_key == @darkroom.process_key ? (return @processed) : (@process_key = @darkroom.process_key)
-      modified? ? (@processed = true) : (return @processed = false)
+      return if ran?(:process)
 
-      clear
-
-      if @intermediate_asset
-        @intermediate_asset.process
-        @errors.concat(@intermediate_asset.errors)
-      end
-
-      read
-      build_imports
-      build_references
-      process_dependencies
       compile
       content if entry?
-
-      @processed
-    ensure
-      @error = @errors.empty? ? nil : ProcessingError.new(@errors)
     end
 
     ##
@@ -206,6 +192,54 @@ class Darkroom
     end
 
     ##
+    # Returns boolean indicating whether or not the asset is an entry point.
+    #
+    def entry?
+      @entry
+    end
+
+    ##
+    # DEPRECATED: use #entry? instead. Returns boolean indicating whether or not the asset is marked as
+    # internal.
+    #
+    def internal?
+      !entry?
+    end
+
+    ##
+    # Returns boolean indicating whether or not an error was encountered the last time the asset was
+    # processed.
+    #
+    def error?
+      !@errors.empty?
+    end
+
+    ##
+    # Returns ProcessingError wrapper of all errors if any exist, or nil if there are none.
+    #
+    def error
+      @error ||= @errors.empty? ? nil : ProcessingError.new(@errors)
+    end
+
+    ##
+    # Returns hash of content.
+    #
+    def fingerprint
+      content
+
+      @fingerprint
+    end
+
+    ##
+    # Returns versioned path.
+    #
+    def path_versioned
+      content
+
+      @path_versioned
+    end
+
+    ##
     # Returns appropriate HTTP headers.
     #
     # [versioned:] Uses Cache-Control header with max-age if +true+ and ETag header if +false+.
@@ -214,37 +248,8 @@ class Darkroom
       {
         'Content-Type' => content_type,
         'Cache-Control' => ('public, max-age=31536000' if versioned),
-        'ETag' => ("\"#{@fingerprint}\"" if !versioned),
+        'ETag' => ("\"#{fingerprint}\"" if !versioned),
       }.compact!
-    end
-
-    ##
-    # Returns full asset content.
-    #
-    # [minified:] Boolean indicating whether or not to return minified version if it is available.
-    #
-    def content(minified: true)
-      unless @content
-        @content =
-          if imports.empty?
-            @own_content
-          else
-            (0..imports.size).inject(+'') do |content, i|
-              own_content = (imports[i] || self).own_content
-
-              content << "\n" unless (content[-1] == "\n" && own_content[0] == "\n") || content.empty?
-              content << own_content
-            end
-          end
-
-        if entry?
-          minify if @minify
-          @fingerprint = Digest::MD5.hexdigest(@content_minified || @content)
-          @path_versioned = "#{@prefix}#{@path.sub(EXTENSION_REGEX, "-#{@fingerprint}")}"
-        end
-      end
-
-      (minified && @content_minified) || @content
     end
 
     ##
@@ -265,26 +270,39 @@ class Darkroom
     end
 
     ##
-    # Returns boolean indicating whether or not the asset is an entry point.
+    # Returns full asset content.
     #
-    def entry?
-      @entry
-    end
+    # [minified:] Boolean indicating whether or not to return minified version if it is available.
+    #
+    def content(minified: @minify)
+      unless ran?(:content)
+        compile
 
-    ##
-    # DEPRECATED: use #entry? instead. Returns boolean indicating whether or not the asset is marked as
-    # internal.
-    #
-    def internal?
-      !entry?
-    end
+        @content =
+          if imports.empty?
+            @own_content
+          else
+            (0..imports.size).inject(+'') do |content, i|
+              own_content = (imports[i] || self).own_content
 
-    ##
-    # Returns boolean indicating whether or not an error was encountered the last time the asset was
-    # processed.
-    #
-    def error?
-      !!@error
+              content << "\n" unless (content[-1] == "\n" && own_content[0] == "\n") || content.empty?
+              content << own_content
+            end
+          end
+      end
+
+      if @delegate.minify && !@content_minified && (minified || @minify)
+        begin
+          @content_minified = @delegate.minify.call(@content)
+        rescue => e
+          @errors << e
+        end
+      end
+
+      @fingerprint ||= Digest::MD5.hexdigest((@minify && @content_minified) || @content)
+      @path_versioned ||= "#{@prefix}#{@path.sub(EXTENSION_REGEX, "-#{@fingerprint}")}"
+
+      (minified && @content_minified) || @content
     end
 
     ##
@@ -313,64 +331,28 @@ class Darkroom
     # error was recorded during the last processing run.
     #
     def modified?
-      @modified_key == @darkroom.process_key ? (return @modified) : (@modified_key = @darkroom.process_key)
+      return @modified if ran?(:modified)
 
       begin
         @modified = !!@error
-        @modified ||= !!@intermediate_asset && @intermediate_asset.modified?
-        @modified ||= !@intermediate_asset && (@mtime != (@mtime = File.mtime(@file)))
-        @modified ||= dependencies.any? { |d| d.modified? }
+        @modified ||= (@mtime != (@mtime = File.mtime(@file)))
+        @modified ||= @intermediate_asset.modified? if @intermediate_asset
+        @modified ||= @dependencies.any? { |d| d.modified? } if @dependencies
+        @modified
       rescue Errno::ENOENT
         @modified = true
       end
     end
 
     ##
-    # Returns all dependencies (including dependencies of dependencies).
-    #
-    # [ignore] Assets already accounted for as dependency tree is walked (to prevent infinite loops when
-    #          circular chains are encountered).
-    #
-    def dependencies(ignore = nil)
-      return @dependencies if @dependencies
-
-      dependencies = accumulate(:dependencies, ignore)
-      @dependencies = dependencies unless ignore
-
-      dependencies
-    end
-
-    ##
-    # Returns all imports (including imports of imports).
-    #
-    # [ignore] Assets already accounted for as import tree is walked (to prevent infinite loops when
-    #          circular chains are encountered).
-    #
-    def imports(ignore = nil)
-      return @imports if @imports
-
-      imports = accumulate(:imports, ignore)
-      @imports = imports unless ignore
-
-      imports
-    end
-
-    ##
-    # Returns the processed content of the asset without dependencies concatenated.
-    #
-    def own_content
-      @own_content
-    end
-
-    private
-
-    ##
     # Clears content, dependencies, and errors so asset is ready for (re)processing.
     #
     def clear
+      return if ran?(:clear)
+
       @own_dependencies = []
       @own_imports = []
-      @dependency_matches = []
+      @parse_matches = []
 
       @dependencies = nil
       @imports = nil
@@ -391,117 +373,171 @@ class Darkroom
     # Reads the asset file into memory.
     #
     def read
-      @own_content = @intermediate_asset ? @intermediate_asset.own_content : File.read(@file)
-    rescue Errno::ENOENT
-      # Gracefully handle file deletion.
-      @own_content = ''
+      return if ran?(:read)
+
+      clear
+
+      if @intermediate_asset
+        @own_content = @intermediate_asset.own_content.dup
+        @errors.concat(@intermediate_asset.errors)
+      else
+        begin
+          @own_content = File.read(@file)
+        rescue Errno::ENOENT
+          # Gracefully handle file deletion.
+          @own_content = ''
+        end
+      end
     end
 
     ##
-    # Builds reference info.
+    # Parses own content to build list of imports and references.
     #
-    def build_references
-      return unless @delegate.reference_regex
+    def parse
+      return if ran?(:parse)
 
-      @own_content.scan(@delegate.reference_regex) do
-        match = Regexp.last_match
-        path = match[:path]
-        format = match[:format]
-        format = REFERENCE_FORMATS[match[:entity]].first if format.nil? || format == ''
+      read
 
-        if (asset = @darkroom.manifest(path))
-          if !REFERENCE_FORMATS[match[:entity]].include?(format)
-            @errors << AssetError.new("Invalid reference format '#{format}' (must be one of "\
-              "'#{REFERENCE_FORMATS[match[:entity]].join("', '")}')", match[0], @path, line_num(match))
-          elsif match[:entity] == 'content' && format != 'base64' && asset.binary?
-            @errors << AssetError.new('Base64 encoding is required for binary assets', match[0], @path,
-              line_num(match))
-          elsif (error = @delegate.validate_reference&.(asset, match, format))
-            @errors << AssetError.new(error, match[0], @path, line_num(match))
-          else
+      {
+        import: @delegate.import_regex,
+        reference: @delegate.reference_regex
+      }.compact.each do |kind, regex|
+        @own_content.scan(regex) do
+          match = Regexp.last_match
+
+          if (asset = @darkroom.manifest(match[:path]))
             @own_dependencies << asset
-            @dependency_matches << [:reference, asset, match, format]
+            @own_imports << asset if kind == :import
+            @parse_matches << [kind, match, asset]
+          else
+            @errors << not_found_error(match[:path], match)
           end
-        else
-          @errors << not_found_error(path, match)
         end
       end
     end
 
     ##
-    # Builds import info.
+    # Returns direct dependencies (ones explicitly specified in the asset's own content.)
     #
-    def build_imports
-      return unless @delegate.import_regex
+    def own_dependencies
+      parse
 
-      @own_content.scan(@delegate.import_regex) do
-        match = Regexp.last_match
-        path = match[:path]
-
-        if (asset = @darkroom.manifest(path))
-          @own_dependencies << asset
-          @own_imports << asset
-          @dependency_matches << [:import, asset, match]
-        else
-          @errors << not_found_error(path, match)
-        end
-      end
+      @own_dependencies
     end
 
     ##
-    # Processes imports and references.
+    # Returns all dependencies (including dependencies of dependencies).
     #
-    def process_dependencies
-      @dependency_matches.sort_by! { |_, __, match| -match.begin(0) }.each do |kind, asset, match, format|
+    def dependencies
+      @dependencies = accumulate(:own_dependencies) unless ran?(:dependencies)
+      @dependencies
+    end
+
+    ##
+    # Returns direct imports (ones explicitly specified in the asset's own content.)
+    #
+    def own_imports
+      parse
+
+      @own_imports
+    end
+
+    ##
+    # Returns all imports (including imports of imports).
+    #
+    def imports
+      @imports = accumulate(:own_imports) unless ran?(:imports)
+      @imports
+    end
+
+    ##
+    # Performs import and reference substitutions based on parse matches.
+    #
+    def substitute
+      return if ran?(:substitute)
+
+      parse
+      errors = []
+
+      @parse_matches.sort_by! { |_, match| -match.begin(0) }.each do |kind, match, asset|
+        format = nil
+
         if kind == :import
           @own_content[match.begin(0)...match.end(0)] = ''
-        elsif asset.dependencies.include?(self)
-          @errors << CircularReferenceError.new(match[0], @path, line_num(match))
         else
-          value, start, finish = @delegate.reference_content&.(asset, match, format)
-          min_start, max_finish = match.offset(0)
-          start ||= format == 'displace' ? min_start : match.begin(:quoted)
-          finish ||= format == 'displace' ? max_finish : match.end(:quoted)
-          start = [[start, min_start].max, max_finish].min
-          finish = [[finish, max_finish].min, min_start].max
+          format = match[:format]
+          format = REFERENCE_FORMATS[match[:entity]].first if format.nil? || format == ''
 
-          @own_content[start...finish] =
-            case "#{match[:entity]}-#{format}"
-            when 'path-versioned'
-              value || asset.path_versioned
-            when 'path-unversioned'
-              value || asset.path_unversioned
-            when 'content-base64'
-              quote = DEFAULT_QUOTE if match[:quote] == ''
-              data = Base64.strict_encode64(value || asset.content)
-              "#{quote}data:#{asset.content_type};base64,#{data}#{quote}"
-            when 'content-utf8'
-              quote = DEFAULT_QUOTE if match[:quote] == ''
-              "#{quote}data:#{asset.content_type};utf8,#{value || asset.content}#{quote}"
-            when 'content-displace'
-              value || asset.content
-            end
+          if asset.dependencies.include?(self)
+            errors << CircularReferenceError.new(*line_info(match))
+          elsif !REFERENCE_FORMATS[match[:entity]].include?(format)
+            errors << AssetError.new("Invalid reference format '#{format}' (must be one of "\
+              "'#{REFERENCE_FORMATS[match[:entity]].join("', '")}')", *line_info(match))
+          elsif match[:entity] == 'content' && format != 'base64' && asset.binary?
+            errors << AssetError.new('Base64 encoding is required for binary assets', *line_info(match))
+          elsif (error = @delegate.validate_reference&.(asset, match, format))
+            @errors << AssetError.new(error, *line_info(match))
+          else
+            value, start, finish = @delegate.reference_content&.call(asset, match, format)
+            min_start, max_finish = match.offset(0)
+            start ||= (!format || format == 'displace') ? min_start : match.begin(:quoted)
+            finish ||= (!format || format == 'displace') ? max_finish : match.end(:quoted)
+            start = [[start, min_start].max, max_finish].min
+            finish = [[finish, max_finish].min, min_start].max
+
+            @own_content[start...finish] =
+              case "#{match[:entity]}-#{format}"
+              when 'path-versioned'
+                value || asset.path_versioned
+              when 'path-unversioned'
+                value || asset.path_unversioned
+              when 'content-base64'
+                quote = DEFAULT_QUOTE if match[:quote] == ''
+                data = Base64.strict_encode64(value || asset.content)
+                "#{quote}data:#{asset.content_type};base64,#{data}#{quote}"
+              when 'content-utf8'
+                quote = DEFAULT_QUOTE if match[:quote] == ''
+                "#{quote}data:#{asset.content_type};utf8,#{value || asset.content}#{quote}"
+              when 'content-displace'
+                value || asset.content
+              end
+          end
         end
       end
+
+      @errors.concat(errors.reverse)
     end
 
     ##
     # Compiles the asset if compilation is supported for the asset's type.
     #
     def compile
-      @own_content = @delegate.compile.(@path, @own_content) if @delegate.compile
-    rescue => e
-      @errors << e
+      return if ran?(:compile)
+
+      substitute
+
+      if @delegate.compile
+        begin
+          @own_content = @delegate.compile.call(@path, @own_content) || @own_content
+        rescue => e
+          @errors << e
+        end
+      end
+    ensure
+      @own_content.freeze
+      dependencies # Ensure dependency array gets built.
     end
 
     ##
-    # Minifies the asset if minification is supported for the asset's type.
+    # Returns the processed content of the asset without dependencies concatenated.
     #
-    def minify
-      @content_minified = @delegate.minify.(@content) if @delegate.minify
-    rescue => e
-      @errors << e
+    def own_content
+      compile
+
+      @own_content
     end
+
+    private
 
     ##
     # Requires any libraries necessary for compiling and minifying the asset based on its type. Raises a
@@ -530,26 +566,39 @@ class Darkroom
     end
 
     ##
+    # Returns boolean indicating if a method has already been run during the current round of processing.
+    #
+    # [name] Name of the method.
+    #
+    def ran?(name)
+      if @keys[name] == @darkroom.process_key
+        true
+      else
+        @keys[name] = @darkroom.process_key
+        name == :modified ? false : !modified?
+      end
+    end
+
+    ##
     # Utility method used by #dependencies and #imports to recursively build arrays.
     #
     # [name] Name of the array to accumulate (:dependencies or :imports).
-    # [ignore] Set of assets already accumulated which can be ignored (used to avoid infinite loops when
-    #          circular references are encountered).
     #
-    def accumulate(name, ignore)
-      ignore ||= Set.new
-      ignore << self
+    def accumulate(name)
+      done = Set.new
+      assets = [self]
+      index = 0
 
-      process
-
-      instance_variable_get(:"@own_#{name}").each_with_object([]) do |asset, assets|
-        next if ignore.include?(asset)
-
-        asset.process
-        assets.push(*asset.send(name, ignore), asset)
-        assets.uniq!
-        assets.delete(self)
+      while index
+        asset = assets[index]
+        done << asset
+        additional = asset.send(name).reject { |a| done.include?(a) }
+        assets.insert(index, *additional).uniq!
+        index = assets.index { |a| !done.include?(a) }
       end
+
+      assets.delete(self)
+      assets
     end
 
     ##
@@ -561,6 +610,15 @@ class Darkroom
     def not_found_error(path, match)
       klass = @@delegates[File.extname(path)] ? AssetNotFoundError : UnrecognizedExtensionError
       klass.new(path, @path, line_num(match))
+    end
+
+    ##
+    # Utility method that returns an array of line info based on match data.
+    #
+    # [match] MatchData object of the regex.
+    #
+    def line_info(match)
+      [match[0], @path, line_num(match)]
     end
 
     ##
