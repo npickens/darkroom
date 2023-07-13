@@ -97,6 +97,32 @@ class DarkroomTest < Minitest::Test
         assert_equal("Asset file exists in both #{full_path('/assets')} and "\
           "#{full_path('/other-assets')}: /app.js", darkroom.errors.first.to_s)
       end
+
+      test('minifies asset if and only if it matches :entry and does not match :minified') do
+        write_files(
+          '/assets/app.js' => "console.log('Hello')",
+          '/assets/app.css' => 'body { background: white; }',
+          '/assets/other.js' => "console.log('World')",
+          '/assets/other.css' => 'div { border: 1px solid black; }',
+        )
+
+        darkroom('/assets',
+          entries: ['/app.css', /app\.js/],
+          minify: true,
+          minified: ['/app.txt', /\.css/],
+        )
+
+        require('terser')
+
+        Terser.stub(:compile, '[minified]') do
+          darkroom.process
+        end
+
+        assert_equal('[minified]',                       darkroom.manifest('/app.js').content)
+        assert_equal('body { background: white; }',      darkroom.manifest('/app.css').content)
+        assert_equal("console.log('World')",             darkroom.manifest('/other.js').content)
+        assert_equal('div { border: 1px solid black; }', darkroom.manifest('/other.css').content)
+      end
     end
 
     ########################################################################################################
@@ -652,7 +678,7 @@ class DarkroomTest < Minitest::Test
           "@last_processed_at=#{darkroom.instance_variable_get(:@last_processed_at)}, "\
           "@load_paths=[\"#{full_path('/assets')}\"], "\
           '@min_process_interval=1, '\
-          '@minified_pattern=/\\.minified\\.*/, '\
+          '@minified=[/\\.minified\\.*/], '\
           '@minify=false, '\
           '@prefix="/static", '\
           '@pristine=#<Set: {"/favicon.ico", "/mask-icon.svg", "/humans.txt", "/robots.txt", "/hi.txt"}>, '\

@@ -12,7 +12,7 @@ require_relative('errors/processing_error')
 # Main class providing fast, lightweight, and straightforward web asset management.
 #
 class Darkroom
-  DEFAULT_MINIFIED_PATTERN = /(\.|-)min\.\w+$/.freeze
+  DEFAULT_MINIFIED = /(\.|-)min\.\w+$/.freeze
   TRAILING_SLASHES = /\/+$/.freeze
   PRISTINE = Set.new(%w[/favicon.ico /mask-icon.svg /humans.txt /robots.txt]).freeze
   MIN_PROCESS_INTERVAL = 0.5
@@ -52,22 +52,30 @@ class Darkroom
   #             default (e.g. +/favicon.ico+).
   # [entries:] String, regex, or array of strings and regexes specifying entry point paths / path patterns.
   # [minify:] Boolean specifying whether or not to minify assets.
-  # [minified_pattern:] Regex used against asset paths to determine if they are already minified and should
-  #                     therefore be skipped over for minification.
+  # [minified:] String, regex, or array of strings and regexes specifying paths of assets that are already
+  #             minified and thus should be skipped for minification.
+  # [minified_pattern:] DEPRECATED: use +minified:+ instead. Regex used against asset paths to determine if
+  #                     they are already minified and should therefore be skipped over for minification.
   # [internal_pattern:] DEPRECATED: use +entries:+ instead. Regex used against asset paths to determine if
   #                     they should be marked as internal and therefore made inaccessible externally.
   # [min_process_interval:] Minimum time required between one run of asset processing and another.
   #
   def initialize(*load_paths, host: nil, hosts: nil, prefix: nil, pristine: nil, entries: nil,
-      minify: false, minified_pattern: DEFAULT_MINIFIED_PATTERN, internal_pattern: nil,
+      minify: false, minified: DEFAULT_MINIFIED, minified_pattern: nil, internal_pattern: nil,
       min_process_interval: MIN_PROCESS_INTERVAL)
     @load_paths = load_paths.map { |load_path| File.expand_path(load_path) }
 
     @hosts = (Array(host) + Array(hosts)).map! { |host| host.sub(TRAILING_SLASHES, '') }
     @entries = Array(entries)
     @minify = minify
+    @minified = Array(minified)
     @internal_pattern = internal_pattern
-    @minified_pattern = minified_pattern
+
+    if minified_pattern
+      warn('Darkroom :minified_pattern is deprecated: use :minified instead and pass a string, regex, or '\
+        'array of strings and regexes')
+      @minified = [minified_pattern]
+    end
 
     if @internal_pattern
       warn('Darkroom :internal_pattern is deprecated: use :entries to instead specify which assets are '\
@@ -129,7 +137,7 @@ class Darkroom
               @manifest[path] = Asset.new(path, file, self,
                 prefix: (@prefix unless @pristine.include?(path)),
                 entry: entry,
-                minify: @minify && entry && (!@minified_pattern || !path.match?(@minified_pattern)),
+                minify: entry && @minify && !minified?(path),
               )
             end
           end
@@ -278,7 +286,7 @@ class Darkroom
       "@last_processed_at=#{@last_processed_at.inspect}, "\
       "@load_paths=#{@load_paths.inspect}, "\
       "@min_process_interval=#{@min_process_interval.inspect}, "\
-      "@minified_pattern=#{@minified_pattern.inspect}, "\
+      "@minified=#{@minified.inspect}, "\
       "@minify=#{@minify.inspect}, "\
       "@prefix=#{@prefix.inspect}, "\
       "@pristine=#{@pristine.inspect}, "\
@@ -304,6 +312,17 @@ class Darkroom
       @entries.any? do |entry|
         path == entry || (entry.kind_of?(Regexp) && path.match?(entry))
       end
+    end
+  end
+
+  ##
+  # Returns boolean indicating whether or not the asset with the provided path is already minified.
+  #
+  # [path] Path to check.
+  #
+  def minified?(path)
+    @minified.any? do |minified|
+      path == minified || (minified.kind_of?(Regexp) && path.match?(minified))
     end
   end
 end
