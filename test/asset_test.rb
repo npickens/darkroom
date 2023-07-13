@@ -660,25 +660,52 @@ class AssetTest < Minitest::Test
     end
 
     ########################################################################################################
+    ## #entry?                                                                                            ##
+    ########################################################################################################
+
+    context('#entry?') do
+      test('returns true if asset was initialized as an entry point') do
+        asset = new_asset('/app.js', "console.log('Hello')", entry: true)
+        asset.process
+
+        assert(asset.entry?)
+      end
+
+      test('returns false if asset was initialized as not an entry point') do
+        asset = new_asset('/app.js', "console.log('Hello')", entry: false)
+        asset.process
+
+        refute(asset.entry?)
+      end
+
+      test('returns true if asset was initialized without specifying entry status') do
+        asset = new_asset('/app.js', "console.log('Hello')")
+        asset.process
+
+        assert(asset.entry?)
+      end
+    end
+
+    ########################################################################################################
     ## #internal?                                                                                         ##
     ########################################################################################################
 
     context('#internal?') do
-      test('returns true if asset was initialized as internal') do
-        asset = new_asset('/app.js', "console.log('Hello')", internal: true)
+      test('returns true if asset was not initialized as an entry point') do
+        asset = new_asset('/app.js', "console.log('Hello')", entry: false)
         asset.process
 
         assert(asset.internal?)
       end
 
-      test('returns false if asset was initialized as non-internal') do
-        asset = new_asset('/app.js', "console.log('Hello')", internal: false)
+      test('returns false if asset was initialized as an entry point') do
+        asset = new_asset('/app.js', "console.log('Hello')", entry: true)
         asset.process
 
         refute(asset.internal?)
       end
 
-      test('returns false if asset was initialized without specifying internal status') do
+      test('returns false if asset was initialized without specifying entry point status') do
         asset = new_asset('/app.js', "console.log('Hello')")
         asset.process
 
@@ -723,12 +750,12 @@ class AssetTest < Minitest::Test
         asset.process
 
         assert_inspect('#<Darkroom::Asset: '\
+          '@entry=true, '\
           '@errors=[#<Darkroom::AssetNotFoundError: /bad-import.js:1: Asset not found: '\
             '/does-not-exist.js>], '\
           '@extension=".js", '\
           "@file=\"#{full_path(path)}\", "\
           '@fingerprint="5f3acf6b7220af7a522fab7b95e47333", '\
-          '@internal=false, '\
           '@minify=false, '\
           "@mtime=#{File.mtime(full_path(path)).inspect}, "\
           '@path="/bad-import.js", '\

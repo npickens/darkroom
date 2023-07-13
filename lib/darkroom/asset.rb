@@ -113,19 +113,18 @@ class Darkroom
     # [path] Path this asset will be referenced by (e.g. /js/app.js).
     # [darkroom] Darkroom instance that the asset is a member of.
     # [prefix:] Prefix to apply to unversioned and versioned paths.
+    # [entry:] Boolean indicating whether or not the asset is an entry point (i.e. accessible externally).
     # [minify:] Boolean specifying whether or not the asset should be minified when processed.
-    # [internal:] Boolean indicating whether or not the asset is only accessible internally (i.e. as an
-    #             import or reference).
     # [intermediate:] Boolean indicating whether or not the asset exists solely to provide an intermediate
     #                 form (e.g. compiled) to another asset instance.
     #
-    def initialize(path, file, darkroom, prefix: nil, minify: false, internal: false, intermediate: false)
+    def initialize(path, file, darkroom, prefix: nil, entry: true, minify: false, intermediate: false)
       @path = path
       @file = file
       @darkroom = darkroom
       @prefix = prefix
+      @entry = entry
       @minify = minify
-      @internal = internal
 
       @path_unversioned = "#{@prefix}#{@path}"
       @extension = File.extname(@path).downcase
@@ -135,8 +134,8 @@ class Darkroom
         @delegate = @delegate.compiled
         @intermediate_asset = Asset.new(@path, @file, @darkroom,
           prefix: @prefix,
+          entry: false,
           minify: false,
-          internal: true,
           intermediate: true,
         )
       end
@@ -167,7 +166,7 @@ class Darkroom
       build_references
       process_dependencies
       compile
-      content unless @internal
+      content if entry?
 
       @processed
     ensure
@@ -238,7 +237,7 @@ class Darkroom
             end
           end
 
-        unless @internal
+        if entry?
           minify if @minify
           @fingerprint = Digest::MD5.hexdigest(@content_minified || @content)
           @path_versioned = "#{@prefix}#{@path.sub(EXTENSION_REGEX, "-#{@fingerprint}")}"
@@ -266,10 +265,18 @@ class Darkroom
     end
 
     ##
-    # Returns boolean indicating whether or not the asset is marked as internal.
+    # Returns boolean indicating whether or not the asset is an entry point.
+    #
+    def entry?
+      @entry
+    end
+
+    ##
+    # DEPRECATED: use #entry? instead. Returns boolean indicating whether or not the asset is marked as
+    # internal.
     #
     def internal?
-      @internal
+      !entry?
     end
 
     ##
@@ -285,11 +292,11 @@ class Darkroom
     #
     def inspect
       "#<#{self.class}: "\
+        "@entry=#{@entry.inspect}, "\
         "@errors=#{@errors.inspect}, "\
         "@extension=#{@extension.inspect}, "\
         "@file=#{@file.inspect}, "\
         "@fingerprint=#{@fingerprint.inspect}, "\
-        "@internal=#{@internal.inspect}, "\
         "@minify=#{@minify.inspect}, "\
         "@mtime=#{@mtime.inspect}, "\
         "@path=#{@path.inspect}, "\

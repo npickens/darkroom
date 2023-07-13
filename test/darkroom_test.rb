@@ -250,10 +250,28 @@ class DarkroomTest < Minitest::Test
         assert_nil(darkroom.asset('/components/header.htx'))
       end
 
+      test('returns nil if asset is not an entry point') do
+        write_files('/assets/components/header.htx' => '<header>${this.title}</header>')
+
+        darkroom('/assets', entries: /^\/[^\/]+$/)
+        darkroom.process
+
+        assert_nil(darkroom.asset('/components/header.htx'))
+      end
+
       test('returns asset if path matches internal pattern but is also pristine') do
         write_files('/assets/pristine.txt' => 'Hello')
 
         darkroom('/assets', internal_pattern: /.*/, pristine: '/pristine.txt')
+        darkroom.process
+
+        assert(darkroom.asset('/pristine.txt'))
+      end
+
+      test('returns asset if path is not explicitly an entry point but is pristine') do
+        write_files('/assets/pristine.txt' => 'Hello')
+
+        darkroom('/assets', entries: /^\/controllers\/.+/, pristine: '/pristine.txt')
         darkroom.process
 
         assert(darkroom.asset('/pristine.txt'))
@@ -487,6 +505,24 @@ class DarkroomTest < Minitest::Test
         FileUtils.rm_rf(DUMP_DIR)
       end
 
+      test('only includes entry point assets') do
+        write_files(
+          '/assets/app.js' => "console.log('Hello')",
+          '/assets/components/header.htx' => '<header>${this.title}</header>',
+        )
+
+        setup_dump_dir
+
+        darkroom('/assets', entries: /^\/[^\/]+$/)
+        darkroom.process
+        darkroom.dump(DUMP_DIR)
+
+        assert(File.exist?("#{DUMP_DIR}/app-ef0f76b822009ab847bd6a370e911556.js"))
+        refute(File.exist?("#{DUMP_DIR}/components/header-e84f21b5c4ce60bb92d2e61e2b4d11f1.htx"))
+      ensure
+        FileUtils.rm_rf(DUMP_DIR)
+      end
+
       test('does not delete anything in target directory by default') do
         write_files('/assets/app.js' => "console.log('Hello')")
 
@@ -597,6 +633,7 @@ class DarkroomTest < Minitest::Test
           hosts: 'https://cdn1.hello.world',
           prefix: '/static',
           pristine: '/hi.txt',
+          entries: /^\/[^\/]+$/,
           minified_pattern: /\.minified\.*/,
           internal_pattern: /^\/private\//,
           min_process_interval: 1,
@@ -604,6 +641,7 @@ class DarkroomTest < Minitest::Test
         darkroom.process
 
         assert_inspect('#<Darkroom: '\
+          '@entries=[/^\\/[^\\/]+$/], '\
           '@errors=['\
             '#<Darkroom::AssetNotFoundError: /bad-import.js:1: Asset not found: /does-not-exist.js>, '\
             '#<Darkroom::AssetNotFoundError: /bad-imports.js:1: Asset not found: /does-not-exist.js>, '\

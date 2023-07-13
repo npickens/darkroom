@@ -12,7 +12,6 @@ require_relative('errors/processing_error')
 # Main class providing fast, lightweight, and straightforward web asset management.
 #
 class Darkroom
-  DEFAULT_INTERNAL_PATTERN = nil
   DEFAULT_MINIFIED_PATTERN = /(\.|-)min\.\w+$/.freeze
   TRAILING_SLASHES = /\/+$/.freeze
   PRISTINE = Set.new(%w[/favicon.ico /mask-icon.svg /humans.txt /robots.txt]).freeze
@@ -51,22 +50,30 @@ class Darkroom
   # [prefix:] Prefix to prepend to asset paths (e.g. +/assets+).
   # [pristine:] Path(s) that should not include prefix and for which unversioned form should be provided by
   #             default (e.g. +/favicon.ico+).
+  # [entries:] String, regex, or array of strings and regexes specifying entry point paths / path patterns.
   # [minify:] Boolean specifying whether or not to minify assets.
   # [minified_pattern:] Regex used against asset paths to determine if they are already minified and should
   #                     therefore be skipped over for minification.
-  # [internal_pattern:] Regex used against asset paths to determine if they should be marked as internal and
-  #                     therefore made inaccessible externally.
+  # [internal_pattern:] DEPRECATED: use +entries:+ instead. Regex used against asset paths to determine if
+  #                     they should be marked as internal and therefore made inaccessible externally.
   # [min_process_interval:] Minimum time required between one run of asset processing and another.
   #
-  def initialize(*load_paths, host: nil, hosts: nil, prefix: nil, pristine: nil, minify: false,
-      minified_pattern: DEFAULT_MINIFIED_PATTERN, internal_pattern: DEFAULT_INTERNAL_PATTERN,
+  def initialize(*load_paths, host: nil, hosts: nil, prefix: nil, pristine: nil, entries: nil,
+      minify: false, minified_pattern: DEFAULT_MINIFIED_PATTERN, internal_pattern: nil,
       min_process_interval: MIN_PROCESS_INTERVAL)
     @load_paths = load_paths.map { |load_path| File.expand_path(load_path) }
 
     @hosts = (Array(host) + Array(hosts)).map! { |host| host.sub(TRAILING_SLASHES, '') }
+    @entries = Array(entries)
     @minify = minify
     @internal_pattern = internal_pattern
     @minified_pattern = minified_pattern
+
+    if @internal_pattern
+      warn('Darkroom :internal_pattern is deprecated: use :entries to instead specify which assets are '\
+        'entry points (i.e. available externally) and pass a string, regex, or array of strings and '\
+        'regexes')
+    end
 
     @prefix = prefix&.sub(TRAILING_SLASHES, '')
     @prefix = nil if @prefix && @prefix.empty?
@@ -116,11 +123,15 @@ class Darkroom
           else
             found[path] = load_path
 
-            @manifest[path] ||= Asset.new(path, file, self,
-              prefix: (@prefix unless @pristine.include?(path)),
-              internal: !!@internal_pattern && path.match?(@internal_pattern) && !@pristine.include?(path),
-              minify: @minify && !path.match?(@minified_pattern),
-            )
+            unless @manifest.key?(path)
+              entry = entry?(path)
+
+              @manifest[path] = Asset.new(path, file, self,
+                prefix: (@prefix unless @pristine.include?(path)),
+                entry: entry,
+                minify: @minify && entry && (!@minified_pattern || !path.match?(@minified_pattern)),
+              )
+            end
           end
         end
       end
@@ -132,7 +143,7 @@ class Darkroom
       @manifest.each do |path, asset|
         asset.process
 
-        unless asset.internal?
+        if asset.entry?
           @manifest_unversioned[asset.path_unversioned] = asset
           @manifest_versioned[asset.path_versioned] = asset
         end
@@ -260,6 +271,7 @@ class Darkroom
   #
   def inspect
     "#<#{self.class}: "\
+      "@entries=#{@entries.inspect}, "\
       "@errors=#{@errors.inspect}, "\
       "@hosts=#{@hosts.inspect}, "\
       "@internal_pattern=#{@internal_pattern.inspect}, "\
@@ -272,5 +284,26 @@ class Darkroom
       "@pristine=#{@pristine.inspect}, "\
       "@process_key=#{@process_key.inspect}"\
     '>'
+  end
+
+  private
+
+  ##
+  # Returns boolean indicating whether or not the provided path is an entry point.
+  #
+  # [path] Path to check.
+  #
+  def entry?(path)
+    if @pristine.include?(path)
+      true
+    elsif @internal_pattern && @entries.empty?
+      !path.match?(@internal_pattern)
+    elsif @entries.empty?
+      true
+    else
+      @entries.any? do |entry|
+        path == entry || (entry.kind_of?(Regexp) && path.match?(entry))
+      end
+    end
   end
 end
