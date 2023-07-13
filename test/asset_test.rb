@@ -661,21 +661,18 @@ class AssetTest < Minitest::Test
     context('#entry?') do
       test('returns true if asset was initialized as an entry point') do
         asset = new_asset('/app.js', "console.log('Hello')", entry: true)
-        asset.process
 
         assert(asset.entry?)
       end
 
       test('returns false if asset was initialized as not an entry point') do
         asset = new_asset('/app.js', "console.log('Hello')", entry: false)
-        asset.process
 
         refute(asset.entry?)
       end
 
       test('returns true if asset was initialized without specifying entry status') do
         asset = new_asset('/app.js', "console.log('Hello')")
-        asset.process
 
         assert(asset.entry?)
       end
@@ -688,21 +685,18 @@ class AssetTest < Minitest::Test
     context('#internal?') do
       test('returns true if asset was not initialized as an entry point') do
         asset = new_asset('/app.js', "console.log('Hello')", entry: false)
-        asset.process
 
         assert(asset.internal?)
       end
 
       test('returns false if asset was initialized as an entry point') do
         asset = new_asset('/app.js', "console.log('Hello')", entry: true)
-        asset.process
 
         refute(asset.internal?)
       end
 
       test('returns false if asset was initialized without specifying entry point status') do
         asset = new_asset('/app.js', "console.log('Hello')")
-        asset.process
 
         refute(asset.internal?)
       end
