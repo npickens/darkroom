@@ -104,6 +104,7 @@ class AssetTest < Minitest::Test
           asset.process
         end
 
+        refute_error(asset.errors)
         assert_equal('[compiled]', asset.content)
       end
 
@@ -117,6 +118,7 @@ class AssetTest < Minitest::Test
           asset.process
         end
 
+        refute_error(asset.errors)
         assert_equal("[import]\n\n[compiled]", asset.content)
       end
 
@@ -136,6 +138,7 @@ class AssetTest < Minitest::Test
           asset.process
         end
 
+        refute_error(asset.errors)
         assert_equal('[minified]', asset.content)
       end
 
@@ -148,6 +151,7 @@ class AssetTest < Minitest::Test
 
         asset.process
 
+        refute_error(asset.errors)
         assert_equal(import_content, asset.content[0...import_content.size])
         assert_equal(asset_body, asset.content[-asset_body.size..-1])
       end
@@ -270,6 +274,7 @@ class AssetTest < Minitest::Test
 
         asset.process
 
+        refute_error(asset.errors)
         assert_equal("<body><img src='/logo-7b56e1eab00ec8000da9331a4888cb35.svg'></body>", asset.content)
       end
 
@@ -279,6 +284,7 @@ class AssetTest < Minitest::Test
 
         asset.process
 
+        refute_error(asset.errors)
         assert_equal("<body><img src='/logo-7b56e1eab00ec8000da9331a4888cb35.svg'></body>", asset.content)
       end
 
@@ -288,6 +294,7 @@ class AssetTest < Minitest::Test
 
         asset.process
 
+        refute_error(asset.errors)
         assert_equal("<body><img src='/logo.svg'></body>", asset.content)
       end
 
@@ -297,6 +304,7 @@ class AssetTest < Minitest::Test
 
         asset.process
 
+        refute_error(asset.errors)
         assert_equal("<body><img src='data:image/svg+xml;base64,PHN2Zz48L3N2Zz4='></body>", asset.content)
       end
 
@@ -306,6 +314,7 @@ class AssetTest < Minitest::Test
 
         asset.process
 
+        refute_error(asset.errors)
         assert_equal("<body><img src='data:image/svg+xml;base64,PHN2Zz48L3N2Zz4='></body>", asset.content)
       end
 
@@ -315,6 +324,7 @@ class AssetTest < Minitest::Test
 
         asset.process
 
+        refute_error(asset.errors)
         assert_equal("<body><img src='data:image/svg+xml;utf8,<svg></svg>'></body>", asset.content)
       end
 
@@ -324,6 +334,7 @@ class AssetTest < Minitest::Test
 
         asset.process
 
+        refute_error(asset.errors)
         assert_equal('<body><svg></svg></body>', asset.content)
       end
 
@@ -331,6 +342,7 @@ class AssetTest < Minitest::Test
         asset = new_asset('/deleted.js')
         asset.process
 
+        refute_error(asset.errors)
         assert_empty(asset.content)
       end
 
@@ -338,8 +350,7 @@ class AssetTest < Minitest::Test
         asset = new_asset('/app.js', "console.log('Hello')")
         asset.process
 
-        assert_nil(asset.error)
-        assert_empty(asset.errors)
+        refute_error(asset.errors)
       end
 
       test('registers an error when an import is not found') do
@@ -406,9 +417,9 @@ class AssetTest < Minitest::Test
 
         asset1.process
 
-        assert_empty(asset1.errors)
-        assert_empty(asset2.errors)
-        assert_empty(asset3.errors)
+        refute_error(asset1.errors)
+        refute_error(asset2.errors)
+        refute_error(asset3.errors)
 
         assert_equal("\n.circular3 {}\n\n.circular2 {}\n\n.circular1 {}", asset1.content)
         assert_equal("\n.circular1 {}\n\n.circular3 {}\n\n.circular2 {}", asset2.content)
@@ -573,6 +584,7 @@ class AssetTest < Minitest::Test
 
         headers = asset.headers
 
+        refute_error(asset.errors)
         assert_equal('public, max-age=31536000', headers['Cache-Control'])
         assert_nil(headers['ETag'])
       end
@@ -583,6 +595,7 @@ class AssetTest < Minitest::Test
 
         headers = asset.headers(versioned: true)
 
+        refute_error(asset.errors)
         assert_equal('public, max-age=31536000', headers['Cache-Control'])
         assert_nil(headers['ETag'])
       end
@@ -593,6 +606,7 @@ class AssetTest < Minitest::Test
 
         headers = asset.headers(versioned: false)
 
+        refute_error(asset.errors)
         assert_equal('"ef0f76b822009ab847bd6a370e911556"', headers['ETag'])
         assert_nil(headers['Cache-Control'])
       end
@@ -607,6 +621,7 @@ class AssetTest < Minitest::Test
         asset = new_asset('/app.js', "console.log('Hello')")
         asset.process
 
+        refute_error(asset.errors)
         assert_equal('sha256-S9v8mQ0Xba2sG+AEXC4IpdFUM2EX/oRNADEeJ5MpV3s=', asset.integrity(:sha256))
         assert_equal('sha384-2nxTl5wRLPxsDXWEi27WU3OmaXL2BxWbycv+O0ICyA11sCQMbb1K/uREBxvBKaMT',
           asset.integrity(:sha384))
@@ -618,6 +633,7 @@ class AssetTest < Minitest::Test
         asset = new_asset('/app.js', "console.log('Hello')")
         asset.process
 
+        refute_error(asset.errors)
         assert_equal('sha384-2nxTl5wRLPxsDXWEi27WU3OmaXL2BxWbycv+O0ICyA11sCQMbb1K/uREBxvBKaMT',
           asset.integrity)
       end
@@ -630,6 +646,7 @@ class AssetTest < Minitest::Test
           asset.integrity(:sha)
         end
 
+        refute_error(asset.errors)
         assert_equal('Unrecognized integrity algorithm: sha', error.to_s)
       end
     end

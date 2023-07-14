@@ -22,6 +22,7 @@ class DarkroomTest < Minitest::Test
         darkroom('/assets')
         did_process = darkroom.process
 
+        refute_error(darkroom.errors)
         assert(did_process)
       end
 
@@ -30,9 +31,11 @@ class DarkroomTest < Minitest::Test
 
         darkroom('/assets', min_process_interval: 9999)
         darkroom.process
+        refute_error(darkroom.errors)
 
         write_files('/assets/tmp.txt' => 'Temporary...')
         did_process = darkroom.process
+        refute_error(darkroom.errors)
 
         refute(did_process)
         assert(darkroom.asset('/app.js'))
@@ -49,10 +52,12 @@ class DarkroomTest < Minitest::Test
 
           darkroom('/assets', min_process_interval: 0)
           did_process = darkroom.process
+          refute_error(darkroom.errors)
           assert(did_process)
 
           write_files('/assets/tmp.txt' => 'Temporary...')
           did_process = darkroom.process
+          refute_error(darkroom.errors)
           refute(did_process)
         end
 
@@ -120,6 +125,8 @@ class DarkroomTest < Minitest::Test
           darkroom.process
         end
 
+        refute_error(darkroom.errors)
+
         assert_equal('[minified]',                       darkroom.manifest('/app.js').content)
         assert_equal('body { background: white; }',      darkroom.manifest('/app.css').content)
         assert_equal("console.log('World')",             darkroom.manifest('/other.js').content)
@@ -184,6 +191,7 @@ class DarkroomTest < Minitest::Test
         darkroom('/assets')
         darkroom.process
 
+        refute_error(darkroom.errors)
         refute(darkroom.error?)
       end
 
@@ -199,6 +207,8 @@ class DarkroomTest < Minitest::Test
         darkroom('/assets')
         darkroom.process
 
+        assert_error('#<Darkroom::AssetNotFoundError: /bad-import.js:1: Asset not found: '\
+          '/does-not-exist.js>', darkroom.errors)
         assert(darkroom.error?)
       end
     end
@@ -212,6 +222,7 @@ class DarkroomTest < Minitest::Test
         darkroom('/assets')
         darkroom.process
 
+        refute_error(darkroom.errors)
         assert_nil(darkroom.asset('/does-not-exist.js'))
       end
 
@@ -221,6 +232,8 @@ class DarkroomTest < Minitest::Test
 
         darkroom('/assets')
         darkroom.process
+
+        refute_error(darkroom.errors)
 
         asset = darkroom.asset('/app.js')
 
@@ -235,6 +248,8 @@ class DarkroomTest < Minitest::Test
         darkroom('/assets')
         darkroom.process
 
+        refute_error(darkroom.errors)
+
         asset = darkroom.asset('/app-ef0f76b822009ab847bd6a370e911556.js')
 
         assert(asset)
@@ -247,6 +262,8 @@ class DarkroomTest < Minitest::Test
 
         darkroom('/assets', prefix: '/static')
         darkroom.process
+
+        refute_error(darkroom.errors)
 
         assert(darkroom.asset('/static/app.js'))
         assert(darkroom.asset('/static/app-ef0f76b822009ab847bd6a370e911556.js'))
@@ -262,6 +279,8 @@ class DarkroomTest < Minitest::Test
         darkroom('/assets', prefix: '/static', pristine: '/pristine.txt')
         darkroom.process
 
+        refute_error(darkroom.errors)
+
         assert_nil(darkroom.asset('/static/pristine.txt'))
         assert_nil(darkroom.asset('/static/pristine-8b1a9953c4611296a827abf8c47804d7.txt'))
 
@@ -270,22 +289,24 @@ class DarkroomTest < Minitest::Test
       end
 
       test('returns nil if asset is internal') do
-        write_files('/assets/components/header.htx' => '<header>${this.title}</header>')
+        write_files('/assets/components/header.css' => 'header { background: white; }')
 
         Darkroom.stub(:warn, nil) do
           darkroom('/assets', internal_pattern: /^\/components\/.*$/)
           darkroom.process
         end
 
+        refute_error(darkroom.errors)
         assert_nil(darkroom.asset('/components/header.htx'))
       end
 
       test('returns nil if asset is not an entry point') do
-        write_files('/assets/components/header.htx' => '<header>${this.title}</header>')
+        write_files('/assets/components/header.css' => 'header { background: white; }')
 
         darkroom('/assets', entries: /^\/[^\/]+$/)
         darkroom.process
 
+        refute_error(darkroom.errors)
         assert_nil(darkroom.asset('/components/header.htx'))
       end
 
@@ -297,6 +318,7 @@ class DarkroomTest < Minitest::Test
           darkroom.process
         end
 
+        refute_error(darkroom.errors)
         assert(darkroom.asset('/pristine.txt'))
       end
 
@@ -306,6 +328,7 @@ class DarkroomTest < Minitest::Test
         darkroom('/assets', entries: /^\/controllers\/.+/, pristine: '/pristine.txt')
         darkroom.process
 
+        refute_error(darkroom.errors)
         assert(darkroom.asset('/pristine.txt'))
       end
     end
@@ -318,6 +341,8 @@ class DarkroomTest < Minitest::Test
       test('raises AssetNotFoundError if asset does not exist') do
         darkroom('/assets')
         darkroom.process
+
+        refute_error(darkroom.errors)
 
         error = assert_raises(Darkroom::AssetNotFoundError) do
           darkroom.asset_path('/does-not-exist.js')
@@ -332,6 +357,7 @@ class DarkroomTest < Minitest::Test
         darkroom('/assets')
         darkroom.process
 
+        refute_error(darkroom.errors)
         assert_equal('/app-ef0f76b822009ab847bd6a370e911556.js', darkroom.asset_path('/app.js'))
       end
 
@@ -341,6 +367,7 @@ class DarkroomTest < Minitest::Test
         darkroom('/assets')
         darkroom.process
 
+        refute_error(darkroom.errors)
         assert_equal('/robots.txt', darkroom.asset_path('/robots.txt'))
       end
 
@@ -352,6 +379,8 @@ class DarkroomTest < Minitest::Test
 
         darkroom('/assets')
         darkroom.process
+
+        refute_error(darkroom.errors)
 
         assert_equal('/app-ef0f76b822009ab847bd6a370e911556.js', darkroom.asset_path('/app.js',
           versioned: true))
@@ -367,6 +396,8 @@ class DarkroomTest < Minitest::Test
 
         darkroom('/assets')
         darkroom.process
+
+        refute_error(darkroom.errors)
 
         assert_equal('/app.js', darkroom.asset_path('/app.js', versioned: false))
         assert_equal('/robots.txt', darkroom.asset_path('/robots.txt', versioned: false))
@@ -384,11 +415,15 @@ class DarkroomTest < Minitest::Test
         darkroom('/assets', host: host)
         darkroom.process
 
+        refute_error(darkroom.errors)
+
         assert_equal("#{host}/app-ef0f76b822009ab847bd6a370e911556.js", darkroom.asset_path('/app.js'))
         assert_equal("#{host}/app-ef0f76b822009ab847bd6a370e911556.js", darkroom.asset_path('/app.js'))
 
         darkroom('/assets', hosts: hosts)
         darkroom.process
+
+        refute_error(darkroom.errors)
 
         assert_equal("#{hosts[0]}/app-ef0f76b822009ab847bd6a370e911556.js", darkroom.asset_path('/app.js'))
         assert_equal("#{hosts[1]}/app-ef0f76b822009ab847bd6a370e911556.js", darkroom.asset_path('/app.js'))
@@ -403,6 +438,7 @@ class DarkroomTest < Minitest::Test
         darkroom('/assets', prefix: '/static')
         darkroom.process
 
+        refute_error(darkroom.errors)
         assert_equal('/static/app-ef0f76b822009ab847bd6a370e911556.js', darkroom.asset_path('/app.js'))
       end
 
@@ -412,6 +448,7 @@ class DarkroomTest < Minitest::Test
         darkroom('/assets', prefix: '/static')
         darkroom.process
 
+        refute_error(darkroom.errors)
         assert_equal('/robots.txt', darkroom.asset_path('/robots.txt'))
       end
     end
@@ -427,6 +464,8 @@ class DarkroomTest < Minitest::Test
         darkroom('/assets')
         darkroom.process
 
+        refute_error(darkroom.errors)
+
         assert_equal('sha256-S9v8mQ0Xba2sG+AEXC4IpdFUM2EX/oRNADEeJ5MpV3s=',
           darkroom.asset_integrity('/app.js', :sha256))
         assert_equal('sha384-2nxTl5wRLPxsDXWEi27WU3OmaXL2BxWbycv+O0ICyA11sCQMbb1K/uREBxvBKaMT',
@@ -441,6 +480,7 @@ class DarkroomTest < Minitest::Test
         darkroom('/assets')
         darkroom.process
 
+        refute_error(darkroom.errors)
         assert_equal('sha384-2nxTl5wRLPxsDXWEi27WU3OmaXL2BxWbycv+O0ICyA11sCQMbb1K/uREBxvBKaMT',
           darkroom.asset_integrity('/app.js'))
       end
@@ -450,6 +490,8 @@ class DarkroomTest < Minitest::Test
 
         darkroom('/assets')
         darkroom.process
+
+        refute_error(darkroom.errors)
 
         error = assert_raises(RuntimeError) do
           darkroom.asset_integrity('/app.js', :sha)
@@ -461,6 +503,8 @@ class DarkroomTest < Minitest::Test
       test('raises AssetNotFoundError if asset does not exist') do
         darkroom('/assets')
         darkroom.process
+
+        refute_error(darkroom.errors)
 
         error = assert_raises(Darkroom::AssetNotFoundError) do
           darkroom.asset_integrity('/does-not-exist.js')
@@ -492,6 +536,9 @@ class DarkroomTest < Minitest::Test
 
         darkroom('/assets')
         darkroom.process
+
+        refute_error(darkroom.errors)
+
         darkroom.dump(DUMP_DIR) rescue nil
 
         assert(File.directory?(DUMP_DIR))
@@ -509,6 +556,9 @@ class DarkroomTest < Minitest::Test
 
         darkroom('/assets')
         darkroom.process
+
+        refute_error(darkroom.errors)
+
         darkroom.dump(DUMP_DIR)
 
         assert_equal(darkroom.asset('/app.js').content,
@@ -522,7 +572,7 @@ class DarkroomTest < Minitest::Test
       test('does not include internal assets') do
         write_files(
           '/assets/app.js' => "console.log('Hello')",
-          '/assets/components/header.htx' => '<header>${this.title}</header>',
+          '/assets/components/header.css' => 'header { background: white; }',
         )
 
         setup_dump_dir
@@ -530,6 +580,9 @@ class DarkroomTest < Minitest::Test
         Darkroom.stub(:warn, nil) do
           darkroom('/assets', internal_pattern: /^\/components\/.*$/)
           darkroom.process
+
+          refute_error(darkroom.errors)
+
           darkroom.dump(DUMP_DIR)
         end
 
@@ -542,13 +595,16 @@ class DarkroomTest < Minitest::Test
       test('only includes entry point assets') do
         write_files(
           '/assets/app.js' => "console.log('Hello')",
-          '/assets/components/header.htx' => '<header>${this.title}</header>',
+          '/assets/components/header.css' => 'header { background: white; }',
         )
 
         setup_dump_dir
 
         darkroom('/assets', entries: /^\/[^\/]+$/)
         darkroom.process
+
+        refute_error(darkroom.errors)
+
         darkroom.dump(DUMP_DIR)
 
         assert(File.exist?("#{DUMP_DIR}/app-ef0f76b822009ab847bd6a370e911556.js"))
@@ -564,6 +620,9 @@ class DarkroomTest < Minitest::Test
 
         darkroom('/assets')
         darkroom.process
+
+        refute_error(darkroom.errors)
+
         darkroom.dump(DUMP_DIR)
 
         assert(File.exist?(DUMP_DIR_EXISTING_FILE))
@@ -578,6 +637,9 @@ class DarkroomTest < Minitest::Test
 
         darkroom('/assets')
         darkroom.process
+
+        refute_error(darkroom.errors)
+
         darkroom.dump(DUMP_DIR, clear: true)
 
         refute(File.exist?(DUMP_DIR_EXISTING_FILE))
@@ -592,6 +654,9 @@ class DarkroomTest < Minitest::Test
 
         darkroom('/assets')
         darkroom.process
+
+        refute_error(darkroom.errors)
+
         darkroom.dump(DUMP_DIR, clear: false)
 
         assert(File.exist?(DUMP_DIR_EXISTING_FILE))
@@ -606,6 +671,9 @@ class DarkroomTest < Minitest::Test
 
         darkroom('/assets')
         darkroom.process
+
+        refute_error(darkroom.errors)
+
         darkroom.dump(DUMP_DIR)
 
         assert(File.exist?("#{DUMP_DIR}/robots.txt"))
@@ -620,6 +688,9 @@ class DarkroomTest < Minitest::Test
 
         darkroom('/assets')
         darkroom.process
+
+        refute_error(darkroom.errors)
+
         darkroom.dump(DUMP_DIR, include_pristine: true)
 
         assert(File.exist?("#{DUMP_DIR}/robots.txt"))
@@ -634,6 +705,9 @@ class DarkroomTest < Minitest::Test
 
         darkroom('/assets')
         darkroom.process
+
+        refute_error(darkroom.errors)
+
         darkroom.dump(DUMP_DIR, include_pristine: false)
 
         refute(File.exist?("#{DUMP_DIR}/robots.txt"))
