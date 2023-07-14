@@ -358,14 +358,10 @@ class Darkroom
 
           if kind == :import || kind == :reference
             path = File.expand_path(match[:path], @dir)
+            asset = @darkroom.manifest(path)
 
-            if (asset = @darkroom.manifest(path))
-              @own_dependencies << asset
-              @own_imports << asset if kind == :import
-            else
-              @errors << not_found_error(match[:path], match)
-              next
-            end
+            @own_dependencies << asset if asset
+            @own_imports << asset if asset && kind == :import
           end
 
           @parse_matches << [kind, match, asset]
@@ -414,9 +410,9 @@ class Darkroom
       return if ran?(:substitute)
 
       parse
-      errors = []
+      substitutions = []
 
-      @parse_matches.sort_by! { |_, match| -match.begin(0) }.each do |kind, match, asset|
+      @parse_matches.sort_by! { |_, match, __| match.begin(0) }.each do |kind, match, asset|
         format = nil
 
         handler = @delegate.handler(kind)
@@ -426,27 +422,30 @@ class Darkroom
         }
         handler_args[:asset] = asset if asset
 
-        if kind == :reference
+        if !asset && (kind == :import || kind == :reference)
+          add_parse_error(match, AssetNotFoundError)
+          next
+        elsif kind == :reference
           format = match[:format]
           format = REFERENCE_FORMATS[match[:entity]].first if format.nil? || format == ''
 
           handler_args[:format] = format
 
           if asset.dependencies.include?(self)
-            errors << CircularReferenceError.new(*line_info(match))
+            add_parse_error(match, CircularReferenceError)
             next
           elsif !REFERENCE_FORMATS[match[:entity]].include?(format)
-            errors << AssetError.new("Invalid reference format '#{format}' (must be one of "\
-              "'#{REFERENCE_FORMATS[match[:entity]].join("', '")}')", *line_info(match))
+            formats = REFERENCE_FORMATS[match[:entity]].join("', '")
+            add_parse_error(match, "Invalid reference format '#{format}' (must be one of '#{formats}')")
             next
           elsif match[:entity] == 'content' && format != 'base64' && asset.binary?
-            errors << AssetError.new('Base64 encoding is required for binary assets', *line_info(match))
+            add_parse_error(match, 'Base64 encoding is required for binary assets')
             next
           end
         end
 
         error = catch(:error) do
-          value, start, finish = handler&.call(**handler_args)
+          substitution, start, finish = handler&.call(**handler_args)
 
           min_start, max_finish = match.offset(0)
           start ||= (!format || format == 'displace') ? min_start : match.begin(:quoted)
@@ -454,34 +453,35 @@ class Darkroom
           start = [[start, min_start].max, max_finish].min
           finish = [[finish, max_finish].min, min_start].max
 
-          @own_content[start...finish] =
-            if kind == :reference
-              case "#{match[:entity]}-#{format}"
-              when 'path-versioned'
-                value || asset.path_versioned
-              when 'path-unversioned'
-                value || asset.path_unversioned
-              when 'content-base64'
-                quote = DEFAULT_QUOTE if match[:quote] == ''
-                data = Base64.strict_encode64(value || asset.content)
-                "#{quote}data:#{asset.content_type};base64,#{data}#{quote}"
-              when 'content-utf8'
-                quote = DEFAULT_QUOTE if match[:quote] == ''
-                "#{quote}data:#{asset.content_type};utf8,#{value || asset.content}#{quote}"
-              when 'content-displace'
-                value || asset.content
-              end
-            else
-              value || ''
+          if kind == :reference
+            case "#{match[:entity]}-#{format}"
+            when 'path-versioned'
+              substitution ||= asset.path_versioned
+            when 'path-unversioned'
+              substitution ||= asset.path_unversioned
+            when 'content-base64'
+              quote = DEFAULT_QUOTE if match[:quote] == ''
+              data = Base64.strict_encode64(substitution || asset.content)
+              substitution = "#{quote}data:#{asset.content_type};base64,#{data}#{quote}"
+            when 'content-utf8'
+              quote = DEFAULT_QUOTE if match[:quote] == ''
+              data = substitution || asset.content
+              substitution = "#{quote}data:#{asset.content_type};utf8,#{data}#{quote}"
+            when 'content-displace'
+              substitution ||= asset.content
             end
+          end
 
+          substitutions << [substitution || '', start, finish]
           nil
         end
 
-        errors << AssetError.new(error, *line_info(match)) if error
+        add_parse_error(match, error) if error
       end
 
-      @errors.concat(errors.reverse)
+      substitutions.reverse_each do |content, start, finish|
+        @own_content[start...finish] = content
+      end
     end
 
     ##
@@ -582,32 +582,28 @@ class Darkroom
     end
 
     ##
-    # Utility method that returns the appropriate error for a dependency that doesn't exist.
+    # Utility method to create a parse error of the appropriate class and append it to the errors array.
     #
-    # [path] Path of the asset which cannot be found.
-    # [match] MatchData object of the regex for the asset that cannot be found.
+    # [match] MatchData object for where the parse error occurred.
+    # [error] Error class or message.
     #
-    def not_found_error(path, match)
-      klass = Darkroom.delegate(File.extname(path)) ? AssetNotFoundError : UnrecognizedExtensionError
-      klass.new(path, @path, line_num(match))
-    end
+    def add_parse_error(match, error)
+      klass = error
+      args = []
 
-    ##
-    # Utility method that returns an array of line info based on match data.
-    #
-    # [match] MatchData object of the regex.
-    #
-    def line_info(match)
-      [match[0], @path, line_num(match)]
-    end
+      if error == AssetNotFoundError
+        klass = UnrecognizedExtensionError unless Darkroom.delegate(File.extname(match[:path]))
+        args << match[:path]
+      else
+        if error.kind_of?(String)
+          klass = AssetError
+          args << error
+        end
 
-    ##
-    # Utility method that returns the line number where a regex match was found.
-    #
-    # [match] MatchData object of the regex.
-    #
-    def line_num(match)
-      @own_content[0..match.begin(:path)].count("\n") + 1
+        args << match[0].strip
+      end
+
+      @errors << klass.new(*args, @path, @own_content[0..match.begin(:path)].count("\n") + 1)
     end
   end
 end
