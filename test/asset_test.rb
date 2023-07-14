@@ -663,6 +663,21 @@ class AssetTest < Minitest::Test
     end
 
     ########################################################################################################
+    ## #fingerprint                                                                                       ##
+    ########################################################################################################
+
+    context('#fingerprint') do
+      test('returns MD5 hash of asset content') do
+        import = new_asset('/import.js', "console.log('Import')")
+        asset = new_asset('/app.js', "import '/import.js'\n\nconsole.log('App')")
+
+        asset.process
+
+        assert_equal('31bc73566fb11439130454b88fc4efa1', "#{asset.fingerprint}")
+      end
+    end
+
+    ########################################################################################################
     ## #headers                                                                                           ##
     ########################################################################################################
 
