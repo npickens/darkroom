@@ -142,18 +142,26 @@ class AssetTest < Minitest::Test
         assert_equal('[minified]', asset.content)
       end
 
-      test('merges imported content with own content') do
-        import_content = "console.log('Import')"
-        asset_body = "console.log('App')"
-
-        import = new_asset('/import.js', import_content)
-        asset = new_asset('/app.js', "import '/import.js'\n\n#{asset_body}")
+      test('merges imported content with own content when referenced by absolute path') do
+        import = new_asset('/import.js', "console.log('Import')")
+        asset = new_asset('/app.js', "import '/import.js'\n\nconsole.log('App')")
 
         asset.process
 
         refute_error(asset.errors)
-        assert_equal(import_content, asset.content[0...import_content.size])
-        assert_equal(asset_body, asset.content[-asset_body.size..-1])
+        assert_equal("console.log('Import')\n\nconsole.log('App')", asset.content)
+      end
+
+      test('merges imported content with own content when referenced by relative path') do
+        import = new_asset('/import1.js', "console.log('Import1')")
+        import = new_asset('/components/import2.js', "console.log('Import2')")
+        asset = new_asset('/components/component.js', "import '../import1.js'\nimport 'import2.js'\n\n"\
+          "console.log('App')")
+
+        asset.process
+
+        refute_error(asset.errors)
+        assert_equal("console.log('Import1')\nconsole.log('Import2')\n\nconsole.log('App')", asset.content)
       end
 
       test('registers error when reference does not exist') do

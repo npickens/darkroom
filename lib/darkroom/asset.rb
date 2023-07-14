@@ -50,6 +50,7 @@ class Darkroom
     #
     def initialize(path, file, darkroom, prefix: nil, entry: true, minify: false, intermediate: false)
       @path = path
+      @dir = File.dirname(path)
       @file = file
       @darkroom = darkroom
       @prefix = prefix
@@ -354,7 +355,9 @@ class Darkroom
           asset = nil
 
           if kind == :import || kind == :reference
-            if (asset = @darkroom.manifest(match[:path]))
+            path = File.expand_path(match[:path], @dir)
+
+            if (asset = @darkroom.manifest(path))
               @own_dependencies << asset
               @own_imports << asset if kind == :import
             else
