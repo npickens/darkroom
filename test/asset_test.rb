@@ -678,6 +678,21 @@ class AssetTest < Minitest::Test
     end
 
     ########################################################################################################
+    ## #path_versioned                                                                                    ##
+    ########################################################################################################
+
+    context('#path_versioned') do
+      test('returns versioned path') do
+        import = new_asset('/import.js', "console.log('Import')")
+        asset = new_asset('/app.js', "import '/import.js'\n\nconsole.log('App')")
+
+        asset.process
+
+        assert_equal('/app-31bc73566fb11439130454b88fc4efa1.js', asset.path_versioned)
+      end
+    end
+
+    ########################################################################################################
     ## #headers                                                                                           ##
     ########################################################################################################
 
