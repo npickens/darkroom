@@ -596,19 +596,25 @@ class AssetTest < Minitest::Test
       test('returns true if asset was not initialized as an entry point') do
         asset = new_asset('/app.js', "console.log('Hello')", entry: false)
 
-        assert(asset.internal?)
+        Darkroom.stub(:warn, nil) do
+          assert(asset.internal?)
+        end
       end
 
       test('returns false if asset was initialized as an entry point') do
         asset = new_asset('/app.js', "console.log('Hello')", entry: true)
 
-        refute(asset.internal?)
+        Darkroom.stub(:warn, nil) do
+          refute(asset.internal?)
+        end
       end
 
       test('returns false if asset was initialized without specifying entry point status') do
         asset = new_asset('/app.js', "console.log('Hello')")
 
-        refute(asset.internal?)
+        Darkroom.stub(:warn, nil) do
+          refute(asset.internal?)
+        end
       end
     end
 

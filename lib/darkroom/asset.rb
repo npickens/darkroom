@@ -134,6 +134,8 @@ class Darkroom
     # internal.
     #
     def internal?
+      Darkroom.deprecated("#{self.class.name}#internal? is deprecated: use #entry? instead")
+
       !entry?
     end
 
