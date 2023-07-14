@@ -565,6 +565,74 @@ class AssetTest < Minitest::Test
     end
 
     ########################################################################################################
+    ## #entry?                                                                                            ##
+    ########################################################################################################
+
+    context('#entry?') do
+      test('returns true if asset was initialized as an entry point') do
+        asset = new_asset('/app.js', "console.log('Hello')", entry: true)
+
+        assert(asset.entry?)
+      end
+
+      test('returns false if asset was initialized as not an entry point') do
+        asset = new_asset('/app.js', "console.log('Hello')", entry: false)
+
+        refute(asset.entry?)
+      end
+
+      test('returns true if asset was initialized without specifying entry status') do
+        asset = new_asset('/app.js', "console.log('Hello')")
+
+        assert(asset.entry?)
+      end
+    end
+
+    ########################################################################################################
+    ## #internal?                                                                                         ##
+    ########################################################################################################
+
+    context('#internal?') do
+      test('returns true if asset was not initialized as an entry point') do
+        asset = new_asset('/app.js', "console.log('Hello')", entry: false)
+
+        assert(asset.internal?)
+      end
+
+      test('returns false if asset was initialized as an entry point') do
+        asset = new_asset('/app.js', "console.log('Hello')", entry: true)
+
+        refute(asset.internal?)
+      end
+
+      test('returns false if asset was initialized without specifying entry point status') do
+        asset = new_asset('/app.js', "console.log('Hello')")
+
+        refute(asset.internal?)
+      end
+    end
+
+    ########################################################################################################
+    ## #error?                                                                                            ##
+    ########################################################################################################
+
+    context('#error?') do
+      test('returns false if there were no errors during processing') do
+        asset = new_asset('/app.js', "console.log('Hello')")
+        asset.process
+
+        refute(asset.error?)
+      end
+
+      test('returns true if there were one or more errors during processing') do
+        asset = new_asset('/bad-import.js', "import '/does-not-exist.js'")
+        asset.process
+
+        assert(asset.error?)
+      end
+    end
+
+    ########################################################################################################
     ## #headers                                                                                           ##
     ########################################################################################################
 
@@ -656,74 +724,6 @@ class AssetTest < Minitest::Test
 
         refute_error(asset.errors)
         assert_equal('Unrecognized integrity algorithm: sha', error.to_s)
-      end
-    end
-
-    ########################################################################################################
-    ## #entry?                                                                                            ##
-    ########################################################################################################
-
-    context('#entry?') do
-      test('returns true if asset was initialized as an entry point') do
-        asset = new_asset('/app.js', "console.log('Hello')", entry: true)
-
-        assert(asset.entry?)
-      end
-
-      test('returns false if asset was initialized as not an entry point') do
-        asset = new_asset('/app.js', "console.log('Hello')", entry: false)
-
-        refute(asset.entry?)
-      end
-
-      test('returns true if asset was initialized without specifying entry status') do
-        asset = new_asset('/app.js', "console.log('Hello')")
-
-        assert(asset.entry?)
-      end
-    end
-
-    ########################################################################################################
-    ## #internal?                                                                                         ##
-    ########################################################################################################
-
-    context('#internal?') do
-      test('returns true if asset was not initialized as an entry point') do
-        asset = new_asset('/app.js', "console.log('Hello')", entry: false)
-
-        assert(asset.internal?)
-      end
-
-      test('returns false if asset was initialized as an entry point') do
-        asset = new_asset('/app.js', "console.log('Hello')", entry: true)
-
-        refute(asset.internal?)
-      end
-
-      test('returns false if asset was initialized without specifying entry point status') do
-        asset = new_asset('/app.js', "console.log('Hello')")
-
-        refute(asset.internal?)
-      end
-    end
-
-    ########################################################################################################
-    ## #error?                                                                                            ##
-    ########################################################################################################
-
-    context('#error?') do
-      test('returns false if there were no errors during processing') do
-        asset = new_asset('/app.js', "console.log('Hello')")
-        asset.process
-
-        refute(asset.error?)
-      end
-
-      test('returns true if there were one or more errors during processing') do
-        asset = new_asset('/bad-import.js', "import '/does-not-exist.js'")
-        asset.process
-
-        assert(asset.error?)
       end
     end
 
