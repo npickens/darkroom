@@ -639,6 +639,30 @@ class AssetTest < Minitest::Test
     end
 
     ########################################################################################################
+    ## #error                                                                                             ##
+    ########################################################################################################
+
+    context('#error') do
+      test('returns nil if there were no errors during processing') do
+        asset = new_asset('/app.js', "console.log('Hello')")
+        asset.process
+
+        assert_nil(asset.error)
+      end
+
+      test('returns ProcessingError errors wrapper if there were one or more errors during processing') do
+        asset = new_asset('/bad-import.js', "import '/bad1.js'\nimport '/bad2.js'")
+        asset.process
+
+        assert_error(
+          "#<Darkroom::ProcessingError: Errors were encountered while processing assets:\n"\
+          "  /bad-import.js:1: Asset not found: /bad1.js\n"\
+          "  /bad-import.js:2: Asset not found: /bad2.js>",
+          [asset.error])
+      end
+    end
+
+    ########################################################################################################
     ## #headers                                                                                           ##
     ########################################################################################################
 
