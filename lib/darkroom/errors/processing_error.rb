@@ -18,7 +18,11 @@ class Darkroom
     # Returns a string representation of the error.
     #
     def to_s
-      "Errors were encountered while processing assets:\n  #{@errors.map(&:to_s).join("\n  ")}"
+      lines = @errors.map do |error|
+        error.kind_of?(AssetError) ? error.to_s : "#{error.inspect} at #{error.backtrace[0]}"
+      end
+
+      "Errors were encountered while processing assets:\n  #{lines.join("\n  ")}"
     end
 
     ##
