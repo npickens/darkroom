@@ -61,7 +61,7 @@ class Darkroom
       @extension = File.extname(@path).downcase
       @delegate = Darkroom.delegate(@extension) or raise(UnrecognizedExtensionError.new(@path))
 
-      @keys = {}
+      @ran = Set.new
 
       if @delegate.compile_delegate && !intermediate
         @delegate = @delegate.compile_delegate
@@ -283,13 +283,16 @@ class Darkroom
     # error was recorded during the last processing run.
     #
     def modified?
-      return @modified if ran?(:modified)
+      @modified_key == @darkroom.process_key ? (return @modified) : @modified_key = @darkroom.process_key
 
       begin
         @modified = !!@error
         @modified ||= (@mtime != (@mtime = File.mtime(@file)))
         @modified ||= @intermediate_asset.modified? if @intermediate_asset
-        @modified ||= @dependencies.any? { |d| d.modified? } if @dependencies
+        @modified ||= dependencies.any? { |d| d.modified? }
+
+        @ran.clear if @modified
+
         @modified
       rescue Errno::ENOENT
         @modified = true
@@ -382,7 +385,11 @@ class Darkroom
     # Returns all dependencies (including dependencies of dependencies).
     #
     def dependencies
-      @dependencies = accumulate(:own_dependencies) unless ran?(:dependencies)
+      unless ran?(:dependencies)
+        parse
+        @dependencies = accumulate(:own_dependencies)
+      end
+
       @dependencies
     end
 
@@ -399,7 +406,11 @@ class Darkroom
     # Returns all imports (including imports of imports).
     #
     def imports
-      @imports = accumulate(:own_imports) unless ran?(:imports)
+      unless ran?(:imports)
+        parse
+        @imports = accumulate(:own_imports)
+      end
+
       @imports
     end
 
@@ -502,10 +513,9 @@ class Darkroom
         @own_content = compiled if compiled.kind_of?(String)
       rescue => e
         @errors << e
+      ensure
+        @own_content.freeze
       end
-    ensure
-      @own_content.freeze
-      dependencies # Ensure dependency array gets built.
     end
 
     ##
@@ -551,11 +561,13 @@ class Darkroom
     # [name] Name of the method.
     #
     def ran?(name)
-      if @keys[name] == @darkroom.process_key
+      modified?
+
+      if @ran.member?(name)
         true
       else
-        @keys[name] = @darkroom.process_key
-        name == :modified ? false : !modified?
+        @ran << name
+        false
       end
     end
 
