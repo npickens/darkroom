@@ -7,7 +7,7 @@ require_relative('test_helper')
 class CSSDelegateTest < Minitest::Test
   include(TestHelper)
 
-  context('Darkroom::CSSDelegate') do
+  context(Darkroom::CSSDelegate) do
     ########################################################################################################
     ## ::regex(:import)                                                                                   ##
     ########################################################################################################

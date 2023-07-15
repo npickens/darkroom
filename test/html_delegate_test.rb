@@ -7,7 +7,7 @@ require_relative('asset_test')
 class HTMLDelegateTest < Minitest::Test
   include(TestHelper)
 
-  context('Darkroom::HTMLDelegate') do
+  context(Darkroom::HTMLDelegate) do
     ########################################################################################################
     ## ::regex(:reference)                                                                                ##
     ########################################################################################################

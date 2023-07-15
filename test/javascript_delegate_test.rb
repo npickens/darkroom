@@ -7,7 +7,7 @@ require_relative('test_helper')
 class JavaScriptDelegateTest < Minitest::Test
   include(TestHelper)
 
-  context('Darkroom::JavaScriptDelegate') do
+  context(Darkroom::JavaScriptDelegate) do
     ########################################################################################################
     ## ::regex(:import)                                                                                   ##
     ########################################################################################################
