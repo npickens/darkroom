@@ -12,6 +12,158 @@ class DarkroomTest < Minitest::Test
 
   context(Darkroom) do
     ########################################################################################################
+    ## ::register                                                                                         ##
+    ########################################################################################################
+
+    context('::register') do
+      test('accepts one extension and a content type') do
+        delegate = Darkroom.register('.ext', 'text/ext')
+
+        assert(delegate < Darkroom::Delegate)
+        assert_equal(delegate, Darkroom.delegate('.ext'))
+        assert_equal('text/ext', delegate.content_type)
+      end
+
+      test('accepts multiple extensions and a content type') do
+        delegate = Darkroom.register('.ext1', '.ext2', 'text/ext')
+
+        assert(delegate < Darkroom::Delegate)
+        assert_equal(delegate, Darkroom.delegate('.ext1'))
+        assert_equal(delegate, Darkroom.delegate('.ext2'))
+        assert_equal('text/ext', delegate.content_type)
+      end
+
+      test('accepts one extension and a block') do
+        delegate = Darkroom.register('.ext') do
+          content_type('text/ext')
+        end
+
+        assert(delegate < Darkroom::Delegate)
+        assert_equal(delegate, Darkroom.delegate('.ext'))
+        assert_equal('text/ext', delegate.content_type)
+      end
+
+      test('accepts multiple extensions and a block') do
+        delegate = Darkroom.register('.ext1', '.ext2') do
+          content_type('text/ext')
+        end
+
+        assert(delegate < Darkroom::Delegate)
+        assert_equal(delegate, Darkroom.delegate('.ext1'))
+        assert_equal(delegate, Darkroom.delegate('.ext2'))
+        assert_equal('text/ext', delegate.content_type)
+      end
+
+      test('accepts one extension, a content type, and a block') do
+        delegate = Darkroom.register('.ext', 'text/ext') do
+          content_type('text/extra')
+          import(/import/)
+        end
+
+        assert(delegate < Darkroom::Delegate)
+        assert_equal(delegate, Darkroom.delegate('.ext'))
+        assert_equal('text/extra', delegate.content_type)
+        assert_equal(/import/, delegate.regex(:import))
+      end
+
+      test('accepts multiple extensions, a content type, and a block') do
+        delegate = Darkroom.register('.ext1', '.ext2', 'text/ext') do
+          content_type('text/extra')
+          import(/import/)
+        end
+
+        assert(delegate < Darkroom::Delegate)
+        assert_equal(delegate, Darkroom.delegate('.ext1'))
+        assert_equal(delegate, Darkroom.delegate('.ext2'))
+        assert_equal('text/extra', delegate.content_type)
+        assert_equal(/import/, delegate.regex(:import))
+      end
+
+      test('accepts one extension and a hash') do
+        Darkroom.stub(:warn, nil) do
+          delegate = Darkroom.register('.ext', {
+            content_type: 'text/ext',
+            import_regex: /import/,
+          })
+
+          assert(delegate < Darkroom::Delegate)
+          assert_equal(delegate, Darkroom.delegate('.ext'))
+          assert_equal('text/ext', delegate.content_type)
+          assert_equal(/import/, delegate.import_regex)
+        end
+      end
+
+      test('accepts multiple extensions and a hash') do
+        Darkroom.stub(:warn, nil) do
+          delegate = Darkroom.register('.ext1', '.ext2', {
+            content_type: 'text/ext',
+            import_regex: /import/,
+          })
+
+          assert(delegate < Darkroom::Delegate)
+          assert_equal(delegate, Darkroom.delegate('.ext1'))
+          assert_equal(delegate, Darkroom.delegate('.ext2'))
+          assert_equal('text/ext', delegate.content_type)
+          assert_equal(/import/, delegate.import_regex)
+        end
+      end
+
+      test('accepts one extension and a Delegate subclass') do
+        class Ext < Darkroom::Delegate
+          content_type('text/ext')
+        end
+
+        delegate = Darkroom.register('.ext', Ext)
+
+        assert_equal(Ext, delegate)
+        assert_equal(delegate, Darkroom.delegate('.ext'))
+        assert_equal('text/ext', delegate.content_type)
+      end
+
+      test('accepts multiple extensions and a Delegate subclass') do
+        class Ext < Darkroom::Delegate
+          content_type('text/ext')
+        end
+
+        delegate = Darkroom.register('.ext1', '.ext2', Ext)
+
+        assert_equal(Ext, delegate)
+        assert_equal(delegate, Darkroom.delegate('.ext1'))
+        assert_equal(delegate, Darkroom.delegate('.ext2'))
+        assert_equal('text/ext', delegate.content_type)
+      end
+
+      test('accepts one extension, a Delegate subclass, and a block') do
+        class Ext < Darkroom::Delegate
+          content_type('text/ext')
+        end
+
+        delegate = Darkroom.register('.ext', Ext) do
+          import(/import/)
+        end
+
+        assert(delegate < Ext)
+        assert_equal(delegate, Darkroom.delegate('.ext'))
+        assert_equal('text/ext', delegate.content_type)
+      end
+
+      test('accepts multiple extensions, a Delegate subclass, and a block') do
+        class Ext < Darkroom::Delegate
+          content_type('text/ext')
+        end
+
+        delegate = Darkroom.register('.ext1', '.ext2', Ext) do
+          import(/import/)
+        end
+
+        assert(delegate < Ext)
+        assert_equal(delegate, Darkroom.delegate('.ext1'))
+        assert_equal(delegate, Darkroom.delegate('.ext2'))
+        assert_equal('text/ext', delegate.content_type)
+      end
+    end
+
+    ########################################################################################################
     ## #process                                                                                           ##
     ########################################################################################################
 
