@@ -289,6 +289,8 @@ class Darkroom
   #                     need to be included).
   #
   def dump(dir, clear: false, include_pristine: true)
+    raise(@error) if @error
+
     require('fileutils')
 
     dir = File.expand_path(dir)

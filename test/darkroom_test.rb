@@ -526,6 +526,22 @@ class DarkroomTest < Minitest::Test
     end
 
     context('#dump') do
+      test('raises error if present from last process run') do
+        write_files('/assets/app.js' => "import '/missing.js'")
+
+        darkroom('/assets')
+        darkroom.process
+
+        error = assert_raises(Darkroom::ProcessingError) do
+          darkroom.dump(DUMP_DIR)
+        end
+
+        assert_equal("Errors were encountered while processing assets:\n  /app.js:1: Asset not found: "\
+          '/missing.js', error.to_s)
+      ensure
+        FileUtils.rm_rf(DUMP_DIR)
+      end
+
       test('creates target directory if it does not exist') do
         write_files(
           '/assets/app.js' => "console.log('Hello')",
