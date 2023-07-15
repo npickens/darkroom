@@ -22,6 +22,8 @@ class Darkroom
 
   attr_reader(:error, :errors, :process_key)
 
+  class << self; attr_accessor(:javascript_iife) end
+
   ##
   # Registers an asset delegate.
   #
