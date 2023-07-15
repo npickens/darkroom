@@ -120,7 +120,7 @@ class Darkroom
     compile do |parse_data:, path:, own_content:|
       next unless Darkroom.javascript_iife
 
-      (parse_data[:imports] || []).each do |import_path, items|
+      (parse_data[:imports] || []).reverse_each do |import_path, items|
         mod_suffix = nil
         prefix = '{ ' if items.size != 1
         suffix = ' }' if items.size != 1

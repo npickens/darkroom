@@ -280,9 +280,9 @@ class JavaScriptDelegateTest < Minitest::Test
 
         ['/app.js', $import => {
 
-        let Renamed; $import('/aliased.js', m => Renamed = m.Aliased)
-        let Import; $import('/named.js', m => Import = m.Import)
         let Default; $import('/default.js', m => Default = m.default)
+        let Import; $import('/named.js', m => Import = m.Import)
+        let Renamed; $import('/aliased.js', m => Renamed = m.Aliased)
 
         console.log('App')
 
