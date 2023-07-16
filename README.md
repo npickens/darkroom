@@ -125,58 +125,100 @@ asset.integrity(:sha512)        # => 'sha512-[hash]'
 ## Asset Bundling
 
 CSS and JavaScript assets specify their dependencies by way of each language's native import statement. Each
-import statement is replaced with content of the referenced asset. Example:
-
-```javascript
-// Unprocessed /api.js
-function api() {
-  console.log('API called!')
-}
-
-// Unprocessed /app.js
-import '/api.js'
-
-api()
-
-// Processed /app.js
-function api() {
-  console.log('API called!')
-}
-
-
-api()
-```
-
-The same applies for CSS files. Example:
+import statement is replaced with the content of the imported asset. Example:
 
 ```css
 /* Unprocessed /header.css */
-header {
-  background: #f1f1f1;
-}
+header { background: #f1f1f1; }
+```
 
+```css
 /* Unprocessed /app.css */
 @import '/header.css';
 
-body {
-  background: #fff;
-}
+body { background: #fff; }
+```
 
+```css
 /* Processed /app.css */
-header {
-  background: #f1f1f1;
-}
+header { background: #f1f1f1; }
 
-
-body {
-  background: #fff;
-}
+body { background: #fff; }
 ```
 
 Imported assets can also contain import statements, and those assets are all included in the base asset.
 Imports can even be cyclical. If `asset-a.css` imports `asset-b.css` and vice-versa, each asset will simply
 contain the content of both of those assets (though order will be different as an asset's own content always
 comes after any imported assets' contents).
+
+By default, JavaScript files are concatenated in the same way that CSS files are. Example:
+
+```javascript
+// Unprocessed /api.js
+function API() { console.log('API called!') }
+```
+
+```javascript
+// Unprocessed /app.js
+import '/api.js'
+
+API()
+```
+
+```javascript
+// Processed /app.js
+function API() { console.log('API called!') }
+
+API()
+```
+
+Alternatively, setting `Darkroom.javascript_iife = true` will cause JavaScript assets to be compiled to a
+series of IIFEs that provide the same encapsulation as native ES6 modules (indentation is not quite as
+pretty as shown here, but has been altered here for readability):
+
+```javascript
+// Unprocessed /api.js
+export function API() { console.log('API called!') }
+```
+
+```javascript
+// Unprocessed /app.js
+import {API} from '/api.js'
+
+API()
+```
+
+```javascript
+// Processed /app.js
+((...bundle) => {
+  const modules = {}
+  const setters = []
+  const $import = (name, setter) =>
+    modules[name] ? setter(modules[name]) : setters.push([setter, name])
+
+  for (const [name, def] of bundle)
+    modules[name] = def($import)
+
+  for (const [setter, name] of setters)
+    setter(modules[name])
+})(
+  ['/api.js', $import => {
+    function API() { console.log('API called!') }
+
+    return Object.seal({
+      API: API,
+    })
+  }],
+
+  ['/app.js', $import => {
+    let API; $import('/api.js', m => API = m.API)
+
+    API()
+
+    return Object.seal({})
+  }],
+)
+```
 
 ## Asset References
 
