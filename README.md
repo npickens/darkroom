@@ -281,22 +281,132 @@ replaced appropriately.
 
 ## Extending
 
-Darkroom is extensible. Support for arbitrary file types can be added as follows (`content_type` is required
-but all other keyword arguments are optional):
+Darkroom is extensible. Support for arbitrary file types can be added by specifying one or more extensions
+and a content type:
 
 ```ruby
-# Simple type with no special behavior.
-Darkroom.register('.extension1', 'extension2', '...', 'content/type')
+Darkroom.register('.ext1', 'ext2', '...', 'content/type')
+```
 
-# Complex type with special behavior.
-Darkroom.register('.extension1', 'extension2', '...',
-  content_type: 'content/type',         # HTTP MIME type string
-  import_regex: /import (?<path>.*)/,   # Regex for identifying imports for bundling
-  reference_regex: /ref=(?<path>.*)/,   # Regex for identifying references to other assets
-  compile_lib: 'some-compile-lib',      # Name of library required for compilation
-  compile: ->(path, content) { '...' }, # Lambda that returns compiled content
-  minify_lib: 'some-minify-lib',        # Name of library required for minification
-  minify: ->(content) { '...' },        # Lambda that returns minified content
+### DSL
+
+For more advanced functionality, the DSL can be used one of three ways. With a block:
+
+```ruby
+Darkroom.register('.ext1', 'ext2', '...') do
+  # ...
+end
+```
+
+Or with a class that extends `Darkroom::Delegate`:
+
+```ruby
+class MyDelegate < Darkroom::Delegate
+  # ...
+end
+
+Darkroom.register('.ext1', 'ext2', '...', MyDelegate)
+```
+
+Or with both:
+
+```ruby
+class MyDelegate < Darkroom::Delegate
+  # ...
+end
+
+Darkroom.register('.ext1', 'ext2', '...', MyDelegate) do
+  # Extend MyDelegate
+end
+```
+
+The DSL supports basic parsing via regular expressions, with special behavior for import statements and
+references. Additionally compilation and minification behavior can be configured.
+
+
+```ruby
+Darkroom.register('.ext1', 'ext2', '...') do
+  # Set the HTTP MIME type string.
+  content_type('content/type')
+
+  # Regex for identifying imports for bundling; requires a named component 'path' (it is
+  # recommended to make use of Asset::QUOTED_PATH_REGEX). Block is optional.
+  import(/import #{Asset::QUOTED_PATH_REGEX.source};/) do |parse_data:, match:, asset:|
+    parse_data[:imports] ||= []          # Accumulate and use arbitrary parse data.
+    parse_data[:imports] << match[:path] # Use the MatchData object of the regex match.
+
+    if asset.binary?                     # Access the Asset object of the imported asset.
+      error('Binary asset not allowed!') # Halt execution of the block and register an error.
+    end
+
+    # Return nil for default behavior (import statement is removed).
+    nil
+
+    # ...Or return a string as the replacement for the import statement.
+    "/* [#{asset.path}] */"
+  end
+
+  # Regex for identifying references to other assets; requires named components 'quote',
+  # 'quoted', 'path', 'entity', and 'format' (it is recommended to make use of
+  # Asset::REFERENCE_REGEX). Block is optional.
+  reference(/ref=#{Asset::REFERENCE_REGEX.source}/x) do |parse_data:, match:, asset:, format:|
+    parse_data[:refs] ||= []          # Accumulate and use arbitrary parse data.
+    parse_data[:refs] << match[:path] # Use the MatchData object of the regex match.
+
+    if format == 'utf8'               # See Asset References section for format details.
+      error('Format must be base64!') # Halt execution of the block and register an error.
+    end
+
+    # Return nil for default behavior (reference path or content is substituted based on format).
+    nil
+
+    # ...Or return a string to use in lieu of default substitution.
+    asset.content.gsub('#', '%23')
+
+    # ...Or return nil or a string, a start index, and an end index of text to substitute.
+    ["[ref]#{asset.content.gsub('#', '%23')}[/ref]", match.begin(0), match.end(0)]
+  end
+
+  # Regex for identifying any asset-specific text of interest.
+  parse(:exports, /export (?<name>.+)/) do |parse_data:, match:|
+    parse_data[:exports] ||= []          # Accumulate and use arbitrary parse data.
+    parse_data[:exports] << match[:name] # Use the MatchData object of the regex match.
+
+    # Return nil for default behavior (matched text is removed).
+    nil
+
+    # ...Or return a string as the replacement for the matched text.
+    "exports.#{match[:name]} = "
+
+    # ...Or return a string, a start index, and an end index of text to substitute.
+    [match[:name].upcase, match.begin(:name), match.end(:name)]
+  end
+
+  # Any number of parse statements are allowed and are handled in the order they are declared.
+  parse(:something_else, /.../) do |parse_data:, match:|
+    # ...
+  end
+
+  # Configure a compile library to require (optional), delegate to use after compilation
+  # (optional), and a block which will compile and return the result.
+  compile(lib: 'compile-lib', delegate: TargetDelegate) do |parse_data:, path:, own_content:|
+    # Only the asset's own content is passed (imported asset content is not prepended).
+    CompileLib.compile(own_content)
+  end
+
+  # Configure a finalization library to require (optional) and a block which will provide the
+  # finalized content of the asset.
+  finalize(lib: 'finalize-lib') do |parse_data:, path:, content:|
+    # The asset's full content is passed (imported asset content is prepended).
+    FinalizeLib.compile(content)
+  end
+
+  # Configure a minify library to require (optional) and a block which will provide the minified
+  # content of the asset.
+  minify(lib: 'minify-lib') do |parse_data:, path:, content:|
+    # The asset's full content is passed (imported asset content is prepended).
+    MinifyLib.compress(content)
+  end
 )
 
 ```
