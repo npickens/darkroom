@@ -98,28 +98,38 @@ To work with assets:
 
 ```ruby
 # A Darkroom instance has a few convenience helper methods.
-path = darkroom.asset_path('/js/app.js')           # => '/static/js/app-[fingerprint].js'
-integrity = darkroom.asset_integrity('/js/app.js') # => 'sha384-[hash]'
+path = darkroom.asset_path('/js/app.js')           # => "/static/js/app-[fingerprint].js"
+integrity = darkroom.asset_integrity('/js/app.js') # => "sha384-[hash]"
 
 # Retrieve the Asset object associated with a path.
 asset = darkroom.asset(path)
 
 # Prefix (if set on the Darkroom instance) is included in the unversioned and versioned paths.
-assest.path                     # => '/js/app.js'
-assest.path_unversioned         # => '/static/js/app.js'
-assest.path_versioned           # => '/static/js/app-[fingerprint].js'
+assest.path                     # => "/js/app.js"
+assest.path_unversioned         # => "/static/js/app.js"
+assest.path_versioned           # => "/static/js/app-[fingerprint].js"
 
-asset.content_type              # => 'text/javascript'
 asset.content                   # Content of processed /js/app.js file
 
-asset.headers                   # => {'Content-Type' => 'text/javascript',
-                                #     'Cache-Control' => 'public, max-age=31536000'}
-asset.headers(versioned: false) # => {'Content-Type' => 'text/javascript',
-                                #     'ETag' => '[fingerprint]'}
+asset.content_type              # => "text/javascript"
+asset.binary?                   # => false
+asset.font?                     # => false
+asset.image?                    # => false
+asset.entry?                    # => true
 
-asset.integrity                 # => 'sha384-[hash]'
-asset.integrity(:sha256)        # => 'sha256-[hash]'
-asset.integrity(:sha512)        # => 'sha512-[hash]'
+asset.error?                    # => true
+asset.errors                    # => [#<Darkroom::AssetError ...>, ...]
+
+asset.fingerprint               # => "[MD5 hash of asset content]"
+asset.headers                   # => {"Content-Type" => "text/javascript",
+                                #     "Cache-Control" => "public, max-age=31536000"}
+asset.headers(versioned: false) # => {"Content-Type" => "text/javascript",
+                                #     "ETag" => "[fingerprint]"}
+
+asset.integrity                 # => "sha384-[hash]"
+asset.integrity(:sha256)        # => "sha256-[hash]"
+asset.integrity(:sha384)        # => "sha384-[hash]"
+asset.integrity(:sha512)        # => "sha512-[hash]"
 ```
 
 ## Asset Bundling
