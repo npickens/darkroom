@@ -36,7 +36,7 @@ class Darkroom
     #         <tt>/^import (?<path>.*)/</tt>).
     # [&handler] Block for special handling of import statements (optional). Should
     #            <tt>throw(:error, '...')</tt> on error. Passed three arguments:
-    #            * +parse_data:+ - Hash for storing data across calls to this and other parsing handlers.
+    #            * +parse_data:+ - Hash for storing data across calls to this and other parse handlers.
     #            * +match:+ - MatchData object from the match against +regex+.
     #            * +asset:+ - Asset object of the asset being imported.
     #            Return value is used as the substitution for the import statement, with optional second and
@@ -55,9 +55,9 @@ class Darkroom
     #         * +format+ - Format to use (see Asset::REFERENCE_FORMATS).
     # [&handler] Block for special handling of references (optional). Should <tt>throw(:error, '...')</tt>
     #            on error. Passed four arguments:
-    #            * +parse_data:+ - Hash for storing data across calls to this and other parsing handlers.
+    #            * +parse_data:+ - Hash for storing data across calls to this and other parse handlers.
     #            * +match:+ - MatchData object from the match against +regex+.
-    #            * +asset:+ - Asset object of the asset being imported.
+    #            * +asset:+ - Asset object of the asset being referenced.
     #            * +format:+ - Format of the reference (see Asset::REFERENCE_FORMATS).
     #            Return value is used as the substitution for the reference, with optional second and third
     #            values as integers representing the start and end indexes of the match to replace.
@@ -74,7 +74,7 @@ class Darkroom
     # [regex] Regex to match against.
     # [&handler] Block for handling matches of the regex. Should <tt>throw(:error, '...')</tt>
     #            on error. Passed two arguments:
-    #            * +parse_data:+ - Hash for storing data across calls to this and other parsing handlers.
+    #            * +parse_data:+ - Hash for storing data across calls to this and other parse handlers.
     #            * +match:+ - MatchData object from the match against +regex+.
     #            Return value is used as the substitution for the reference, with optional second and third
     #            values as integers representing the start and end indexes of the match to replace.
@@ -92,8 +92,8 @@ class Darkroom
     # [&handler] Block to call that will return the compiled version of the asset's own content. Passed
     #            three arguments when called:
     #.           * +parse_data:+ - Hash of data collected during parsing.
-    #            * +path+ - Path of the asset being compiled.
-    #            * +own_content+ - Asset's own content.
+    #            * +path:+ - Path of the asset being compiled.
+    #            * +own_content:+ - Asset's own content.
     #            Asset's own content is set to the value returned.
     #
     def self.compile(lib: nil, delegate: nil, &handler)
@@ -109,8 +109,8 @@ class Darkroom
     # [&handler] Block to call that will return the completed version of the asset's overall content. Passed
     #            three arguments when called:
     #.           * +parse_data:+ - Hash of data collected during parsing.
-    #            * +path+ - Path of the asset being finalized.
-    #            * +content+ - Asset's content (with imports prepended).
+    #            * +path:+ - Path of the asset being finalized.
+    #            * +content:+ - Asset's content (with imports prepended).
     #            Asset's content is set to the value returned.
     #
     def self.finalize(lib: nil, &handler)
