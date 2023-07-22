@@ -56,20 +56,20 @@ optional):
 
 ```ruby
 darkroom = Darkroom.new('app/assets', 'vendor/assets', '...',
-  hosts: [                             # Hosts to prepend to asset paths (useful in production
-    'https://cname1.cdn.com',          # when assets are served from a CDN with multiple
-    'https://cname2.cdn.com',          # cnames); hosts are chosen round-robin per thread
+  hosts: [                           # Hosts to prepend to asset paths (useful in production when
+    'https://cname1.cdn.com',        #   assets are served from a CDN with multiple cnames);
+    'https://cname2.cdn.com',        #   hosts are chosen round-robin per thread
     '...',
   ],
-  prefix: '/static',                   # Prefix to add to all asset paths
-  pristine: ['/google-verify.html'],   # Paths with no prefix or versioning (/favicon.ico,
-                                       # /mask-icon.svg, /humans.txt, and /robots.txt are
-                                       # included automatically)
-  minify: true,                        # Minify assets that can be minified
-  minified_pattern: /(\.|-)min\.\w+$/, # Files to skip minification on when minify: true
-  internal_pattern: /^\/components\//, # Files to disallow direct external access to (they can
-                                       # still be imported into other assets)
-  min_process_interval: 1,             # Minimum time that must elapse between process calls
+  prefix: '/static',                 # Prefix to add to all asset paths
+  pristine: ['/google-verify.html'], # Paths with no prefix or versioning (assets such as
+                                     #   /favicon.ico and /robots.txt are included automatically)
+  entries: /^\/controllers\//,       # Assets that will be directly accessed (fewer means better
+                                     #   performance); can be a string, regex, or array of such
+  minify: true,                      # Minify assets that can be minified
+  minified: /(\.|-)min\.\w+$/,       # Files to skip minification on when minify: true; can be a
+                                     #   string, regex, or array of such
+  min_process_interval: 1,           # Minimum time that must elapse between process calls
 )
 ```
 
