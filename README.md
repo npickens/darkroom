@@ -264,9 +264,11 @@ replaced appropriately.
 </head>
 
 <body>
-  <img src='/logo.svg?asset-content-displace'>
+  <img src='/logo.svg?asset-content=displace'>
 </body>
+```
 
+```html
 <!-- Result -->
 <head>
   <title>My App</title>
