@@ -12,6 +12,7 @@ The following file types are supported out of the box, though support for others
 | Name       | Content Type     | Extension(s) |
 |------------|------------------|--------------|
 | APNG       | image/apng       | .apng        |
+| AVIF       | image/avif       | .avif        |
 | CSS        | text/css         | .css         |
 | GIF        | image/gif        | .gif         |
 | HTML       | text/html        | .htm, .html  |
