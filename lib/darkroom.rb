@@ -11,6 +11,7 @@ require('darkroom/delegates/htx')
 require('darkroom/delegates/javascript')
 
 Darkroom.register('.css', Darkroom::CSSDelegate)
+Darkroom.register('.gif', 'image/gif')
 Darkroom.register('.htm', '.html', Darkroom::HTMLDelegate)
 Darkroom.register('.htx', Darkroom::HTXDelegate)
 Darkroom.register('.ico', 'image/x-icon')

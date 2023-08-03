@@ -470,6 +470,7 @@ class AssetTest < Minitest::Test
     context('#content_type') do
       test('returns the HTTP MIME type string for the asset') do
         assert_equal('text/css',         new_asset('/app.css').content_type)
+        assert_equal('image/gif',        new_asset('/graphic.gif').content_type)
         assert_equal('text/html',        new_asset('/index.htm').content_type)
         assert_equal('text/html',        new_asset('/index.html').content_type)
         assert_equal('text/javascript',  new_asset('/template.htx').content_type)

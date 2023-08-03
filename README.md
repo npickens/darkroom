@@ -12,6 +12,7 @@ The following file types are supported out of the box, though support for others
 | Name       | Content Type     | Extension(s) |
 |------------|------------------|--------------|
 | CSS        | text/css         | .css         |
+| GIF        | image/gif        | .gif         |
 | HTML       | text/html        | .htm, .html  |
 | HTX        | text/javascript  | .htx         |
 | ICO        | image/x-icon     | .ico         |
