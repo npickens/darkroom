@@ -21,6 +21,7 @@ The following file types are supported out of the box, though support for others
 | PNG        | image/png        | .png         |
 | SVG        | image/svg+xml    | .svg         |
 | Text       | text/plain       | .txt         |
+| WebP       | image/webp       | .webp        |
 | WOFF       | font/woff        | .woff        |
 | WOFF2      | font/woff2       | .woff2       |
 

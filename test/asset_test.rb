@@ -481,6 +481,7 @@ class AssetTest < Minitest::Test
         assert_equal('image/png',        new_asset('/graphic.png').content_type)
         assert_equal('image/svg+xml',    new_asset('/graphic.svg').content_type)
         assert_equal('text/plain',       new_asset('/robots.txt').content_type)
+        assert_equal('image/webp',       new_asset('/graphic.webp').content_type)
         assert_equal('font/woff',        new_asset('/font.woff').content_type)
         assert_equal('font/woff2',       new_asset('/font.woff2').content_type)
       end
