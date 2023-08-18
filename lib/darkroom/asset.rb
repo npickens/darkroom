@@ -144,14 +144,14 @@ class Darkroom
     # processed.
     #
     def error?
-      !@errors.empty?
+      @errors && !@errors.empty?
     end
 
     ##
     # Returns ProcessingError wrapper of all errors if any exist, or nil if there are none.
     #
     def error
-      @error ||= @errors.empty? ? nil : ProcessingError.new(@errors)
+      @error ||= error? ? ProcessingError.new(@errors) : nil
     end
 
     ##
@@ -286,7 +286,7 @@ class Darkroom
       @modified_key == @darkroom.process_key ? (return @modified) : @modified_key = @darkroom.process_key
 
       begin
-        @modified = !!@error
+        @modified = error?
         @modified ||= (@mtime != (@mtime = File.mtime(@file)))
         @modified ||= @intermediate_asset.modified? if @intermediate_asset
         @modified ||= dependencies.any? { |d| d.modified? }
