@@ -79,35 +79,6 @@ class DarkroomTest < Minitest::Test
         assert_equal(/import/, delegate.regex(:import))
       end
 
-      test('accepts one extension and a hash') do
-        Darkroom.stub(:warn, nil) do
-          delegate = Darkroom.register('.ext', {
-            content_type: 'text/ext',
-            import_regex: /import/,
-          })
-
-          assert(delegate < Darkroom::Delegate)
-          assert_equal(delegate, Darkroom.delegate('.ext'))
-          assert_equal('text/ext', delegate.content_type)
-          assert_equal(/import/, delegate.import_regex)
-        end
-      end
-
-      test('accepts multiple extensions and a hash') do
-        Darkroom.stub(:warn, nil) do
-          delegate = Darkroom.register('.ext1', '.ext2', {
-            content_type: 'text/ext',
-            import_regex: /import/,
-          })
-
-          assert(delegate < Darkroom::Delegate)
-          assert_equal(delegate, Darkroom.delegate('.ext1'))
-          assert_equal(delegate, Darkroom.delegate('.ext2'))
-          assert_equal('text/ext', delegate.content_type)
-          assert_equal(/import/, delegate.import_regex)
-        end
-      end
-
       test('accepts one extension and a Delegate subclass') do
         class Ext < Darkroom::Delegate
           content_type('text/ext')

@@ -41,10 +41,6 @@ class Darkroom
 
       delegate = Class.new(Delegate, &block)
       delegate.content_type(content_type) if content_type && !delegate.content_type
-    elsif delegate.kind_of?(Hash)
-      deprecated("#{self.name}.register with a Hash is deprecated: use the Delegate DSL inside a block "\
-        'instead')
-      delegate = Delegate.deprecated_from_hash(**delegate)
     elsif delegate && delegate < Delegate
       delegate = block ? Class.new(delegate, &block) : delegate
     end
