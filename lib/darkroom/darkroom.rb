@@ -92,12 +92,10 @@ class Darkroom
   #             minified and thus should be skipped for minification.
   # [minified_pattern:] DEPRECATED: use +minified:+ instead. Regex used against asset paths to determine if
   #                     they are already minified and should therefore be skipped over for minification.
-  # [internal_pattern:] DEPRECATED: use +entries:+ instead. Regex used against asset paths to determine if
-  #                     they should be marked as internal and therefore made inaccessible externally.
   # [min_process_interval:] Minimum time required between one run of asset processing and another.
   #
   def initialize(*load_paths, host: nil, hosts: nil, prefix: nil, pristine: nil, entries: nil,
-      minify: false, minified: DEFAULT_MINIFIED, minified_pattern: nil, internal_pattern: nil,
+      minify: false, minified: DEFAULT_MINIFIED, minified_pattern: nil,
       min_process_interval: MIN_PROCESS_INTERVAL)
     @load_paths = load_paths.map { |load_path| File.expand_path(load_path) }
 
@@ -105,18 +103,11 @@ class Darkroom
     @entries = Array(entries)
     @minify = minify
     @minified = Array(minified)
-    @internal_pattern = internal_pattern
 
     if minified_pattern
       self.class.deprecated("#{self.class.name} :minified_pattern is deprecated: use :minified instead "\
         'and pass a string, regex, or array of strings and regexes')
       @minified = [minified_pattern]
-    end
-
-    if @internal_pattern
-      self.class.deprecated("#{self.class.name} :internal_pattern is deprecated: use :entries to instead "\
-        'specify which assets are entry points (i.e. available externally) and pass a string, regex, or '\
-        'array of strings and regexes')
     end
 
     @prefix = prefix&.sub(TRAILING_SLASHES, '')
@@ -320,7 +311,6 @@ class Darkroom
       "@entries=#{@entries.inspect}, "\
       "@errors=#{@errors.inspect}, "\
       "@hosts=#{@hosts.inspect}, "\
-      "@internal_pattern=#{@internal_pattern.inspect}, "\
       "@last_processed_at=#{@last_processed_at.inspect}, "\
       "@load_paths=#{@load_paths.inspect}, "\
       "@min_process_interval=#{@min_process_interval.inspect}, "\
@@ -342,8 +332,6 @@ class Darkroom
   def entry?(path)
     if @pristine.include?(path)
       true
-    elsif @internal_pattern && @entries.empty?
-      !path.match?(@internal_pattern)
     elsif @entries.empty?
       true
     else

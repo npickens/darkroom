@@ -440,18 +440,6 @@ class DarkroomTest < Minitest::Test
         assert(darkroom.asset('/pristine-8b1a9953c4611296a827abf8c47804d7.txt'))
       end
 
-      test('returns nil if asset is internal') do
-        write_files('/assets/components/header.css' => 'header { background: white; }')
-
-        Darkroom.stub(:warn, nil) do
-          darkroom('/assets', internal_pattern: /^\/components\/.*$/)
-          darkroom.process
-        end
-
-        refute_error(darkroom.errors)
-        assert_nil(darkroom.asset('/components/header.htx'))
-      end
-
       test('returns nil if asset is not an entry point') do
         write_files('/assets/components/header.css' => 'header { background: white; }')
 
@@ -460,18 +448,6 @@ class DarkroomTest < Minitest::Test
 
         refute_error(darkroom.errors)
         assert_nil(darkroom.asset('/components/header.htx'))
-      end
-
-      test('returns asset if path matches internal pattern but is also pristine') do
-        write_files('/assets/pristine.txt' => 'Hello')
-
-        Darkroom.stub(:warn, nil) do
-          darkroom('/assets', internal_pattern: /.*/, pristine: '/pristine.txt')
-          darkroom.process
-        end
-
-        refute_error(darkroom.errors)
-        assert(darkroom.asset('/pristine.txt'))
       end
 
       test('returns asset if path is not explicitly an entry point but is pristine') do
@@ -737,29 +713,6 @@ class DarkroomTest < Minitest::Test
         FileUtils.rm_rf(DUMP_DIR)
       end
 
-      test('does not include internal assets') do
-        write_files(
-          '/assets/app.js' => "console.log('Hello')",
-          '/assets/components/header.css' => 'header { background: white; }',
-        )
-
-        setup_dump_dir
-
-        Darkroom.stub(:warn, nil) do
-          darkroom('/assets', internal_pattern: /^\/components\/.*$/)
-          darkroom.process
-
-          refute_error(darkroom.errors)
-
-          darkroom.dump(DUMP_DIR)
-        end
-
-        assert(File.exist?("#{DUMP_DIR}/app-ef0f76b822009ab847bd6a370e911556.js"))
-        refute(File.exist?("#{DUMP_DIR}/components/header-e84f21b5c4ce60bb92d2e61e2b4d11f1.htx"))
-      ensure
-        FileUtils.rm_rf(DUMP_DIR)
-      end
-
       test('only includes entry point assets') do
         write_files(
           '/assets/app.js' => "console.log('Hello')",
@@ -912,7 +865,6 @@ class DarkroomTest < Minitest::Test
             pristine: '/hi.txt',
             entries: /^\/[^\/]+$/,
             minified_pattern: /\.minified\.*/,
-            internal_pattern: /^\/private\//,
             min_process_interval: 1,
           )
           darkroom.process
@@ -926,7 +878,6 @@ class DarkroomTest < Minitest::Test
             '#<Darkroom::AssetNotFoundError: /bad-imports.js:2: Asset not found: /also-does-not-exist.js>'\
           '], '\
           '@hosts=["https://cdn1.hello.world"], '\
-          '@internal_pattern=/^\\/private\\//, '\
           "@last_processed_at=#{darkroom.instance_variable_get(:@last_processed_at)}, "\
           "@load_paths=[\"#{full_path('/assets')}\"], "\
           '@min_process_interval=1, '\

@@ -130,16 +130,6 @@ class Darkroom
     end
 
     ##
-    # DEPRECATED: use #entry? instead. Returns boolean indicating whether or not the asset is marked as
-    # internal.
-    #
-    def internal?
-      Darkroom.deprecated("#{self.class.name}#internal? is deprecated: use #entry? instead")
-
-      !entry?
-    end
-
-    ##
     # Returns boolean indicating whether or not an error was encountered the last time the asset was
     # processed.
     #
