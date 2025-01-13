@@ -864,7 +864,7 @@ class DarkroomTest < Minitest::Test
             prefix: '/static',
             pristine: '/hi.txt',
             entries: /^\/[^\/]+$/,
-            minified_pattern: /\.minified\.*/,
+            minified: /\.minified\.*/,
             min_process_interval: 1,
           )
           darkroom.process

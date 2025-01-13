@@ -90,25 +90,16 @@ class Darkroom
   # [minify:] Boolean specifying whether or not to minify assets.
   # [minified:] String, regex, or array of strings and regexes specifying paths of assets that are already
   #             minified and thus should be skipped for minification.
-  # [minified_pattern:] DEPRECATED: use +minified:+ instead. Regex used against asset paths to determine if
-  #                     they are already minified and should therefore be skipped over for minification.
   # [min_process_interval:] Minimum time required between one run of asset processing and another.
   #
   def initialize(*load_paths, host: nil, hosts: nil, prefix: nil, pristine: nil, entries: nil,
-      minify: false, minified: DEFAULT_MINIFIED, minified_pattern: nil,
-      min_process_interval: MIN_PROCESS_INTERVAL)
+      minify: false, minified: DEFAULT_MINIFIED, min_process_interval: MIN_PROCESS_INTERVAL)
     @load_paths = load_paths.map { |load_path| File.expand_path(load_path) }
 
     @hosts = (Array(host) + Array(hosts)).map! { |host| host.sub(TRAILING_SLASHES, '') }
     @entries = Array(entries)
     @minify = minify
     @minified = Array(minified)
-
-    if minified_pattern
-      self.class.deprecated("#{self.class.name} :minified_pattern is deprecated: use :minified instead "\
-        'and pass a string, regex, or array of strings and regexes')
-      @minified = [minified_pattern]
-    end
 
     @prefix = prefix&.sub(TRAILING_SLASHES, '')
     @prefix = nil if @prefix && @prefix.empty?
