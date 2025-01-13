@@ -12,10 +12,11 @@ Gem::Specification.new('darkroom', version) do |spec|
                        'file types.'
   spec.homepage      = 'https://github.com/npickens/darkroom'
   spec.license       = 'MIT'
-  spec.files         = Dir['lib/**/*.rb', 'LICENSE', 'README.md', 'VERSION']
+  spec.files         = Dir['lib/**/*.rb', 'CHANGELOG.md', 'LICENSE', 'README.md', 'VERSION']
 
   if spec.respond_to?(:metadata)
     spec.metadata['allowed_push_host'] = 'https://rubygems.org'
+    spec.metadata['changelog_uri'] = 'https://github.com/npickens/darkroom/blob/master/CHANGELOG.md'
     spec.metadata['homepage_uri'] = spec.homepage
     spec.metadata['source_code_uri'] = spec.homepage
   else
