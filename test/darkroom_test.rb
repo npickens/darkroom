@@ -839,7 +839,7 @@ class DarkroomTest < Minitest::Test
         )
         darkroom.process
 
-        assert_inspect('#<Darkroom: '\
+        assert_inspect('#<Darkroom '\
           '@entries=[/^\\/[^\\/]+$/], '\
           '@errors=['\
             '#<Darkroom::AssetNotFoundError: /bad-import.js:1: Asset not found: /does-not-exist.js>, '\

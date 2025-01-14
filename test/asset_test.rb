@@ -777,7 +777,7 @@ class AssetTest < Minitest::Test
         asset = new_asset(path, content, prefix: '/static')
         asset.process
 
-        assert_inspect('#<Darkroom::Asset: '\
+        assert_inspect('#<Darkroom::Asset '\
           '@entry=true, '\
           '@errors=[#<Darkroom::AssetNotFoundError: /bad-import.js:1: Asset not found: '\
             '/does-not-exist.js>], '\

@@ -251,7 +251,7 @@ class Darkroom
     # Returns high-level object info string.
     #
     def inspect
-      "#<#{self.class}: "\
+      "#<#{self.class} "\
         "@entry=#{@entry.inspect}, "\
         "@errors=#{@errors.inspect}, "\
         "@extension=#{@extension.inspect}, "\
