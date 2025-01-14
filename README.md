@@ -291,7 +291,7 @@ Darkroom is extensible. Support for arbitrary file types can be added by specify
 and a content type:
 
 ```ruby
-Darkroom.register('.ext1', 'ext2', '...', 'content/type')
+Darkroom.register('.ext1', '.ext2', '...', 'content/type')
 ```
 
 ### DSL
@@ -299,7 +299,7 @@ Darkroom.register('.ext1', 'ext2', '...', 'content/type')
 For more advanced functionality, the DSL can be used one of three ways. With a block:
 
 ```ruby
-Darkroom.register('.ext1', 'ext2', '...') do
+Darkroom.register('.ext1', '.ext2', '...') do
   # ...
 end
 ```
@@ -311,7 +311,7 @@ class MyDelegate < Darkroom::Delegate
   # ...
 end
 
-Darkroom.register('.ext1', 'ext2', '...', MyDelegate)
+Darkroom.register('.ext1', '.ext2', '...', MyDelegate)
 ```
 
 Or with both:
@@ -321,28 +321,47 @@ class MyDelegate < Darkroom::Delegate
   # ...
 end
 
-Darkroom.register('.ext1', 'ext2', '...', MyDelegate) do
+Darkroom.register('.ext1', '.ext2', '...', MyDelegate) do
   # Extend MyDelegate
 end
 ```
 
 The DSL supports basic parsing via regular expressions, with special behavior for import statements and
-references. Additionally compilation and minification behavior can be configured.
+references. Compilation, finalization, and minification behavior can also be configured.
 
+#### Content Type
 
 ```ruby
-Darkroom.register('.ext1', 'ext2', '...') do
-  # Set the HTTP MIME type string.
-  content_type('content/type')
+Darkroom.register('.ext1', '.ext2', '...') do
+  content_type('content/type') # HTTP MIME type string.
 
-  # Regex for identifying imports for bundling; requires a named component 'path' (it is
-  # recommended to make use of Asset::QUOTED_PATH_REGEX). Block is optional.
+  # ...
+end
+```
+
+#### Imports
+
+Imports are references to other assets, identified via regex, which get prepended to an asset's own content.
+The regex requires a named component, `path`, as it is used internally to determine the asset being imported
+(leveraging `Asset::QUOTED_PATH_REGEX` within one's own regex is helpful).
+
+A block is optional, but can be used to accumulate parse data and/or override the default behavior of
+removing an import statement altogether by returning a string to replace it with.
+
+```ruby
+Darkroom.register('.ext1', '.ext2', '...') do
+  # ...
+
+  # The (optional) block is passed three named arguments:
+  #   parse_data: - Hash for storing data across calls to this and other parse handlers.
+  #   match:      - MatchData object from the match against the provided regex.
+  #   asset:      - Asset object of the asset being imported.
   import(/import #{Asset::QUOTED_PATH_REGEX.source};/) do |parse_data:, match:, asset:|
     parse_data[:imports] ||= []          # Accumulate and use arbitrary parse data.
     parse_data[:imports] << match[:path] # Use the MatchData object of the regex match.
 
     if asset.binary?                     # Access the Asset object of the imported asset.
-      error('Binary asset not allowed!') # Halt execution of the block and register an error.
+      error('Binary asset not allowed!') # Halt execution of the block and record an error.
     end
 
     # Return nil for default behavior (import statement is removed).
@@ -351,29 +370,72 @@ Darkroom.register('.ext1', 'ext2', '...') do
     # ...Or return a string as the replacement for the import statement.
     "/* [#{asset.path}] */"
   end
+end
+```
 
-  # Regex for identifying references to other assets; requires named components 'quote',
-  # 'quoted', 'path', 'entity', and 'format' (it is recommended to make use of
-  # Asset::REFERENCE_REGEX). Block is optional.
-  reference(/ref=#{Asset::REFERENCE_REGEX.source}/x) do |parse_data:, match:, asset:, format:|
+#### References
+
+References are non-import references to other assets, identified via regex, which result in either the
+asset's path or content being inserted in place. The regex requires named components `quote`, `quoted`,
+`path`, `entity`, and `format`, as these are used internally to determine the asset being referenced and how
+it should be treated (leveraging `Asset::REFERENCE_REGEX` within one's own regex is helpful). See the [Asset
+References](#asset-references) section for more detail.
+
+* `quote` - The type of quote used (e.g. `'` or `"`)
+* `quoted` - The portion of text within the `quote`s
+* `path` - The path of the asset
+* `entity` - Either 'path' or 'content'
+* `format` - Format of the path or content
+  * If `entity` == 'path' - Either 'versioned' or 'unversioned'
+  * If `entity` == 'content' - One of 'base64', 'utf8', or 'displace'
+
+A block is optional, but can be used to accumulate parse data and/or override the default behavior of
+removing an import statement altogether by returning a string to replace it with.
+
+```ruby
+Darkroom.register('.ext1', '.ext2', '...') do
+  # ...
+
+  reference_regex = /ref=#{Asset::REFERENCE_REGEX.source}/x
+
+  # The (optional) block is passed four named arguments:
+  #   parse_data: - Hash for storing data across calls to this and other parse handlers.
+  #   match:      - MatchData object from the match against the provided regex.
+  #   asset:      - Asset object of the asset being referenced.
+  #   format:     - Format of the reference (see Asset::REFERENCE_FORMATS).
+  reference(reference_regex) do |parse_data:, match:, asset:, format:|
     parse_data[:refs] ||= []          # Accumulate and use arbitrary parse data.
     parse_data[:refs] << match[:path] # Use the MatchData object of the regex match.
 
-    if format == 'utf8'               # See Asset References section for format details.
-      error('Format must be base64!') # Halt execution of the block and register an error.
+    if format == 'base64'           # See Asset References section for format details.
+      error('Format must be utf8!') # Halt execution of the block and register an error.
     end
 
-    # Return nil for default behavior (reference path or content is substituted based on format).
+    # Return nil for default behavior (path or content is substituted based on format).
     nil
 
     # ...Or return a string to use in lieu of default substitution.
-    asset.content.gsub('#', '%23')
+    asset.content.gsub('#', '%23') if format == 'utf8'
 
     # ...Or return nil or a string, a start index, and an end index of text to substitute.
     ["[ref]#{asset.content.gsub('#', '%23')}[/ref]", match.begin(0), match.end(0)]
   end
+end
+```
 
-  # Regex for identifying any asset-specific text of interest.
+#### Parsing
+
+More generalized parsing of any asset-specific text of interest can be performed with `parse` calls, which
+take a name, regex, and block that returns the substitution for the matched text.
+
+
+```ruby
+Darkroom.register('.ext1', '.ext2', '...') do
+  # ...
+
+  # The block is passed two named arguments:
+  #   parse_data: - Hash for storing data across calls to this and other parse handlers.
+  #   match:      - MatchData object from the match against the provided regex.
   parse(:exports, /export (?<name>.+)/) do |parse_data:, match:|
     parse_data[:exports] ||= []          # Accumulate and use arbitrary parse data.
     parse_data[:exports] << match[:name] # Use the MatchData object of the regex match.
@@ -388,32 +450,71 @@ Darkroom.register('.ext1', 'ext2', '...') do
     [match[:name].upcase, match.begin(:name), match.end(:name)]
   end
 
-  # Any number of parse statements are allowed and are handled in the order they are declared.
+  # Any number of parse statements are allowed and are run in the order they are declared.
   parse(:something_else, /.../) do |parse_data:, match:|
     # ...
   end
+end
+end
+```
 
-  # Configure a compile library to require (optional), delegate to use after compilation
-  # (optional), and a block which will compile and return the result.
-  compile(lib: 'compile-lib', delegate: TargetDelegate) do |parse_data:, path:, own_content:|
-    # Only the asset's own content is passed (imported asset content is not prepended).
+#### Compile
+
+Compilation allows for a library to require (optional), a delegate to use after compilation (optional), and
+a block that returns the compiled version of the asset's own content.
+
+```ruby
+Darkroom.register('.ext1', '.ext2', '...') do
+  # ...
+
+  # The block is passed three named arguments:
+  #   parse_data:  - Hash of data collected during parsing.
+  #   path:        - Path of the asset being compiled.
+  #   own_content: - Asset's own content (without imports).
+  compile(lib: 'compile_lib', delegate: SomeDelegate) do |parse_data:, path:, own_content:|
     CompileLib.compile(own_content)
   end
+end
+```
 
-  # Configure a finalization library to require (optional) and a block which will provide the
-  # finalized content of the asset.
-  finalize(lib: 'finalize-lib') do |parse_data:, path:, content:|
-    # The asset's full content is passed (imported asset content is prepended).
-    FinalizeLib.compile(content)
+#### Finalize
+
+Finalization happens once an asset is fully processed and compiled (though before minification). A library
+can be provided to require (optional) and the block should return the finalized version of the asset's
+compiled content.
+
+```ruby
+Darkroom.register('.ext1', '.ext2', '...') do
+  # ...
+
+  # The block is passed three named arguments:
+  #   parse_data: - Hash of data collected during parsing.
+  #   path:       - Path of the asset being finalized.
+  #   content:    - Asset's compiled content (with imports prepended).
+  finalize(lib: 'finalize_lib') do |parse_data:, path:, content:|
+    FinalizeLib.finalize(content)
   end
+end
+```
 
-  # Configure a minify library to require (optional) and a block which will provide the minified
-  # content of the asset.
-  minify(lib: 'minify-lib') do |parse_data:, path:, content:|
-    # The asset's full content is passed (imported asset content is prepended).
+#### Minify
+
+Minification is the very last thing that happens to an asset's content, though it will only happen if
+minification is enabled on the Darkroom instance. A library can be provided to require (optional) and the
+block should return the minified version of the asset's finalized content.
+
+```ruby
+Darkroom.register('.ext1', '.ext2', '...') do
+  # ...
+
+  # The block is passed three named arguments:
+  #   parse_data: - Hash of data collected during parsing.
+  #   path:       - Path of the asset being finalized.
+  #   content:    - Asset's finalized content.
+  minify(lib: 'minify_lib') do |parse_data:, path:, content:|
     MinifyLib.compress(content)
   end
-)
+end
 
 ```
 
