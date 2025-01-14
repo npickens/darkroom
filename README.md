@@ -60,19 +60,21 @@ optional):
 
 ```ruby
 darkroom = Darkroom.new('app/assets', 'vendor/assets', '...',
-  hosts: [                           # Hosts to prepend to asset paths (useful in production when
-    'https://cname1.cdn.com',        #   assets are served from a CDN with multiple cnames);
-    'https://cname2.cdn.com',        #   hosts are chosen round-robin per thread
+  hosts: [                           # Hosts to prepend to asset paths (useful in production
+    'https://cname1.cdn.com',        #   when assets are served from a CDN with multiple
+    'https://cname2.cdn.com',        #   cnames); hosts are chosen round-robin per thread
     '...',
   ],
   prefix: '/static',                 # Prefix to add to all asset paths
   pristine: ['/google-verify.html'], # Paths with no prefix or versioning (assets such as
-                                     #   /favicon.ico and /robots.txt are included automatically)
-  entries: /^\/controllers\//,       # Assets that will be directly accessed (fewer means better
-                                     #   performance); can be a string, regex, or array of such
+                                     #   /favicon.ico and /robots.txt are included
+                                     #   automatically)
+  entries: /^\/controllers\//,       # Assets that will be directly accessed (fewer means
+                                     #   better performance); can be a string, regex, or
+                                     #   array of such
   minify: true,                      # Minify assets that can be minified
-  minified: /(\.|-)min\.\w+$/,       # Files to skip minification on when minify: true; can be a
-                                     #   string, regex, or array of such
+  minified: /(\.|-)min\.\w+$/,       # Files to skip minification on when minify: true; can
+                                     #   be a string, regex, or array of such
   min_process_interval: 1,           # Minimum time that must elapse between process calls
 )
 ```
@@ -108,7 +110,8 @@ integrity = darkroom.asset_integrity('/js/app.js') # => "sha384-[hash]"
 # Retrieve the Asset object associated with a path.
 asset = darkroom.asset(path)
 
-# Prefix (if set on the Darkroom instance) is included in the unversioned and versioned paths.
+# Prefix (if set on the Darkroom instance) is included in the unversioned and versioned
+# paths.
 assest.path                     # => "/js/app.js"
 assest.path_unversioned         # => "/static/js/app.js"
 assest.path_versioned           # => "/static/js/app-[fingerprint].js"
