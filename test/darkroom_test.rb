@@ -829,17 +829,15 @@ class DarkroomTest < Minitest::Test
           EOS
         )
 
-        Darkroom.stub(:warn, nil) do
-          darkroom('/assets',
-            hosts: 'https://cdn1.hello.world',
-            prefix: '/static',
-            pristine: '/hi.txt',
-            entries: /^\/[^\/]+$/,
-            minified: /\.minified\.*/,
-            min_process_interval: 1,
-          )
-          darkroom.process
-        end
+        darkroom('/assets',
+          hosts: 'https://cdn1.hello.world',
+          prefix: '/static',
+          pristine: '/hi.txt',
+          entries: /^\/[^\/]+$/,
+          minified: /\.minified\.*/,
+          min_process_interval: 1,
+        )
+        darkroom.process
 
         assert_inspect('#<Darkroom: '\
           '@entries=[/^\\/[^\\/]+$/], '\
