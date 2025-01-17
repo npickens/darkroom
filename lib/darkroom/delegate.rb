@@ -35,7 +35,7 @@ class Darkroom
     # [regex] Regex for finding import statements. Must contain a named component called +path+ (e.g.
     #         <tt>/^import (?<path>.*)/</tt>).
     # [&handler] Block for special handling of import statements (optional). Should
-    #            <tt>throw(:error, '...')</tt> on error. Passed three named arguments:
+    #            <tt>throw(:error, '...')</tt> on error. Passed three keyword arguments:
     #            * +parse_data:+ - Hash for storing data across calls to this and other parse handlers.
     #            * +match:+ - MatchData object from the match against +regex+.
     #            * +asset:+ - Asset object of the asset being imported.
@@ -54,7 +54,7 @@ class Darkroom
     #         * +entity+ - Desired entity ('path' or 'content').
     #         * +format+ - Format to use (see Asset::REFERENCE_FORMATS).
     # [&handler] Block for special handling of references (optional). Should <tt>throw(:error, '...')</tt>
-    #            on error. Passed four named arguments:
+    #            on error. Passed four keyword arguments:
     #            * +parse_data:+ - Hash for storing data across calls to this and other parse handlers.
     #            * +match:+ - MatchData object from the match against +regex+.
     #            * +asset:+ - Asset object of the asset being referenced.
@@ -73,7 +73,7 @@ class Darkroom
     #        subclassing another Delegate, can be used to override the parent class's regex and handler.
     # [regex] Regex to match against.
     # [&handler] Block for handling matches of the regex. Should <tt>throw(:error, '...')</tt>
-    #            on error. Passed two named arguments:
+    #            on error. Passed two keyword arguments:
     #            * +parse_data:+ - Hash for storing data across calls to this and other parse handlers.
     #            * +match:+ - MatchData object from the match against +regex+.
     #            Return value is used as the substitution for the reference, with optional second and third
@@ -90,7 +90,7 @@ class Darkroom
     # [lib:] Name of a library to +require+ that is needed by the handler (optional).
     # [delegate:] Another Delegate to be used after the asset is compiled (optional).
     # [&handler] Block to call that will return the compiled version of the asset's own content. Passed
-    #            three named arguments when called:
+    #            three keyword arguments when called:
     #            * +parse_data:+ - Hash of data collected during parsing.
     #            * +path:+ - Path of the asset being compiled.
     #            * +own_content:+ - Asset's own content (without imports).
@@ -107,7 +107,7 @@ class Darkroom
     #
     # [lib:] Name of a library to +require+ that is needed by the handler (optional).
     # [&handler] Block to call that will return the finalized version of the asset's compiled content (with
-    #            imports prepended). Passed three named arguments when called:
+    #            imports prepended). Passed three keyword arguments when called:
     #            * +parse_data:+ - Hash of data collected during parsing.
     #            * +path:+ - Path of the asset being finalized.
     #            * +content:+ - Asset's compiled content (with imports prepended).
@@ -123,7 +123,7 @@ class Darkroom
     #
     # [lib:] Name of a library to +require+ that is needed by the handler (optional).
     # [&handler] Block to call that will return the minified version of the asset's finalized content.
-    #            Passed three named arguments when called:
+    #            Passed three keyword arguments when called:
     #            * +parse_data:+ - Hash of data collected during parsing.
     #            * +path:+ - Path of the asset being minified.
     #            * +content:+ - Asset's finalized content.

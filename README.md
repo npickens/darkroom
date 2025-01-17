@@ -355,7 +355,7 @@ removing an import statement altogether by returning a string to replace it with
 Darkroom.register('.ext1', '.ext2', '...') do
   # ...
 
-  # The (optional) block is passed three named arguments:
+  # The (optional) block is passed three keyword arguments:
   #   parse_data: - Hash for storing data across calls to this and other parse handlers.
   #   match:      - MatchData object from the match against the provided regex.
   #   asset:      - Asset object of the asset being imported.
@@ -401,7 +401,7 @@ Darkroom.register('.ext1', '.ext2', '...') do
 
   reference_regex = /ref=#{Asset::REFERENCE_REGEX.source}/x
 
-  # The (optional) block is passed four named arguments:
+  # The (optional) block is passed four keyword arguments:
   #   parse_data: - Hash for storing data across calls to this and other parse handlers.
   #   match:      - MatchData object from the match against the provided regex.
   #   asset:      - Asset object of the asset being referenced.
@@ -436,7 +436,7 @@ take a name, regex, and block that returns the substitution for the matched text
 Darkroom.register('.ext1', '.ext2', '...') do
   # ...
 
-  # The block is passed two named arguments:
+  # The block is passed two keyword arguments:
   #   parse_data: - Hash for storing data across calls to this and other parse handlers.
   #   match:      - MatchData object from the match against the provided regex.
   parse(:exports, /export (?<name>.+)/) do |parse_data:, match:|
@@ -470,7 +470,7 @@ a block that returns the compiled version of the asset's own content.
 Darkroom.register('.ext1', '.ext2', '...') do
   # ...
 
-  # The block is passed three named arguments:
+  # The block is passed three keyword arguments:
   #   parse_data:  - Hash of data collected during parsing.
   #   path:        - Path of the asset being compiled.
   #   own_content: - Asset's own content (without imports).
@@ -490,7 +490,7 @@ compiled content.
 Darkroom.register('.ext1', '.ext2', '...') do
   # ...
 
-  # The block is passed three named arguments:
+  # The block is passed three keyword arguments:
   #   parse_data: - Hash of data collected during parsing.
   #   path:       - Path of the asset being finalized.
   #   content:    - Asset's compiled content (with imports prepended).
@@ -510,7 +510,7 @@ block should return the minified version of the asset's finalized content.
 Darkroom.register('.ext1', '.ext2', '...') do
   # ...
 
-  # The block is passed three named arguments:
+  # The block is passed three keyword arguments:
   #   parse_data: - Hash of data collected during parsing.
   #   path:       - Path of the asset being finalized.
   #   content:    - Asset's finalized content.
