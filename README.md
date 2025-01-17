@@ -392,8 +392,8 @@ References](#asset-references) section for more detail.
   * If `entity` == 'path' - Either 'versioned' or 'unversioned'
   * If `entity` == 'content' - One of 'base64', 'utf8', or 'displace'
 
-A block is optional, but can be used to accumulate parse data and/or override the default behavior of
-removing an import statement altogether by returning a string to replace it with.
+A block is optional, but can be used to accumulate parse data and/or override the default substitution
+behavior.
 
 ```ruby
 Darkroom.register('.ext1', '.ext2', '...') do
