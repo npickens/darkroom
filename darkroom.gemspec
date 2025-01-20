@@ -15,6 +15,7 @@ Gem::Specification.new('darkroom', version) do |spec|
   spec.files         = Dir['lib/**/*.rb', 'CHANGELOG.md', 'LICENSE', 'README.md', 'VERSION']
 
   spec.metadata      = {
+    'bug_tracker_uri' => 'https://github.com/npickens/darkroom/issues',
     'changelog_uri' => 'https://github.com/npickens/darkroom/blob/master/CHANGELOG.md',
     'documentation_uri' => "https://github.com/npickens/darkroom/blob/#{version}/README.md",
     'source_code_uri' => "https://github.com/npickens/darkroom/tree/#{version}",
