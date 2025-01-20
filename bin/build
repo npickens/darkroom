@@ -13,6 +13,7 @@ GEMSPEC_FILES = (Dir[File.join(BASE_DIR, '*.gemspec')] +
   Dir[File.join(BASE_DIR, "#{LIB_NAME}-*", '*.gemspec')]).freeze
 VERSION_FILES = Dir[File.join(BASE_DIR, "{.,#{LIB_NAME}-*}", 'VERSION')].freeze
 VERSION_FILE_RUBY = File.join(BASE_DIR, 'lib', LIB_NAME, 'version.rb').freeze
+CHANGELOG_FILE = File.join(BASE_DIR, 'CHANGELOG.md').freeze
 TEST_COMMAND = File.join(BASE_DIR, 'bin', 'test').freeze
 
 OLD_VERSION = File.read(VERSION_FILES.first).strip.freeze
@@ -48,6 +49,20 @@ def update_version(version = NEW_VERSION, quiet = false)
   File.write(VERSION_FILE_RUBY, ruby)
 
   finish_task('Version number updated') unless quiet
+end
+
+def update_changelog
+  content = File.read(CHANGELOG_FILE)
+  content.sub!("## Upcoming (Unreleased)\n",
+    <<~MARKDOWN
+      \\0
+      * Nothing yet.
+
+      ## #{NEW_VERSION} (#{Time.now.strftime('%Y %B %-d')})
+    MARKDOWN
+  )
+
+  File.write(CHANGELOG_FILE, content)
 end
 
 def build
@@ -101,6 +116,7 @@ end
 
 test
 update_version
+update_changelog
 build
 
 finish_task("Version #{NEW_VERSION} built successfully!")
