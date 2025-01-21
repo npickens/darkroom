@@ -2,6 +2,10 @@
 
 ## Upcoming (Unreleased)
 
+* Nothing yet
+
+## 0.0.9 (2025 January 21)
+
 * **Remove deprecated delegate creation via hash and associated accessors**
 * **Remove deprecated `:minified_pattern` option**
 * **Remove deprecated `:internal_pattern` option and `Asset#internal?` method**
