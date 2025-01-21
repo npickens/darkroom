@@ -56,7 +56,7 @@ def update_changelog
   content.sub!("## Upcoming (Unreleased)\n",
     <<~MARKDOWN
       \\0
-      * Nothing yet.
+      * Nothing yet
 
       ## #{NEW_VERSION} (#{Time.now.strftime('%Y %B %-d')})
     MARKDOWN
