@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class Darkroom
   ##
   # Holds asset type-specific information and functionality.
