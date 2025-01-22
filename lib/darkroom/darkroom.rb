@@ -27,22 +27,20 @@ class Darkroom
   ##
   # Registers an asset delegate.
   #
-  # [*extensions] One or more file extension(s) to associate with this delegate.
-  # [delegate] An HTTP MIME type string or a Delegate subclass.
+  # [*args] One or more file extension(s) to associate with this delegate, optionally followed by either an
+  #         HTTP MIME type string or a Delegate subclass.
+  # [&block] Delegate definition or extension.
   #
-  def self.register(*extensions, delegate, &block)
-    if delegate.kind_of?(String)
-      content_type = delegate
+  def self.register(*args, &block)
+    last_arg = args.pop unless args.last.kind_of?(String) && args.last[0] == '.'
+    extensions = args
 
-      if delegate[0] == '.'
-        extensions << delegate
-        content_type = nil
-      end
-
+    if last_arg.nil? || last_arg.kind_of?(String)
+      content_type = last_arg
       delegate = Class.new(Delegate, &block)
       delegate.content_type(content_type) if content_type && !delegate.content_type
-    elsif delegate && delegate < Delegate
-      delegate = block ? Class.new(delegate, &block) : delegate
+    elsif last_arg.kind_of?(Class) && last_arg < Delegate
+      delegate = block ? Class.new(last_arg, &block) : last_arg
     end
 
     extensions.each do |extension|
