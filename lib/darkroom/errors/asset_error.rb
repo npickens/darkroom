@@ -16,18 +16,11 @@ class Darkroom
     # [source_line_num] Line number in the asset where the error is located.
     #
     def initialize(message, detail, source_path = nil, source_line_num = nil)
-      super(message)
+      super("#{"#{source_path}:#{source_line_num || '?'}: " if source_path}#{message}: #{detail}")
 
       @detail = detail
       @source_path = source_path
       @source_line_num = source_line_num
-    end
-
-    ##
-    # Returns a string representation of the error.
-    #
-    def to_s
-      "#{"#{@source_path}:#{@source_line_num || '?'}: " if @source_path}#{super}: #{@detail}"
     end
   end
 end

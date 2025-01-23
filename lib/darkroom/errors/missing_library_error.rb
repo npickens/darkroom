@@ -15,17 +15,12 @@ class Darkroom
     # [extension] Extension of the type of asset that needs the library.
     #
     def initialize(library, need, extension)
+      super("Cannot #{need} #{extension} file(s): #{library} library not available [hint: try adding "\
+        "gem('#{library}') to your Gemfile]")
+
       @library = library
       @need = need
       @extension = extension
-    end
-
-    ##
-    # Returns a string representation of the error.
-    #
-    def to_s
-      "Cannot #{@need} #{@extension} file(s): #{@library} library not available [hint: try adding "\
-      "gem('#{@library}') to your Gemfile]"
     end
   end
 end

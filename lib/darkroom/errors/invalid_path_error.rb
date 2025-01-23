@@ -16,15 +16,10 @@ class Darkroom
     # [index] Position of the first bad character in the path.
     #
     def initialize(path, index)
+      super("Asset path contains one or more invalid characters (#{Asset::DISALLOWED_PATH_CHARS}): #{path}")
+
       @path = path
       @index = index
-    end
-
-    ##
-    # Returns a string representation of the error.
-    #
-    def to_s
-      "Asset path contains one or more invalid characters (#{Asset::DISALLOWED_PATH_CHARS}): #{@path}"
     end
   end
 end

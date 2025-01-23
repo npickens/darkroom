@@ -15,16 +15,11 @@ class Darkroom
     # [second_load_path] Load path where the asset was subsequently found.
     #
     def initialize(path, first_load_path, second_load_path)
+      super("Asset file exists in both #{first_load_path} and #{second_load_path}: #{path}")
+
       @path = path
       @first_load_path = first_load_path
       @second_load_path = second_load_path
-    end
-
-    ##
-    # Returns a string representation of the error.
-    #
-    def to_s
-      "Asset file exists in both #{@first_load_path} and #{@second_load_path}: #{@path}"
     end
   end
 end
