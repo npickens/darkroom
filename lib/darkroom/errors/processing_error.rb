@@ -24,12 +24,5 @@ class Darkroom
     def each(&block)
       @errors.each(&block)
     end
-
-    ##
-    # Passes any missing method call on to the @errors array.
-    #
-    def method_missing(m, *args, &block)
-      @errors.send(m, *args, &block)
-    end
   end
 end
