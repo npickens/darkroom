@@ -427,23 +427,28 @@ class Darkroom
         handler_args[:asset] = asset if asset
 
         if !asset && BUILT_IN_PARSE_KINDS.include?(kind)
-          add_parse_error(match, AssetNotFoundError)
+          add_parse_error(:not_found, match)
           next
         elsif kind == :reference
+          entity = match[:entity]
           format = match[:format]
-          format = REFERENCE_FORMATS[match[:entity]].first if format.nil? || format == ''
+
+          allowed_formats = REFERENCE_FORMATS[entity]
+          format = allowed_formats&.first if format.nil? || format == ''
 
           handler_args[:format] = format
 
           if asset.dependencies.include?(self)
-            add_parse_error(match, CircularReferenceError)
+            add_parse_error(:circular_reference, match)
             next
-          elsif !REFERENCE_FORMATS[match[:entity]].include?(format)
-            formats = REFERENCE_FORMATS[match[:entity]].join("', '")
-            add_parse_error(match, "Invalid reference format '#{format}' (must be one of '#{formats}')")
+          elsif allowed_formats.nil?
+            add_parse_error(:unrecognized_reference_entity, match)
             next
-          elsif match[:entity] == 'content' && format != 'base64' && asset.binary?
-            add_parse_error(match, 'Base64 encoding is required for binary assets')
+          elsif !allowed_formats.include?(format)
+            add_parse_error(:unrecognized_reference_format, match)
+            next
+          elsif entity == 'content' && format != 'base64' && asset.binary?
+            add_parse_error(:format_not_base64, match)
             next
           end
         end
@@ -480,7 +485,7 @@ class Darkroom
           nil
         end
 
-        add_parse_error(match, error) if error
+        add_parse_error(error, match) if error
       end
 
       substitutions.reverse_each do |content, start, finish|
@@ -596,24 +601,39 @@ class Darkroom
     ##
     # Utility method to create a parse error of the appropriate class and append it to the errors array.
     #
+    # [error] Error type (symbol) or error message (string).
     # [match] MatchData object for where the parse error occurred.
-    # [error] Error class or message.
     #
-    def add_parse_error(match, error)
-      klass = error
-      args = []
+    def add_parse_error(error, match)
+      klass = AssetError
+      args = [match[0].strip]
 
-      if error == AssetNotFoundError
-        klass = UnrecognizedExtensionError unless Darkroom.delegate(File.extname(match[:path]))
-        args << match[:path]
+      case error
+      when String
+        message = error
+      when :not_found
+        path = match[:path]
+        delegate = Darkroom.delegate(File.extname(path)) if path
+        klass = delegate ? AssetNotFoundError : UnrecognizedExtensionError
+        args.clear << path
+      when :circular_reference
+        klass = CircularReferenceError
+      when :unrecognized_reference_entity
+        entity = match[:entity].nil? ? 'nil' : "'#{match[:entity]}'"
+        allowed = "'#{Asset::REFERENCE_FORMATS.keys.join("', '")}'"
+        message = "Invalid reference entity #{entity} (must be one of #{allowed})"
+      when :unrecognized_reference_format
+        entity = match[:entity]
+        format = match[:format].nil? ? 'nil' : "'#{match[:format]}'"
+        allowed = "'#{Asset::REFERENCE_FORMATS[entity].join("', '")}'"
+        message = "Invalid reference format #{format} (must be one of #{allowed})"
+      when :format_not_base64
+        message = 'Base64 encoding is required for binary assets'
       else
-        if error.kind_of?(String)
-          klass = AssetError
-          args << error
-        end
-
-        args << match[0].strip
+        raise("Unrecognized parse error type: #{error.inspect}")
       end
+
+      args.unshift(message) if message
 
       @errors << klass.new(*args, @path, @own_content[0..match.begin(:path)].count("\n") + 1)
     end

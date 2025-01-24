@@ -225,6 +225,26 @@ class AssetTest < Minitest::Test
     )
   end
 
+  test('registers error when reference entity is invalid') do
+    Darkroom.register('.ext', Darkroom::HTMLDelegate) do
+      reference(/
+        <img\ src=(?<quote>')(?<quoted>
+          (?<path>.*)\?asset-(?<entity>bad)(?:=(?<format>.*))?
+        )\k<quote>>
+      /x)
+    end
+
+    new_asset('/logo.svg', '<svg></svg>')
+    asset = new_asset('/index.ext', "<img src='/logo.svg?asset-bad'>")
+    asset.process
+
+    assert_error(
+      "#<Darkroom::AssetError: /index.ext:1: Invalid reference entity 'bad' (must be one of 'path', " \
+        "'content'): <img src='/logo.svg?asset-bad'>>",
+      asset.errors
+    )
+  end
+
   test('registers error when reference format is invalid') do
     new_asset('/logo.svg', '<svg></svg>')
     new_asset('/graphic.svg', '<svg></svg>')
