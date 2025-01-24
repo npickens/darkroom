@@ -22,62 +22,46 @@ class JavaScriptDelegateTest < Minitest::Test
     modules = [nil, 'MyModule']
     exports_imports = [
       nil,
-      [%w[Exp]],
-      [%w[Exp Imp]],
-      [['"Nasty} from \'/app.js\';"', 'Imp']],
-      [%w[Exp1 Imp1], %w[Exp2 Imp2]],
+      {'Exp' => nil},
+      {'Exp' => 'Imp'},
+      {'"Nasty} from \'/app.js\';"' => 'Imp'},
+      {'Exp1' => 'Imp1', 'Exp2' => 'Imp2'},
     ]
     quotes = ['\'', '"']
     finishes = [';', '  ;', "\n", ";\n", ";  \n"]
+    products = starts.product(whitespaces)
+                     .product(defaults)
+                     .product(modules)
+                     .product(exports_imports)
+                     .product(quotes)
+                     .product(finishes).flatten
 
-    starts.each do |start|
-      whitespaces.each do |whitespace|
-        defaults.each do |default|
-          modules.each do |mod|
-            exports_imports.each do |export_import|
-              quotes.each do |quote|
-                finishes.each do |finish|
-                  if !mod && export_import
-                    named = export_import.map do |export, import|
-                      "#{export}#{"#{whitespace}as#{whitespace}#{import}" if import}"
-                    end.join("#{whitespace},#{whitespace}")
-                  end
-
-                  statement =
-                    "#{start}#{whitespace}import#{whitespace}" \
-                    "#{default}" \
-                    "#{"#{whitespace},#{whitespace}" if default && (mod || named)}" \
-                    "#{"*#{whitespace}as#{whitespace}#{mod}" if mod}" \
-                    "#{"{#{named}}" if named}" \
-                    "#{"#{whitespace}from#{whitespace}" if default || mod || named}" \
-                    "#{quote}/app.js#{quote}#{finish}"
-                  match = statement.match(import_regex)
-
-                  assert(match, "Expected #{statement.inspect} to match import regex")
-
-                  if default
-                    assert_equal(default, match[:default], 'Incorrect :default capture for ' \
-                      "#{statement.inspect}")
-                  else
-                    assert_nil(default, "Incorrect :default capture for #{statement.inspect}")
-                  end
-
-                  if mod && !named
-                    assert_equal(mod, match[:module], "Incorrect :module capture for #{statement.inspect}")
-                  elsif named && !mod
-                    assert_equal(named, match[:named], "Incorrect :named capture for #{statement.inspect}")
-                  end
-
-                  assert_nil(mod, "Incorrect :module capture for #{statement.inspect}.") if !mod || named
-                  assert_nil(named, "Incorrect :named capture for #{statement.inspect}.") if !named || mod
-
-                  assert_equal('/app.js', match[:path], "Incorrect :path capture for #{statement.inspect}")
-                end
-              end
-            end
-          end
-        end
+    products.each_slice(7) do |start, whitespace, default, mod, export_import, quote, finish|
+      if !mod && export_import
+        named = export_import.map do |export, import|
+          "#{export}#{"#{whitespace}as#{whitespace}#{import}" if import}"
+        end.join("#{whitespace},#{whitespace}")
       end
+
+      statement =
+        "#{start}#{whitespace}import#{whitespace}" \
+        "#{default}" \
+        "#{"#{whitespace},#{whitespace}" if default && (mod || named)}" \
+        "#{"*#{whitespace}as#{whitespace}#{mod}" if mod}" \
+        "#{"{#{named}}" if named}" \
+        "#{"#{whitespace}from#{whitespace}" if default || mod || named}" \
+        "#{quote}/app.js#{quote}#{finish}"
+      inspected = statement.inspect
+      match = statement.match(import_regex)
+
+      assert(match, "Expected #{inspected} to match import regex")
+      assert_equal('/app.js', match[:path], "Incorrect :path capture for #{inspected}")
+      assert_equal(default, match[:default], "Incorrect :default capture for #{inspected}") if default
+      assert_nil(default, "Incorrect :default capture for #{inspected}") unless default
+      assert_equal(mod, match[:module], "Incorrect :module capture for #{inspected}") if mod && !named
+      assert_equal(named, match[:named], "Incorrect :named capture for #{inspected}") if named && !mod
+      assert_nil(mod, "Incorrect :module capture for #{inspected}.") if !mod || named
+      assert_nil(named, "Incorrect :named capture for #{inspected}.") if !named || mod
     end
   end
 
