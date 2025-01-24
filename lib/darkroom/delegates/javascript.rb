@@ -5,13 +5,16 @@ require_relative('../asset')
 require_relative('../delegate')
 
 class Darkroom
+  ##
+  # Delegate for handling JavaScript-specific asset processing.
+  #
   class JavaScriptDelegate < Delegate
     IDENTIFIER_REGEX = /[_$a-zA-Z][_$a-zA-Z0-9]*/.freeze
     COMMA_REGEX = /,/.freeze
     QUOTED_REGEX = /
       (?<quoted>
-        (?<quote>['"])(
-          (?<=[^\\])\\(\\\\)*\k<quote> |
+        (?<quote>['"])(?:
+          (?<=[^\\])\\(?:\\\\)*\k<quote> |
           (?!\k<quote>).
         )*\k<quote>
       )
@@ -131,14 +134,14 @@ class Darkroom
         end while items.any? { |i| i.first == mod }
 
         own_content.prepend(
-          "let #{items.map(&:first).join(', ')}; "\
-          "$import('#{import_path}', "\
+          "let #{items.map(&:first).join(', ')}; " \
+          "$import('#{import_path}', " \
           "#{mod} => #{prefix}#{items.map { |(i, e)| "#{i} = #{mod}#{e}" }.join(', ')}#{suffix})\n"
         )
       end
 
       own_content.prepend("['#{path}', $import => {\n\n")
-      own_content << <<~EOS
+      own_content << <<~JS
 
         return Object.seal({#{
           if parse_data[:exports] && !parse_data[:exports].empty?
@@ -147,7 +150,7 @@ class Darkroom
         }})
 
         }],
-      EOS
+      JS
     end
 
     ########################################################################################################
@@ -158,7 +161,7 @@ class Darkroom
       next unless Darkroom.javascript_iife
 
       (content.frozen? ? content.dup : content).prepend(
-        <<~EOS
+        <<~JS
           ((...bundle) => {
             const modules = {}
             const setters = []
@@ -172,7 +175,7 @@ class Darkroom
               setter(modules[name])
           })(
 
-        EOS
+        JS
       ) << "\n)\n"
     end
 

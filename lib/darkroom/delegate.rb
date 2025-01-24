@@ -22,7 +22,9 @@ class Darkroom
       end
     end
 
-    class << self; alias :get_content_type :content_type end
+    class << self
+      alias get_content_type content_type
+    end
 
     ##
     # Sets or returns HTTP MIME type string.
@@ -82,7 +84,7 @@ class Darkroom
     #            values as integers representing the start and end indexes of the match to replace.
     #
     def self.parse(kind, regex, &handler)
-      @parsers = parsers&.dup || {} unless @parsers
+      @parsers ||= parsers&.dup || {}
       @parsers[kind] = [regex, handler]
     end
 

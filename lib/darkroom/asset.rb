@@ -28,6 +28,8 @@ class Darkroom
       \k<quote>
     /x.freeze
 
+    BUILT_IN_PARSE_KINDS = [:import, :reference].freeze
+
     # First item of each set is used as default, so order is important.
     REFERENCE_FORMATS = {
       'path' => Set.new(%w[versioned unversioned]),
@@ -65,7 +67,8 @@ class Darkroom
 
       if @delegate.compile_delegate && !intermediate
         @delegate = @delegate.compile_delegate
-        @intermediate_asset = Asset.new(@path, @file, @darkroom,
+        @intermediate_asset = Asset.new(
+          @path, @file, @darkroom,
           prefix: @prefix,
           entry: false,
           minify: false,
@@ -101,11 +104,11 @@ class Darkroom
     # Returns boolean indicating whether or not the asset is binary.
     #
     def binary?
-      return @is_binary if defined?(@is_binary)
+      return @binary if defined?(@binary)
 
       type, subtype = content_type.split('/')
 
-      @is_binary = type != 'text' && !subtype.include?('json') && !subtype.include?('xml')
+      @binary = type != 'text' && !subtype.include?('json') && !subtype.include?('xml')
     end
 
     ##
@@ -171,7 +174,7 @@ class Darkroom
       {
         'Content-Type' => content_type,
         'Cache-Control' => ('public, max-age=31536000' if versioned),
-        'ETag' => ("\"#{fingerprint}\"" if !versioned),
+        'ETag' => ("\"#{fingerprint}\"" unless versioned),
       }.compact!
     end
 
@@ -221,7 +224,7 @@ class Darkroom
           )
 
           @content = finalized if finalized.kind_of?(String)
-        rescue => e
+        rescue StandardError => e
           @errors << e
         end
       end
@@ -233,7 +236,7 @@ class Darkroom
             path: @path,
             content: @content,
           )
-        rescue => e
+        rescue StandardError => e
           @errors << e
         end
       end
@@ -251,18 +254,18 @@ class Darkroom
     # Returns high-level object info string.
     #
     def inspect
-      "#<#{self.class} "\
-        "@entry=#{@entry.inspect}, "\
-        "@errors=#{@errors.inspect}, "\
-        "@extension=#{@extension.inspect}, "\
-        "@file=#{@file.inspect}, "\
-        "@fingerprint=#{@fingerprint.inspect}, "\
-        "@minify=#{@minify.inspect}, "\
-        "@mtime=#{@mtime.inspect}, "\
-        "@path=#{@path.inspect}, "\
-        "@path_unversioned=#{@path_unversioned.inspect}, "\
-        "@path_versioned=#{@path_versioned.inspect}, "\
-        "@prefix=#{@prefix.inspect}"\
+      "#<#{self.class} " \
+        "@entry=#{@entry.inspect}, " \
+        "@errors=#{@errors.inspect}, " \
+        "@extension=#{@extension.inspect}, " \
+        "@file=#{@file.inspect}, " \
+        "@fingerprint=#{@fingerprint.inspect}, " \
+        "@minify=#{@minify.inspect}, " \
+        "@mtime=#{@mtime.inspect}, " \
+        "@path=#{@path.inspect}, " \
+        "@path_unversioned=#{@path_unversioned.inspect}, " \
+        "@path_versioned=#{@path_versioned.inspect}, " \
+        "@prefix=#{@prefix.inspect}" \
       '>'
     end
 
@@ -349,7 +352,7 @@ class Darkroom
           match = Regexp.last_match
           asset = nil
 
-          if kind == :import || kind == :reference
+          if BUILT_IN_PARSE_KINDS.include?(kind)
             path = File.expand_path(match[:path], @dir)
             asset = @darkroom.manifest(path)
 
@@ -413,9 +416,9 @@ class Darkroom
       parse
       substitutions = []
 
-      @parse_matches.sort_by! { |_, match, __| match.begin(0) }.each do |kind, match, asset|
-        format = nil
+      @parse_matches.sort_by! { |_kind, match, _asset| match.begin(0) }
 
+      @parse_matches.each do |kind, match, asset|
         handler = @delegate.handler(kind)
         handler_args = {
           parse_data: @parse_data,
@@ -423,7 +426,7 @@ class Darkroom
         }
         handler_args[:asset] = asset if asset
 
-        if !asset && (kind == :import || kind == :reference)
+        if !asset && BUILT_IN_PARSE_KINDS.include?(kind)
           add_parse_error(match, AssetNotFoundError)
           next
         elsif kind == :reference
@@ -449,10 +452,10 @@ class Darkroom
           substitution, start, finish = handler&.call(**handler_args)
 
           min_start, max_finish = match.offset(0)
-          start ||= (!format || format == 'displace') ? min_start : match.begin(:quoted)
-          finish ||= (!format || format == 'displace') ? max_finish : match.end(:quoted)
-          start = [[start, min_start].max, max_finish].min
-          finish = [[finish, max_finish].min, min_start].max
+          start ||= !format || format == 'displace' ? min_start : match.begin(:quoted)
+          finish ||= !format || format == 'displace' ? max_finish : match.end(:quoted)
+          start = start.clamp(min_start, max_finish)
+          finish = finish.clamp(min_start, max_finish)
 
           if kind == :reference
             case "#{match[:entity]}-#{format}"
@@ -501,7 +504,7 @@ class Darkroom
         )
 
         @own_content = compiled if compiled.kind_of?(String)
-      rescue => e
+      rescue StandardError => e
         @errors << e
       ensure
         @own_content.freeze

@@ -40,7 +40,9 @@ class AssetTest < Minitest::Test
     end
 
     refute(defined?(DummyCompile), 'Expected DummyCompile to be undefined before asset is initialized.')
+
     new_asset('/app.dummy-compile')
+
     assert(defined?(DummyCompile), 'Expected DummyCompile to be defined after asset is initialized.')
   ensure
     Darkroom.register('.dummy-compile', nil)
@@ -52,9 +54,11 @@ class AssetTest < Minitest::Test
     end
 
     new_asset('/app.dummy-minify')
+
     refute(defined?(DummyMinify), 'Expected DummyMinify to be undefined when minification is not enabled.')
 
     new_asset('/app.dummy-minify', minify: true)
+
     assert(defined?(DummyMinify), 'Expected DummyMinify to be defined when minification is enabled.')
   ensure
     Darkroom.register('.dummy-minify', nil)
@@ -82,7 +86,7 @@ class AssetTest < Minitest::Test
 
     begin
       new_asset('/app.bad-minify')
-    rescue Darkroom::MissingLibraryError => e
+    rescue Darkroom::MissingLibraryError
       assert(false, 'Expected minify library to not be required when minification is not enabled')
     end
 
@@ -105,7 +109,7 @@ class AssetTest < Minitest::Test
     content = '<div>${this.hello}</div>'
     asset = new_asset(path, content)
 
-    HTX.stub(:compile, ->(*args) do
+    HTX.stub(:compile, lambda do |*args|
       assert_equal(path, args[0])
       assert_equal(content, args[1])
 
@@ -120,11 +124,9 @@ class AssetTest < Minitest::Test
 
   test('processes using compiled delegate if one is implemented') do
     asset = new_asset('/template.htx', '<div>${this.hello}</div>')
-    import = new_asset('/import.js', '[import]')
+    new_asset('/import.js', '[import]')
 
-    HTX.stub(:compile, ->(*args) do
-      +"import '/import.js'\n\n[compiled]"
-    end) do
+    HTX.stub(:compile, ->(*) { "import '/import.js'\n\n[compiled]" }) do
       asset.process
     end
 
@@ -135,13 +137,15 @@ class AssetTest < Minitest::Test
   test('minifies content if implemented in delegate and minification is enabled') do
     content = 'body { background: white; }'
     asset = new_asset('/app.css', content, minify: true)
+    sassc_mock = Minitest::Mock.new
 
-    SassC::Engine.stub(:new, ->(*args) do
+    def sassc_mock.render
+      '[minified]'
+    end
+
+    SassC::Engine.stub(:new, lambda do |*args|
       assert_equal(content, args[0])
       assert_equal({style: :compressed}, args[1])
-
-      sassc_mock = Minitest::Mock.new
-      def sassc_mock.render() '[minified]' end
 
       sassc_mock
     end) do
@@ -153,7 +157,7 @@ class AssetTest < Minitest::Test
   end
 
   test('merges imported content with own content when referenced by absolute path') do
-    import = new_asset('/import.js', "console.log('Import')")
+    new_asset('/import.js', "console.log('Import')")
     asset = new_asset('/app.js', "import '/import.js'\n\nconsole.log('App')")
 
     asset.process
@@ -163,8 +167,8 @@ class AssetTest < Minitest::Test
   end
 
   test('merges imported content with own content when referenced by relative path') do
-    import = new_asset('/import1.js', "console.log('Import1')")
-    import = new_asset('/components/import2.js', "console.log('Import2')")
+    new_asset('/import1.js', "console.log('Import1')")
+    new_asset('/components/import2.js', "console.log('Import2')")
     asset = new_asset('/components/component.js', "import '../import1.js'\nimport 'import2.js'\n\n" \
       "console.log('App')")
 
@@ -175,12 +179,12 @@ class AssetTest < Minitest::Test
   end
 
   test('registers error when reference does not exist') do
-    content = <<~EOS
+    content = <<~HTML
       <body>
         <img src='/logo.svg?asset-path'>
         <img src='/graphic.svg?asset-content'>
       </body>
-    EOS
+    HTML
 
     asset = new_asset('/index.html', content)
     asset.process
@@ -196,12 +200,12 @@ class AssetTest < Minitest::Test
     new_asset('/logo.svg', '<svg></svg>')
     new_asset('/graphic.svg', '<svg></svg>')
 
-    content = <<~EOS
+    content = <<~HTML
       <body>
         <img src='/logo.svg?asset-path=invalid'>
         <img src='/graphic.svg?asset-content=invalid'>
       </body>
-    EOS
+    HTML
 
     asset = new_asset('/index.html', content)
     asset.process
@@ -219,20 +223,20 @@ class AssetTest < Minitest::Test
     new_asset('/logo.png')
     new_asset('/graphic.png')
 
-    content = <<~EOS
+    content = <<~HTML
       <body>
         <img src='/logo.png?asset-content=utf8'>
         <img src='/graphic.png?asset-content=displace'>
       </body>
-    EOS
+    HTML
 
     asset = new_asset('/index.html', content)
     asset.process
 
     assert_error(
-      "#<Darkroom::AssetError: /index.html:2: Base64 encoding is required for binary assets: <img "\
+      '#<Darkroom::AssetError: /index.html:2: Base64 encoding is required for binary assets: <img ' \
         "src='/logo.png?asset-content=utf8'>>",
-      "#<Darkroom::AssetError: /index.html:3: Base64 encoding is required for binary assets: <img "\
+      '#<Darkroom::AssetError: /index.html:3: Base64 encoding is required for binary assets: <img ' \
         "src='/graphic.png?asset-content=displace'>>",
       asset.errors
     )
@@ -253,8 +257,8 @@ class AssetTest < Minitest::Test
 
   test('registers error when reference would result in a circular reference chain') do
     circular1 = new_asset('/circular1.html', "<body><a href='/circular2.html?asset-path'></a></body>")
-    circular2 = new_asset('/circular2.html', "<body><a href='/circular3.html?asset-path'></a></body>")
-    circular3 = new_asset('/circular3.html', "<body><a href='/circular1.html?asset-path'></a></body>")
+    new_asset('/circular2.html', "<body><a href='/circular3.html?asset-path'></a></body>")
+    new_asset('/circular3.html', "<body><a href='/circular1.html?asset-path'></a></body>")
 
     circular1.process
 
@@ -266,16 +270,16 @@ class AssetTest < Minitest::Test
   end
 
   test('registers errors of intermediate asset') do
-    content = <<~EOS
+    content = <<~HTML
       <body>
         <img src='/logo.svg?asset-path'>
         <img src='/graphic.svg?asset-content'>
       </body>
-    EOS
+    HTML
 
     asset = new_asset('/index.htx', content)
 
-    HTX.stub(:compile, ->(*args) { '[compiled]' }) do
+    HTX.stub(:compile, ->(*) { '[compiled]' }) do
       asset.process
     end
 
@@ -287,7 +291,7 @@ class AssetTest < Minitest::Test
   end
 
   test('substitutes versioned path of reference when path format is unspecified') do
-    logo = new_asset('/logo.svg', '<svg></svg>')
+    new_asset('/logo.svg', '<svg></svg>')
     asset = new_asset('/index.html', "<body><img src='/logo.svg?asset-path'></body>")
 
     asset.process
@@ -297,7 +301,7 @@ class AssetTest < Minitest::Test
   end
 
   test('substitutes versioned path of reference when path format is versioned') do
-    logo = new_asset('/logo.svg', '<svg></svg>')
+    new_asset('/logo.svg', '<svg></svg>')
     asset = new_asset('/index.html', "<body><img src='/logo.svg?asset-path=versioned'></body>")
 
     asset.process
@@ -307,7 +311,7 @@ class AssetTest < Minitest::Test
   end
 
   test('substitutes unversioned path of reference when path format is unversioned') do
-    logo = new_asset('/logo.svg', '<svg></svg>')
+    new_asset('/logo.svg', '<svg></svg>')
     asset = new_asset('/index.html', "<body><img src='/logo.svg?asset-path=unversioned'></body>")
 
     asset.process
@@ -317,7 +321,7 @@ class AssetTest < Minitest::Test
   end
 
   test('substitutes base64-encoded content of reference when content format is unspecified') do
-    logo = new_asset('/logo.svg', '<svg></svg>')
+    new_asset('/logo.svg', '<svg></svg>')
     asset = new_asset('/index.html', "<body><img src='/logo.svg?asset-content'></body>")
 
     asset.process
@@ -327,7 +331,7 @@ class AssetTest < Minitest::Test
   end
 
   test('substitutes base64-encoded content of reference when content format is base64') do
-    logo = new_asset('/logo.svg', '<svg></svg>')
+    new_asset('/logo.svg', '<svg></svg>')
     asset = new_asset('/index.html', "<body><img src='/logo.svg?asset-content=base64'></body>")
 
     asset.process
@@ -337,7 +341,7 @@ class AssetTest < Minitest::Test
   end
 
   test('substitutes utf8-encoded content of reference when content format is utf8') do
-    logo = new_asset('/logo.svg', '<svg></svg>')
+    new_asset('/logo.svg', '<svg></svg>')
     asset = new_asset('/index.html', "<body><img src='/logo.svg?asset-content=utf8'></body>")
 
     asset.process
@@ -347,7 +351,7 @@ class AssetTest < Minitest::Test
   end
 
   test('displaces content with reference content when content format is displace') do
-    logo = new_asset('/logo.svg', '<svg></svg>')
+    new_asset('/logo.svg', '<svg></svg>')
     asset = new_asset('/index.html', "<body><img src='/logo.svg?asset-content=displace'></body>")
 
     asset.process
@@ -372,11 +376,11 @@ class AssetTest < Minitest::Test
   end
 
   test('registers an error when an import is not found') do
-    content = <<~EOS
+    content = <<~JS
       import '/does-not-exist.js'
 
       console.log('Hello')
-    EOS
+    JS
 
     asset = new_asset('/bad-import.js', content)
     asset.process
@@ -408,12 +412,13 @@ class AssetTest < Minitest::Test
   end
 
   test('accumulates multiple errors') do
-    content = <<~EOS
+    content = <<~JS
       import '/does-not-exist.js'
       import '/also-does-not-exist.js'
 
       console.log('Hello')
-    EOS
+    JS
+
     asset = new_asset('/bad-imports.js', content, minify: true)
 
     Terser.stub(:compile, ->(*) { raise('[Terser Error]') }) do
@@ -446,7 +451,7 @@ class AssetTest < Minitest::Test
 
   test('compiles circular imports before including their contents') do
     Darkroom.register('.simple-compile', 'text/simple-compile') do
-      import(/^import (?<quote>')(?<path>.+)\k<quote>$/.freeze)
+      import(/^import (?<quote>')(?<path>.+)\k<quote>$/)
       compile { |parse_data:, path:, own_content:| own_content.upcase }
     end
 
@@ -477,13 +482,13 @@ class AssetTest < Minitest::Test
   ##########################################################################################################
 
   test('concatenates JavaScript side-effect imports when IIFE are not enabled') do
-    import = new_asset('/import.js', "console.log('Import')\n")
+    new_asset('/import.js', "console.log('Import')\n")
     asset = new_asset('/app.js', "import '/import.js'\n\nconsole.log('App')\n")
-    processed = <<~EOS
+    processed = <<~JS
       console.log('Import')
 
       console.log('App')
-    EOS
+    JS
 
     asset.process
 
@@ -492,13 +497,13 @@ class AssetTest < Minitest::Test
   end
 
   test('concatenates JavaScript named imports when IIFE are not enabled') do
-    import = new_asset('/import.js', "export function Import() { console.log('Import') }\n")
+    new_asset('/import.js', "export function Import() { console.log('Import') }\n")
     asset = new_asset('/app.js', "import {Import} from '/import.js'\n\nconsole.log('App')\n")
-    processed = <<~EOS
+    processed = <<~JS
       function Import() { console.log('Import') }
 
       console.log('App')
-    EOS
+    JS
 
     asset.process
 
@@ -510,7 +515,7 @@ class AssetTest < Minitest::Test
     Darkroom.javascript_iife = true
 
     asset = new_asset('/app.js', "console.log('App')\n")
-    processed = <<~EOS
+    processed = <<~JS
       #{IIFE_PREFIX}
       ['/app.js', $import => {
 
@@ -521,7 +526,7 @@ class AssetTest < Minitest::Test
       }],
 
       )
-    EOS
+    JS
 
     asset.process
 
@@ -534,9 +539,9 @@ class AssetTest < Minitest::Test
   test('generates IIFE for JavaScript assets with side-effect imports when IIFE are enabled') do
     Darkroom.javascript_iife = true
 
-    import = new_asset('/import.js', "console.log('Import')\n")
+    new_asset('/import.js', "console.log('Import')\n")
     asset = new_asset('/app.js', "import '/import.js'\n\nconsole.log('App')\n")
-    processed = <<~EOS
+    processed = <<~JS
       #{IIFE_PREFIX}
       ['/import.js', $import => {
 
@@ -556,7 +561,7 @@ class AssetTest < Minitest::Test
       }],
 
       )
-    EOS
+    JS
 
     asset.process
 
@@ -569,22 +574,23 @@ class AssetTest < Minitest::Test
   test('generates IIFE for JavaScript assets with named imports when IIFE are enabled') do
     Darkroom.javascript_iife = true
 
-    default = new_asset('/default.js', "export default function Default() { console.log('Default') }\n")
-    named = new_asset('/named.js', "export function Named() { console.log('Named') }\n")
-    aliased = new_asset('/aliased.js', "function Aliased() { console.log('Aliased') }\nexport {Aliased "\
-      "as 'Something Else', Aliased as 'Another'}\n")
+    new_asset('/default.js', "export default function Default() { console.log('Default') }\n")
+    new_asset('/named.js', "export function Named() { console.log('Named') }\n")
+    new_asset('/aliased.js', "function Aliased() { console.log('Aliased') }\nexport {Aliased as " \
+      "'Something Else', Aliased as 'Another'}\n")
 
-    asset = new_asset('/app.js',
-      <<~EOS
+    asset = new_asset(
+      '/app.js',
+      <<~JS
         import Default from '/default.js'
         import {Import} from '/named.js'
         import {Aliased as Renamed} from '/aliased.js'
 
         console.log('App')
-      EOS
+      JS
     )
 
-    processed = <<~EOS
+    processed = <<~JS
       #{IIFE_PREFIX}
       ['/default.js', $import => {
 
@@ -630,7 +636,7 @@ class AssetTest < Minitest::Test
       }],
 
       )
-    EOS
+    JS
 
     asset.process
 
@@ -793,10 +799,13 @@ class AssetTest < Minitest::Test
     asset.process
 
     assert_error(
-      "#<Darkroom::ProcessingError: Errors were encountered while processing assets:\n"\
-      "  /bad-import.js:1: Asset not found: /bad1.js\n"\
-      "  /bad-import.js:2: Asset not found: /bad2.js>",
-      [asset.error])
+      <<~TEXT.strip,
+        #<Darkroom::ProcessingError: Errors were encountered while processing assets:
+          /bad-import.js:1: Asset not found: /bad1.js
+          /bad-import.js:2: Asset not found: /bad2.js>
+      TEXT
+      asset.error
+    )
   end
 
   ##########################################################################################################
@@ -804,12 +813,12 @@ class AssetTest < Minitest::Test
   ##########################################################################################################
 
   test('#fingerprint returns MD5 hash of asset content') do
-    import = new_asset('/import.js', "console.log('Import')")
+    new_asset('/import.js', "console.log('Import')")
     asset = new_asset('/app.js', "import '/import.js'\n\nconsole.log('App')")
 
     asset.process
 
-    assert_equal('31bc73566fb11439130454b88fc4efa1', "#{asset.fingerprint}")
+    assert_equal('31bc73566fb11439130454b88fc4efa1', asset.fingerprint)
   end
 
   ##########################################################################################################
@@ -817,7 +826,7 @@ class AssetTest < Minitest::Test
   ##########################################################################################################
 
   test('#path_versioned returns versioned path') do
-    import = new_asset('/import.js', "console.log('Import')")
+    new_asset('/import.js', "console.log('Import')")
     asset = new_asset('/app.js', "import '/import.js'\n\nconsole.log('App')")
 
     asset.process
@@ -888,11 +897,18 @@ class AssetTest < Minitest::Test
     asset.process
 
     refute_error(asset.errors)
+
     assert_equal('sha256-S9v8mQ0Xba2sG+AEXC4IpdFUM2EX/oRNADEeJ5MpV3s=', asset.integrity(:sha256))
-    assert_equal('sha384-2nxTl5wRLPxsDXWEi27WU3OmaXL2BxWbycv+O0ICyA11sCQMbb1K/uREBxvBKaMT',
-      asset.integrity(:sha384))
-    assert_equal('sha512-VAhb8yjzGIyuPN8kosvMhu7ix55T8eLHdOqrYNcXwA6rPUlt1/420xdSzl2SNHOp93piKyjcNkQwh' \
-      '2Lw8imrQA==', asset.integrity(:sha512))
+
+    assert_equal(
+      'sha384-2nxTl5wRLPxsDXWEi27WU3OmaXL2BxWbycv+O0ICyA11sCQMbb1K/uREBxvBKaMT',
+      asset.integrity(:sha384)
+    )
+
+    assert_equal(
+      'sha512-VAhb8yjzGIyuPN8kosvMhu7ix55T8eLHdOqrYNcXwA6rPUlt1/420xdSzl2SNHOp93piKyjcNkQwh2Lw8imrQA==',
+      asset.integrity(:sha512)
+    )
   end
 
   test('#integrity returns sha384 subresource integrity string by default') do
@@ -900,8 +916,10 @@ class AssetTest < Minitest::Test
     asset.process
 
     refute_error(asset.errors)
-    assert_equal('sha384-2nxTl5wRLPxsDXWEi27WU3OmaXL2BxWbycv+O0ICyA11sCQMbb1K/uREBxvBKaMT',
-      asset.integrity)
+    assert_equal(
+      'sha384-2nxTl5wRLPxsDXWEi27WU3OmaXL2BxWbycv+O0ICyA11sCQMbb1K/uREBxvBKaMT',
+      asset.integrity
+    )
   end
 
   test('#integrity raises error if algorithm argument is not recognized') do
@@ -922,11 +940,11 @@ class AssetTest < Minitest::Test
 
   test('#inspect returns a high-level object info string') do
     path = '/bad-import.js'
-    content = <<~EOS
+    content = <<~JS
       import '/does-not-exist.js'
 
       console.log('Hello')
-    EOS
+    JS
 
     asset = new_asset(path, content, prefix: '/static')
     asset.process

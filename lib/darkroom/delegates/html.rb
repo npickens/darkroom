@@ -4,6 +4,9 @@ require_relative('../asset')
 require_relative('../delegate')
 
 class Darkroom
+  ##
+  # Delegate for handling HTML-specific asset processing.
+  #
   class HTMLDelegate < Delegate
     REFERENCE_REGEX = /
       <(?<tag>a|area|audio|base|embed|iframe|img|input|link|script|source|track|video)\s+[^>]*
@@ -26,8 +29,8 @@ class Darkroom
           if asset.content_type == 'text/javascript'
             offset = match.begin(0)
 
-            "#{match[0][0..(match.begin(:attr) - 2 - offset)]}"\
-            "#{match[0][(match.end(:quoted) + match[:quote].size - offset)..(match.end(0) - offset)]}"\
+            "#{match[0][0..(match.begin(:attr) - 2 - offset)]}" \
+            "#{match[0][(match.end(:quoted) + match[:quote].size - offset)..(match.end(0) - offset)]}" \
             "#{asset.content}"
           else
             error('Asset content type must be text/javascript')
@@ -46,7 +49,7 @@ class Darkroom
 
         content = asset.content.dup
         content.gsub!('#', '%23')
-        content.gsub!(quote, quote == '"' ? "&#34;" : '&#39;')
+        content.gsub!(quote, quote == '"' ? '&#34;' : '&#39;')
 
         content
       end

@@ -13,57 +13,72 @@ class JavaScriptDelegateTest < Minitest::Test
 
   test('matches import statements with proper syntax') do
     import_regex = Darkroom::JavaScriptDelegate.regex(:import)
+
     assert_kind_of(Regexp, import_regex)
 
     starts = ['', '  ', ';', ';  ', '}', '}  ']
     whitespaces = ['  ', "  \n  "]
     defaults = [nil, 'MyDefault']
     modules = [nil, 'MyModule']
-    names = [
+    exports_imports = [
       nil,
-      [['Exp']],
-      [['Exp', 'Imp']],
+      [%w[Exp]],
+      [%w[Exp Imp]],
       [['"Nasty} from \'/app.js\';"', 'Imp']],
-      [['Exp1', 'Imp1'], ['Exp2', 'Imp2']],
+      [%w[Exp1 Imp1], %w[Exp2 Imp2]],
     ]
     quotes = ['\'', '"']
     finishes = [';', '  ;', "\n", ";\n", ";  \n"]
 
-    starts.each { |start| whitespaces.each { |ws| defaults.each { |default| modules.each { |mod|
-    names.each { |names| quotes.each { |quote| finishes.each { |finish|
-      if !mod && names
-        named = names.map { |exp, imp| "#{exp}#{"#{ws}as#{ws}#{imp}" if imp}" }.join("#{ws},#{ws}")
+    starts.each do |start|
+      whitespaces.each do |whitespace|
+        defaults.each do |default|
+          modules.each do |mod|
+            exports_imports.each do |export_import|
+              quotes.each do |quote|
+                finishes.each do |finish|
+                  if !mod && export_import
+                    named = export_import.map do |export, import|
+                      "#{export}#{"#{whitespace}as#{whitespace}#{import}" if import}"
+                    end.join("#{whitespace},#{whitespace}")
+                  end
+
+                  statement =
+                    "#{start}#{whitespace}import#{whitespace}" \
+                    "#{default}" \
+                    "#{"#{whitespace},#{whitespace}" if default && (mod || named)}" \
+                    "#{"*#{whitespace}as#{whitespace}#{mod}" if mod}" \
+                    "#{"{#{named}}" if named}" \
+                    "#{"#{whitespace}from#{whitespace}" if default || mod || named}" \
+                    "#{quote}/app.js#{quote}#{finish}"
+                  match = statement.match(import_regex)
+
+                  assert(match, "Expected #{statement.inspect} to match import regex")
+
+                  if default
+                    assert_equal(default, match[:default], 'Incorrect :default capture for ' \
+                      "#{statement.inspect}")
+                  else
+                    assert_nil(default, "Incorrect :default capture for #{statement.inspect}")
+                  end
+
+                  if mod && !named
+                    assert_equal(mod, match[:module], "Incorrect :module capture for #{statement.inspect}")
+                  elsif named && !mod
+                    assert_equal(named, match[:named], "Incorrect :named capture for #{statement.inspect}")
+                  end
+
+                  assert_nil(mod, "Incorrect :module capture for #{statement.inspect}.") if !mod || named
+                  assert_nil(named, "Incorrect :named capture for #{statement.inspect}.") if !named || mod
+
+                  assert_equal('/app.js', match[:path], "Incorrect :path capture for #{statement.inspect}")
+                end
+              end
+            end
+          end
+        end
       end
-
-      statement =
-        "#{start}#{ws}import#{ws}" \
-        "#{default}" \
-        "#{"#{ws},#{ws}" if default && (mod || named)}" \
-        "#{"*#{ws}as#{ws}#{mod}" if mod}" \
-        "#{"{#{named}}" if named}" \
-        "#{"#{ws}from#{ws}" if default || mod || named}" \
-        "#{quote}/app.js#{quote}#{finish}"
-      match = statement.match(import_regex)
-
-      assert(match, "Expected #{statement.inspect} to match import regex")
-
-      if default
-        assert_equal(default, match[:default], "Incorrect :default capture for #{statement.inspect}")
-      else
-        assert_nil(default, "Incorrect :default capture for #{statement.inspect}")
-      end
-
-      if mod && !named
-        assert_equal(mod, match[:module], "Incorrect :module capture for #{statement.inspect}")
-      elsif named && !mod
-        assert_equal(named, match[:named], "Incorrect :named capture for #{statement.inspect}")
-      end
-
-      assert_nil(mod, "Incorrect :module capture for #{statement.inspect}.") if !mod || named
-      assert_nil(named, "Incorrect :named capture for #{statement.inspect}.") if !named || mod
-
-      assert_equal('/app.js', match[:path], "Incorrect :path capture for #{statement.inspect}")
-    }}}}}}}
+    end
   end
 
   test('does not match import statements with bad syntax') do
@@ -105,6 +120,7 @@ class JavaScriptDelegateTest < Minitest::Test
         %Q(import #{bad}"/escaped\\\\\\"-double-quote.js"),
       ].each do |statement|
         next if statement.nil?
+
         match = statement.match(regex)
 
         refute(match, "Expected #{statement.inspect} to not match import regex")

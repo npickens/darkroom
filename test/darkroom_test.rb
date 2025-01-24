@@ -10,6 +10,10 @@ class DarkroomTest < Minitest::Test
   DUMP_DIR = File.join(TMP_DIR, 'dump').freeze
   DUMP_DIR_EXISTING_FILE = File.join(DUMP_DIR, 'existing.txt').freeze
 
+  class Ext < Darkroom::Delegate
+    content_type('text/ext')
+  end
+
   ##########################################################################################################
   ## .register                                                                                            ##
   ##########################################################################################################
@@ -17,7 +21,7 @@ class DarkroomTest < Minitest::Test
   test('.register accepts one extension and a content type') do
     delegate = Darkroom.register('.ext', 'text/ext')
 
-    assert(delegate < Darkroom::Delegate)
+    assert_operator(delegate, :<, Darkroom::Delegate)
     assert_equal(delegate, Darkroom.delegate('.ext'))
     assert_equal('text/ext', delegate.content_type)
   end
@@ -25,7 +29,7 @@ class DarkroomTest < Minitest::Test
   test('.register accepts multiple extensions and a content type') do
     delegate = Darkroom.register('.ext1', '.ext2', 'text/ext')
 
-    assert(delegate < Darkroom::Delegate)
+    assert_operator(delegate, :<, Darkroom::Delegate)
     assert_equal(delegate, Darkroom.delegate('.ext1'))
     assert_equal(delegate, Darkroom.delegate('.ext2'))
     assert_equal('text/ext', delegate.content_type)
@@ -36,7 +40,7 @@ class DarkroomTest < Minitest::Test
       content_type('text/ext')
     end
 
-    assert(delegate < Darkroom::Delegate)
+    assert_operator(delegate, :<, Darkroom::Delegate)
     assert_equal(delegate, Darkroom.delegate('.ext'))
     assert_equal('text/ext', delegate.content_type)
   end
@@ -46,7 +50,7 @@ class DarkroomTest < Minitest::Test
       content_type('text/ext')
     end
 
-    assert(delegate < Darkroom::Delegate)
+    assert_operator(delegate, :<, Darkroom::Delegate)
     assert_equal(delegate, Darkroom.delegate('.ext1'))
     assert_equal(delegate, Darkroom.delegate('.ext2'))
     assert_equal('text/ext', delegate.content_type)
@@ -58,7 +62,7 @@ class DarkroomTest < Minitest::Test
       import(/import/)
     end
 
-    assert(delegate < Darkroom::Delegate)
+    assert_operator(delegate, :<, Darkroom::Delegate)
     assert_equal(delegate, Darkroom.delegate('.ext'))
     assert_equal('text/extra', delegate.content_type)
     assert_equal(/import/, delegate.regex(:import))
@@ -70,7 +74,7 @@ class DarkroomTest < Minitest::Test
       import(/import/)
     end
 
-    assert(delegate < Darkroom::Delegate)
+    assert_operator(delegate, :<, Darkroom::Delegate)
     assert_equal(delegate, Darkroom.delegate('.ext1'))
     assert_equal(delegate, Darkroom.delegate('.ext2'))
     assert_equal('text/extra', delegate.content_type)
@@ -78,10 +82,6 @@ class DarkroomTest < Minitest::Test
   end
 
   test('.register accepts one extension and a Delegate subclass') do
-    class Ext < Darkroom::Delegate
-      content_type('text/ext')
-    end
-
     delegate = Darkroom.register('.ext', Ext)
 
     assert_equal(Ext, delegate)
@@ -90,10 +90,6 @@ class DarkroomTest < Minitest::Test
   end
 
   test('.register accepts multiple extensions and a Delegate subclass') do
-    class Ext < Darkroom::Delegate
-      content_type('text/ext')
-    end
-
     delegate = Darkroom.register('.ext1', '.ext2', Ext)
 
     assert_equal(Ext, delegate)
@@ -103,29 +99,21 @@ class DarkroomTest < Minitest::Test
   end
 
   test('.register accepts one extension, a Delegate subclass, and a block') do
-    class Ext < Darkroom::Delegate
-      content_type('text/ext')
-    end
-
     delegate = Darkroom.register('.ext', Ext) do
       import(/import/)
     end
 
-    assert(delegate < Ext)
+    assert_operator(delegate, :<, Ext)
     assert_equal(delegate, Darkroom.delegate('.ext'))
     assert_equal('text/ext', delegate.content_type)
   end
 
   test('.register accepts multiple extensions, a Delegate subclass, and a block') do
-    class Ext < Darkroom::Delegate
-      content_type('text/ext')
-    end
-
     delegate = Darkroom.register('.ext1', '.ext2', Ext) do
       import(/import/)
     end
 
-    assert(delegate < Ext)
+    assert_operator(delegate, :<, Ext)
     assert_equal(delegate, Darkroom.delegate('.ext1'))
     assert_equal(delegate, Darkroom.delegate('.ext2'))
     assert_equal('text/ext', delegate.content_type)
@@ -150,10 +138,12 @@ class DarkroomTest < Minitest::Test
 
     darkroom('/assets', min_process_interval: 9999)
     darkroom.process
+
     refute_error(darkroom.errors)
 
     write_files('/assets/tmp.txt' => 'Temporary...')
     did_process = darkroom.process
+
     refute_error(darkroom.errors)
 
     refute(did_process)
@@ -163,19 +153,27 @@ class DarkroomTest < Minitest::Test
 
   test('#process skips processing and returns false if another thread is currently processing') do
     mutex_mock = Minitest::Mock.new
-    def mutex_mock.locked?() (@locked_calls = (@locked_calls || 0) + 1) == 2 end
-    def mutex_mock.synchronize(&block) block.call end
+
+    def mutex_mock.locked?
+      (@locked_calls = (@locked_calls || 0) + 1) == 2
+    end
+
+    def mutex_mock.synchronize(&block)
+      block.call
+    end
 
     Mutex.stub(:new, mutex_mock) do
       write_files('/assets/app.js' => "console.log('Hello')")
 
       darkroom('/assets', min_process_interval: 0)
       did_process = darkroom.process
+
       refute_error(darkroom.errors)
       assert(did_process)
 
       write_files('/assets/tmp.txt' => 'Temporary...')
       did_process = darkroom.process
+
       refute_error(darkroom.errors)
       refute(did_process)
     end
@@ -231,7 +229,8 @@ class DarkroomTest < Minitest::Test
       '/assets/other.css' => 'div { border: 1px solid black; }',
     )
 
-    darkroom('/assets',
+    darkroom(
+      '/assets',
       entries: ['/app.css', /app\.js/],
       minify: true,
       minified: ['/app.txt', /\.css/],
@@ -261,36 +260,41 @@ class DarkroomTest < Minitest::Test
 
   test('#process! raises ProcessingError if there were one or more errors during processing') do
     write_files(
-      '/assets/bad-imports.js' => <<~EOS,
+      '/assets/bad-imports.js' => <<~JS,
         import '/does-not-exist.js'
         import '/also-does-not-exist.js'
 
         console.log('Hello')
-      EOS
+      JS
     )
 
+    darkroom('/assets')
+
     error = assert_raises(Darkroom::ProcessingError) do
-      darkroom('/assets')
       darkroom.process!
     end
 
     assert_equal(
-      "Errors were encountered while processing assets:\n"\
-      "  /bad-imports.js:1: Asset not found: /does-not-exist.js\n"\
-      "  /bad-imports.js:2: Asset not found: /also-does-not-exist.js",
+      <<~TEXT.strip,
+        Errors were encountered while processing assets:
+          /bad-imports.js:1: Asset not found: /does-not-exist.js
+          /bad-imports.js:2: Asset not found: /also-does-not-exist.js
+      TEXT
       error.to_s
     )
   end
 
   test('#process! does not raise ProcessingError if last run was less than min_process_interval ago') do
-    write_files('/assets/bad-imports.js' => 'import \'/does-not-exist.js\'')
+    write_files('/assets/app.js' => 'console.log("Hello")')
 
     darkroom('/assets', min_process_interval: 9999)
-    darkroom.process! rescue nil
+    darkroom.process!
+
+    write_files('/assets/app.js' => 'import "/does-not-exist.js"')
 
     begin
       darkroom.process!
-    rescue Darkroom::ProcessingError => e
+    rescue Darkroom::ProcessingError
       flunk('Darkroom::ProcessingError not expected but was raised')
     end
   end
@@ -311,11 +315,11 @@ class DarkroomTest < Minitest::Test
 
   test('#error? returns true if there were one or more errors during processing') do
     write_files(
-      '/assets/bad-import.js' => <<~EOS,
+      '/assets/bad-import.js' => <<~JS,
         import '/does-not-exist.js'
 
         console.log('Hello')
-      EOS
+      JS
     )
 
     darkroom('/assets')
@@ -403,7 +407,7 @@ class DarkroomTest < Minitest::Test
   test('#asset returns nil if asset is not an entry point') do
     write_files('/assets/components/header.css' => 'header { background: white; }')
 
-    darkroom('/assets', entries: /^\/[^\/]+$/)
+    darkroom('/assets', entries: %r{^/[^/]+$})
     darkroom.process
 
     refute_error(darkroom.errors)
@@ -413,7 +417,7 @@ class DarkroomTest < Minitest::Test
   test('#asset returns asset if path is not explicitly an entry point but is pristine') do
     write_files('/assets/pristine.txt' => 'Hello')
 
-    darkroom('/assets', entries: /^\/controllers\/.+/, pristine: '/pristine.txt')
+    darkroom('/assets', entries: %r{^/controllers/.+}, pristine: '/pristine.txt')
     darkroom.process
 
     refute_error(darkroom.errors)
@@ -468,10 +472,15 @@ class DarkroomTest < Minitest::Test
 
     refute_error(darkroom.errors)
 
-    assert_equal('/app-ef0f76b822009ab847bd6a370e911556.js', darkroom.asset_path('/app.js',
-      versioned: true))
-    assert_equal('/robots-50d8a018e8ae96732c8a2ba663c61d4e.txt', darkroom.asset_path('/robots.txt',
-      versioned: true))
+    assert_equal(
+      '/app-ef0f76b822009ab847bd6a370e911556.js',
+      darkroom.asset_path('/app.js', versioned: true)
+    )
+
+    assert_equal(
+      '/robots-50d8a018e8ae96732c8a2ba663c61d4e.txt',
+      darkroom.asset_path('/robots.txt', versioned: true)
+    )
   end
 
   test('#asset_path returns unversioned asset path if `versioned` option is false') do
@@ -549,12 +558,20 @@ class DarkroomTest < Minitest::Test
 
     refute_error(darkroom.errors)
 
-    assert_equal('sha256-S9v8mQ0Xba2sG+AEXC4IpdFUM2EX/oRNADEeJ5MpV3s=',
-      darkroom.asset_integrity('/app.js', :sha256))
-    assert_equal('sha384-2nxTl5wRLPxsDXWEi27WU3OmaXL2BxWbycv+O0ICyA11sCQMbb1K/uREBxvBKaMT',
-      darkroom.asset_integrity('/app.js', :sha384))
-    assert_equal('sha512-VAhb8yjzGIyuPN8kosvMhu7ix55T8eLHdOqrYNcXwA6rPUlt1/420xdSzl2SNHOp93piKyjcNkQwh' \
-      '2Lw8imrQA==', darkroom.asset_integrity('/app.js', :sha512))
+    assert_equal(
+      'sha256-S9v8mQ0Xba2sG+AEXC4IpdFUM2EX/oRNADEeJ5MpV3s=',
+      darkroom.asset_integrity('/app.js', :sha256)
+    )
+
+    assert_equal(
+      'sha384-2nxTl5wRLPxsDXWEi27WU3OmaXL2BxWbycv+O0ICyA11sCQMbb1K/uREBxvBKaMT',
+      darkroom.asset_integrity('/app.js', :sha384)
+    )
+
+    assert_equal(
+      'sha512-VAhb8yjzGIyuPN8kosvMhu7ix55T8eLHdOqrYNcXwA6rPUlt1/420xdSzl2SNHOp93piKyjcNkQwh2Lw8imrQA==',
+      darkroom.asset_integrity('/app.js', :sha512)
+    )
   end
 
   test('#asset_integrity returns sha384 subresource integrity string by default') do
@@ -564,8 +581,11 @@ class DarkroomTest < Minitest::Test
     darkroom.process
 
     refute_error(darkroom.errors)
-    assert_equal('sha384-2nxTl5wRLPxsDXWEi27WU3OmaXL2BxWbycv+O0ICyA11sCQMbb1K/uREBxvBKaMT',
-      darkroom.asset_integrity('/app.js'))
+
+    assert_equal(
+      'sha384-2nxTl5wRLPxsDXWEi27WU3OmaXL2BxWbycv+O0ICyA11sCQMbb1K/uREBxvBKaMT',
+      darkroom.asset_integrity('/app.js')
+    )
   end
 
   test('#asset_integrity raises error if algorithm argument is not recognized') do
@@ -636,7 +656,7 @@ class DarkroomTest < Minitest::Test
 
     refute_error(darkroom.errors)
 
-    darkroom.dump(DUMP_DIR) rescue nil
+    darkroom.dump(DUMP_DIR)
 
     assert(File.directory?(DUMP_DIR))
   ensure
@@ -658,10 +678,15 @@ class DarkroomTest < Minitest::Test
 
     darkroom.dump(DUMP_DIR)
 
-    assert_equal(darkroom.asset('/app.js').content,
-      File.read("#{DUMP_DIR}/app-ef0f76b822009ab847bd6a370e911556.js"))
-    assert_equal(darkroom.asset('/app.css').content,
-      File.read("#{DUMP_DIR}/app-c7319c7b3b95111f028f6f4161ebd371.css"))
+    assert_equal(
+      darkroom.asset('/app.js').content,
+      File.read("#{DUMP_DIR}/app-ef0f76b822009ab847bd6a370e911556.js")
+    )
+
+    assert_equal(
+      darkroom.asset('/app.css').content,
+      File.read("#{DUMP_DIR}/app-c7319c7b3b95111f028f6f4161ebd371.css")
+    )
   ensure
     FileUtils.rm_rf(DUMP_DIR)
   end
@@ -674,15 +699,15 @@ class DarkroomTest < Minitest::Test
 
     setup_dump_dir
 
-    darkroom('/assets', entries: /^\/[^\/]+$/)
+    darkroom('/assets', entries: %r{^/[^/]+$})
     darkroom.process
 
     refute_error(darkroom.errors)
 
     darkroom.dump(DUMP_DIR)
 
-    assert(File.exist?("#{DUMP_DIR}/app-ef0f76b822009ab847bd6a370e911556.js"))
-    refute(File.exist?("#{DUMP_DIR}/components/header-e84f21b5c4ce60bb92d2e61e2b4d11f1.htx"))
+    assert_path_exists("#{DUMP_DIR}/app-ef0f76b822009ab847bd6a370e911556.js")
+    refute_path_exists("#{DUMP_DIR}/components/header-e84f21b5c4ce60bb92d2e61e2b4d11f1.htx")
   ensure
     FileUtils.rm_rf(DUMP_DIR)
   end
@@ -699,7 +724,7 @@ class DarkroomTest < Minitest::Test
 
     darkroom.dump(DUMP_DIR)
 
-    assert(File.exist?(DUMP_DIR_EXISTING_FILE))
+    assert_path_exists(DUMP_DIR_EXISTING_FILE)
   ensure
     FileUtils.rm_rf(DUMP_DIR)
   end
@@ -716,7 +741,7 @@ class DarkroomTest < Minitest::Test
 
     darkroom.dump(DUMP_DIR, clear: true)
 
-    refute(File.exist?(DUMP_DIR_EXISTING_FILE))
+    refute_path_exists(DUMP_DIR_EXISTING_FILE)
   ensure
     FileUtils.rm_rf(DUMP_DIR)
   end
@@ -733,7 +758,7 @@ class DarkroomTest < Minitest::Test
 
     darkroom.dump(DUMP_DIR, clear: false)
 
-    assert(File.exist?(DUMP_DIR_EXISTING_FILE))
+    assert_path_exists(DUMP_DIR_EXISTING_FILE)
   ensure
     FileUtils.rm_rf(DUMP_DIR)
   end
@@ -750,7 +775,7 @@ class DarkroomTest < Minitest::Test
 
     darkroom.dump(DUMP_DIR)
 
-    assert(File.exist?("#{DUMP_DIR}/robots.txt"))
+    assert_path_exists("#{DUMP_DIR}/robots.txt")
   ensure
     FileUtils.rm_rf(DUMP_DIR)
   end
@@ -767,7 +792,7 @@ class DarkroomTest < Minitest::Test
 
     darkroom.dump(DUMP_DIR, include_pristine: true)
 
-    assert(File.exist?("#{DUMP_DIR}/robots.txt"))
+    assert_path_exists("#{DUMP_DIR}/robots.txt")
   ensure
     FileUtils.rm_rf(DUMP_DIR)
   end
@@ -784,7 +809,7 @@ class DarkroomTest < Minitest::Test
 
     darkroom.dump(DUMP_DIR, include_pristine: false)
 
-    refute(File.exist?("#{DUMP_DIR}/robots.txt"))
+    refute_path_exists("#{DUMP_DIR}/robots.txt")
   ensure
     FileUtils.rm_rf(DUMP_DIR)
   end
@@ -795,25 +820,26 @@ class DarkroomTest < Minitest::Test
 
   test('#inspect returns a high-level object info string') do
     write_files(
-      '/assets/bad-import.js' => <<~EOS,
+      '/assets/bad-import.js' => <<~JS,
         import '/does-not-exist.js'
 
         console.log('Hello')
-      EOS
+      JS
 
-      '/assets/bad-imports.js' => <<~EOS,
+      '/assets/bad-imports.js' => <<~JS,
         import '/does-not-exist.js'
         import '/also-does-not-exist.js'
 
         console.log('Hello')
-      EOS
+      JS
     )
 
-    darkroom('/assets',
+    darkroom(
+      '/assets',
       hosts: 'https://cdn1.hello.world',
       prefix: '/static',
       pristine: '/hi.txt',
-      entries: /^\/[^\/]+$/,
+      entries: %r{^/[^/]+$},
       minified: /\.minified\.*/,
       min_process_interval: 1,
     )
@@ -843,10 +869,10 @@ class DarkroomTest < Minitest::Test
   ##########################################################################################################
 
   def darkroom(*load_paths, **options)
-    unless @@darkroom && load_paths.empty? && options.empty?
-      @@darkroom = Darkroom.new(*load_paths.map { |path| full_path(path) }, **options)
+    unless @darkroom && load_paths.empty? && options.empty?
+      @darkroom = Darkroom.new(*load_paths.map { |path| full_path(path) }, **options)
     end
 
-    @@darkroom
+    @darkroom
   end
 end

@@ -17,11 +17,10 @@ module TestHelper
   @test_numbers = {}
 
   class << self
-    attr_accessor(:test_names)
-    attr_accessor(:test_numbers)
+    attr_accessor(:test_names, :test_numbers)
   end
 
-  $:.unshift(DUMMY_LIBS_DIR)
+  $LOAD_PATH.unshift(DUMMY_LIBS_DIR)
 
   # Run a specific test by its auto-generated number (shown in failure output). Test order is still
   # randomized, but a test's number is consistent across runs so long as tests aren't added, removed, or
@@ -78,7 +77,7 @@ module TestHelper
   ##########################################################################################################
 
   def setup
-    @@darkroom = nil
+    @darkroom = nil
   end
 
   def teardown
@@ -105,10 +104,10 @@ module TestHelper
   def new_asset(path, content = nil, **options)
     write_files(path => content) if content
 
-    @@darkroom ||= DarkroomMock.new
-    asset = Darkroom::Asset.new(path, full_path(path), @@darkroom, **options)
+    @darkroom ||= DarkroomMock.new
+    asset = Darkroom::Asset.new(path, full_path(path), @darkroom, **options)
 
-    @@darkroom.instance_variable_get(:@manifest)[asset.path] = asset
+    @darkroom.instance_variable_get(:@manifest)[asset.path] = asset
 
     asset
   end
@@ -136,9 +135,17 @@ module TestHelper
   ##########################################################################################################
 
   class DarkroomMock
-    def initialize() @manifest = {} end
-    def manifest(path) @manifest[path] end
-    def process_key() 1 end
+    def initialize
+      @manifest = {}
+    end
+
+    def manifest(path)
+      @manifest[path]
+    end
+
+    def process_key
+      1
+    end
   end
 
   ##########################################################################################################

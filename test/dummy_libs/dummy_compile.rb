@@ -1,3 +1,5 @@
 # frozen_string_literal: true
 
-class DummyCompile; end
+class DummyCompile
+  # Dummy class for testing compile library require.
+end

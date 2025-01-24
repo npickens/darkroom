@@ -14,7 +14,7 @@ class HTXDelegateTest < Minitest::Test
   test('does not pass :as_module argument to HTX.compile if HTX::VERSION is undefined') do
     asset = new_asset('/template.htx', '<div>${this.hello}</div>')
 
-    HTX.stub(:compile, ->(*args, **options) do
+    HTX.stub(:compile, lambda do |*, **options|
       refute(options.key?(:as_module))
 
       '[compiled]'
@@ -32,11 +32,11 @@ class HTXDelegateTest < Minitest::Test
 
       HTX.const_set(:VERSION, version) if version
 
-      HTX.stub(:compile, ->(*args) do
+      HTX.stub(:compile, lambda do |*args|
         if version
-          assert(!!defined?(HTX::VERSION), "Expected HTX::VERSION to be '#{version}'")
+          assert(defined?(HTX::VERSION), "Expected HTX::VERSION to be '#{version}'")
         else
-          refute(!!defined?(HTX::VERSION), "Expected HTX::VERSION to be nil")
+          refute(defined?(HTX::VERSION), 'Expected HTX::VERSION to be nil')
         end
 
         refute(args.last.key?(:as_module)) if args.last.kind_of?(Hash)
@@ -59,8 +59,8 @@ class HTXDelegateTest < Minitest::Test
 
       HTX.const_set(:VERSION, version)
 
-      HTX.stub(:compile, ->(*args) do
-        assert(!!defined?(HTX::VERSION), "Expected HTX::VERSION to be '#{version}'")
+      HTX.stub(:compile, lambda do |*args|
+        assert(defined?(HTX::VERSION), "Expected HTX::VERSION to be '#{version}'")
         assert_kind_of(Hash, args.last)
         assert(args.last.key?(:as_module))
 

@@ -49,7 +49,9 @@ class HTMLDelegateTest < Minitest::Test
         match: reference_match("<link href='/robots.txt?asset-content=displace'>"),
         asset: new_asset('/robots.txt', ''),
         format: 'displace',
-      ); nil
+      )
+
+      nil
     end
 
     assert_equal('Asset content type must be text/css', error)
@@ -62,7 +64,9 @@ class HTMLDelegateTest < Minitest::Test
         match: reference_match("<script href='/robots.txt?asset-content=displace'></script>"),
         asset: new_asset('/robots.txt', ''),
         format: 'displace',
-      ); nil
+      )
+
+      nil
     end
 
     assert_equal('Asset content type must be text/javascript', error)
@@ -75,7 +79,9 @@ class HTMLDelegateTest < Minitest::Test
         match: reference_match("<img src='/robots.txt?asset-content=displace'>"),
         asset: new_asset('/robots.txt', ''),
         format: 'displace',
-      ); nil
+      )
+
+      nil
     end
 
     assert_equal('Asset content type must be image/svg+xml', error)
@@ -89,7 +95,9 @@ class HTMLDelegateTest < Minitest::Test
           match: reference_match("<#{tag} href='/logo.svg?asset-content=displace'></#{tag}>"),
           asset: new_asset('/logo.svg', ''),
           format: 'displace',
-        ); nil
+        )
+
+        nil
       end
 
       assert_equal("Cannot displace <#{tag}> tags", error)
@@ -104,7 +112,7 @@ class HTMLDelegateTest < Minitest::Test
       format: 'displace',
     )
 
-    assert_equal("<style>body { background: white; }</style>", result)
+    assert_equal('<style>body { background: white; }</style>', result)
   end
 
   test('returns <script>... for <script> tag reference with displace format') do
@@ -133,11 +141,11 @@ class HTMLDelegateTest < Minitest::Test
     result = Darkroom::HTMLDelegate.handler(:reference).call(
       parse_data: {},
       match: reference_match('<img src="/logo.svg?asset-content=utf8">'),
-      asset: new_asset('/logo.svg', "<svg><circle r=16 fill=#fff/></svg>"),
+      asset: new_asset('/logo.svg', '<svg><circle r=16 fill=#fff/></svg>'),
       format: 'utf8',
     )
 
-    assert_equal("<svg><circle r=16 fill=%23fff/></svg>", result)
+    assert_equal('<svg><circle r=16 fill=%23fff/></svg>', result)
   end
 
   test('substitutes single quotes when reference is unquoted with utf8 format') do

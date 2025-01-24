@@ -51,18 +51,18 @@ class CSSDelegateTest < Minitest::Test
 
   test('matches references with proper syntax') do
     {
-      %q<background: url(/logo.svg?asset-path);>               => ['/logo.svg', 'path', nil],
-      %q<background: url( /logo.svg?asset-path );>             => ['/logo.svg', 'path', nil],
-      %q<background: url( '/logo.svg?asset-path' );>           => ['/logo.svg', 'path', nil],
-      %q<background: url( "/logo.svg?asset-path" );>           => ['/logo.svg', 'path', nil],
-      %Q<background: url(\n\t"/logo.svg?asset-path"\n\t);>     => ['/logo.svg', 'path', nil],
-      %q<background: url('/logo.svg?asset-path');>             => ['/logo.svg', 'path', nil],
-      %q<background: url('/logo.svg?asset-path=versioned');>   => ['/logo.svg', 'path', 'versioned'],
-      %q<background: url('/logo.svg?asset-path=unversioned');> => ['/logo.svg', 'path', 'unversioned'],
-      %q<background: url('/logo.svg?asset-content');>          => ['/logo.svg', 'content', nil],
-      %q<background: url('/logo.svg?asset-content=base64');>   => ['/logo.svg', 'content', 'base64'],
-      %q<background: url('/logo.svg?asset-content=utf8');>     => ['/logo.svg', 'content', 'utf8'],
-      %q<background: url('/logo.svg?asset-content=displace');> => ['/logo.svg', 'content', 'displace'],
+      %q(background: url(/logo.svg?asset-path);)               => ['/logo.svg', 'path', nil],
+      %q(background: url( /logo.svg?asset-path );)             => ['/logo.svg', 'path', nil],
+      %q(background: url( '/logo.svg?asset-path' );)           => ['/logo.svg', 'path', nil],
+      %q(background: url( "/logo.svg?asset-path" );)           => ['/logo.svg', 'path', nil],
+      %Q(background: url(\n\t"/logo.svg?asset-path"\n\t);)     => ['/logo.svg', 'path', nil],
+      %q(background: url('/logo.svg?asset-path');)             => ['/logo.svg', 'path', nil],
+      %q(background: url('/logo.svg?asset-path=versioned');)   => ['/logo.svg', 'path', 'versioned'],
+      %q(background: url('/logo.svg?asset-path=unversioned');) => ['/logo.svg', 'path', 'unversioned'],
+      %q(background: url('/logo.svg?asset-content');)          => ['/logo.svg', 'content', nil],
+      %q(background: url('/logo.svg?asset-content=base64');)   => ['/logo.svg', 'content', 'base64'],
+      %q(background: url('/logo.svg?asset-content=utf8');)     => ['/logo.svg', 'content', 'utf8'],
+      %q(background: url('/logo.svg?asset-content=displace');) => ['/logo.svg', 'content', 'displace'],
     }.each do |content, (path, entity, format)|
       match = content.match(Darkroom::CSSDelegate.regex(:reference))
 
@@ -76,9 +76,9 @@ class CSSDelegateTest < Minitest::Test
   test('does not match references with bad syntax') do
     regex = Darkroom::CSSDelegate.regex(:reference)
 
-    refute_match(regex, %q<background: url '/logo.svg?asset-path'>)
-    refute_match(regex, %q<background: url ('/logo.svg?asset-path')>)
-    refute_match(regex, %Q<background: url\n(/logo.svg?asset-path)>)
+    refute_match(regex, %q(background: url '/logo.svg?asset-path'))
+    refute_match(regex, %q(background: url ('/logo.svg?asset-path')))
+    refute_match(regex, %Q(background: url\n(/logo.svg?asset-path)))
   end
 
   ##########################################################################################################
@@ -92,7 +92,9 @@ class CSSDelegateTest < Minitest::Test
         match: reference_match("body { background: url('/bg.png?asset-content=displace'); }"),
         asset: new_asset('/bg.png', ''),
         format: 'displace',
-      ); nil
+      )
+
+      nil
     end
 
     assert_equal('Cannot displace in CSS files', error)
@@ -105,7 +107,9 @@ class CSSDelegateTest < Minitest::Test
         match: reference_match("body { background: url('/robots.txt?asset-content'); }"),
         asset: new_asset('/robots.txt', ''),
         format: 'base64',
-      ); nil
+      )
+
+      nil
     end
 
     assert_equal('Referenced asset must be an image or font type', error)

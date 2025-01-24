@@ -13,7 +13,7 @@ require_relative('errors/processing_error')
 #
 class Darkroom
   DEFAULT_MINIFIED = /(\.|-)min\.\w+$/.freeze
-  TRAILING_SLASHES = /\/+$/.freeze
+  TRAILING_SLASHES = %r{/+$}.freeze
   PRISTINE = Set.new(%w[/favicon.ico /mask-icon.svg /humans.txt /robots.txt]).freeze
   MIN_PROCESS_INTERVAL = 0.5
 
@@ -87,10 +87,10 @@ class Darkroom
   # [min_process_interval:] Minimum time required between one run of asset processing and another.
   #
   def initialize(*load_paths, host: nil, hosts: nil, prefix: nil, pristine: nil, entries: nil,
-      minify: false, minified: DEFAULT_MINIFIED, min_process_interval: MIN_PROCESS_INTERVAL)
+                 minify: false, minified: DEFAULT_MINIFIED, min_process_interval: MIN_PROCESS_INTERVAL)
     @load_paths = load_paths.map { |load_path| File.expand_path(load_path) }
 
-    @hosts = (Array(host) + Array(hosts)).map! { |host| host.sub(TRAILING_SLASHES, '') }
+    @hosts = (Array(host) + Array(hosts)).map! { |h| h.sub(TRAILING_SLASHES, '') }
     @entries = Array(entries)
     @minify = minify
     @minified = Array(minified)
@@ -123,7 +123,7 @@ class Darkroom
     return false if Time.now.to_f - @last_processed_at < @min_process_interval
 
     if @mutex.locked?
-      @mutex.synchronize {}
+      @mutex.synchronize {} # Wait until other #process call is done to avoid stale/invalid assets.
       return false
     end
 
@@ -136,7 +136,7 @@ class Darkroom
         Dir.glob(File.join(load_path, @@glob)).sort.each do |file|
           path = file.sub(load_path, '')
 
-          if index = (path =~ Asset::INVALID_PATH_REGEX)
+          if (index = path.index(Asset::INVALID_PATH_REGEX))
             @errors << InvalidPathError.new(path, index)
           elsif found.key?(path)
             @errors << DuplicateAssetError.new(path, found[path], load_path)
@@ -146,7 +146,8 @@ class Darkroom
             unless @manifest.key?(path)
               entry = entry?(path)
 
-              @manifest[path] = Asset.new(path, file, self,
+              @manifest[path] = Asset.new(
+                path, file, self,
                 prefix: (@prefix unless @pristine.include?(path)),
                 entry: entry,
                 minify: entry && @minify && !minified?(path),
@@ -160,7 +161,7 @@ class Darkroom
       @manifest_unversioned.clear
       @manifest_versioned.clear
 
-      @manifest.each do |path, asset|
+      @manifest.each_value do |asset|
         asset.process
 
         if asset.entry?
@@ -185,7 +186,7 @@ class Darkroom
   def process!
     result = process
 
-    (result && @error) ? raise(@error) : result
+    result && @error ? raise(@error) : result
   end
 
   ##
@@ -226,9 +227,13 @@ class Darkroom
   #
   def asset_path(path, versioned: !@pristine.include?(path))
     asset = @manifest[path] or raise(AssetNotFoundError.new(path))
-    host = @hosts.empty? ? '' : @hosts[
-      Thread.current[:darkroom_host_index] = (Thread.current[:darkroom_host_index] + 1) % @hosts.size
-    ]
+
+    unless @hosts.empty?
+      host_index = (Thread.current[:darkroom_host_index] + 1) % @hosts.size
+      host = @hosts[host_index]
+
+      Thread.current[:darkroom_host_index] = host_index
+    end
 
     "#{host}#{versioned ? asset.path_versioned : asset.path_unversioned}"
   end
@@ -279,9 +284,7 @@ class Darkroom
     @manifest_versioned.each do |path, asset|
       next if @pristine.include?(asset.path) && !include_pristine
 
-      file_path = File.join(dir,
-        @pristine.include?(asset.path) ? asset.path_unversioned : path
-      )
+      file_path = File.join(dir, @pristine.include?(asset.path) ? asset.path_unversioned : path)
 
       FileUtils.mkdir_p(File.dirname(file_path))
       File.write(file_path, asset.content)
@@ -292,18 +295,18 @@ class Darkroom
   # Returns high-level object info string.
   #
   def inspect
-    "#<#{self.class} "\
-      "@entries=#{@entries.inspect}, "\
-      "@errors=#{@errors.inspect}, "\
-      "@hosts=#{@hosts.inspect}, "\
-      "@last_processed_at=#{@last_processed_at.inspect}, "\
-      "@load_paths=#{@load_paths.inspect}, "\
-      "@min_process_interval=#{@min_process_interval.inspect}, "\
-      "@minified=#{@minified.inspect}, "\
-      "@minify=#{@minify.inspect}, "\
-      "@prefix=#{@prefix.inspect}, "\
-      "@pristine=#{@pristine.inspect}, "\
-      "@process_key=#{@process_key.inspect}"\
+    "#<#{self.class} " \
+      "@entries=#{@entries.inspect}, " \
+      "@errors=#{@errors.inspect}, " \
+      "@hosts=#{@hosts.inspect}, " \
+      "@last_processed_at=#{@last_processed_at.inspect}, " \
+      "@load_paths=#{@load_paths.inspect}, " \
+      "@min_process_interval=#{@min_process_interval.inspect}, " \
+      "@minified=#{@minified.inspect}, " \
+      "@minify=#{@minify.inspect}, " \
+      "@prefix=#{@prefix.inspect}, " \
+      "@pristine=#{@pristine.inspect}, " \
+      "@process_key=#{@process_key.inspect}" \
     '>'
   end
 
@@ -315,9 +318,7 @@ class Darkroom
   # [path] Path to check.
   #
   def entry?(path)
-    if @pristine.include?(path)
-      true
-    elsif @entries.empty?
+    if @pristine.include?(path) || @entries.empty?
       true
     else
       @entries.any? do |entry|
