@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require_relative('html')
-require_relative('javascript')
+require_relative('html_delegate')
+require_relative('javascript_delegate')
 
 class Darkroom
   ##
