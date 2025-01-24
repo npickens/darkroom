@@ -90,10 +90,10 @@ module TestHelper
   end
 
   def assert_error(*expected, actual)
-    expected.flatten!
-    actual = Array(actual).map { |e| "#<#{e.class}: #{e.message}>" }
+    expected = expected.flatten.join("\n")
+    actual = Array(actual).map { |e| "#<#{e.class}: #{e.message}>" }.join("\n")
 
-    assert_equal(*[expected, actual].map { |a| "#{a.map { |l| "\n  #{l}," }.join}\n" })
+    assert_equal(expected, actual)
   end
 
   def refute_error(actual)
