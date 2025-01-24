@@ -10,27 +10,81 @@ class Darkroom
   #           * +content+ - Content to minify.
   #
   class Delegate
-    [
-      :content_type, :parsers, :compile_lib, :compile_delegate, :compile_handler, :finalize_lib,
-      :finalize_handler, :minify_lib, :minify_handler
-    ].each do |name|
-      var = :"@#{name}"
-      instance_variable_set(var, nil)
+    @content_type = nil
+    @parsers = nil
+    @compile_lib = nil
+    @compile_delegate = nil
+    @compile_handler = nil
+    @finalize_lib = nil
+    @finalize_handler = nil
+    @minify_lib = nil
+    @minify_handler = nil
 
-      define_singleton_method(name) do
-        instance_variable_defined?(var) ? instance_variable_get(var) : superclass.send(name)
+    ##
+    # Sets and/or returns HTTP MIME type string, falling back to that of the parent class.
+    #
+    def self.content_type(content_type = (get = true; nil))
+      if get
+        defined?(@content_type) ? @content_type : superclass.content_type
+      else
+        @content_type = content_type
       end
     end
 
-    class << self
-      alias get_content_type content_type
+    ##
+    # Returns parsers, falling back to those of the parent class.
+    #
+    def self.parsers
+      defined?(@parsers) ? @parsers : superclass.parsers
     end
 
     ##
-    # Sets or returns HTTP MIME type string.
+    # Returns compile library name, falling back to that of the parent class.
     #
-    def self.content_type(content_type = (get = true; nil))
-      get ? get_content_type : (@content_type = content_type)
+    def self.compile_lib
+      defined?(@compile_lib) ? @compile_lib : superclass.compile_lib
+    end
+
+    ##
+    # Returns compile delegate, falling back to that of the parent class.
+    #
+    def self.compile_delegate
+      defined?(@compile_delegate) ? @compile_delegate : superclass.compile_delegate
+    end
+
+    ##
+    # Returns compile handler, falling back to that of the parent class.
+    #
+    def self.compile_handler
+      defined?(@compile_handler) ? @compile_handler : superclass.compile_handler
+    end
+
+    ##
+    # Returns finalize library name, falling back to that of the parent class.
+    #
+    def self.finalize_lib
+      defined?(@finalize_lib) ? @finalize_lib : superclass.finalize_lib
+    end
+
+    ##
+    # Returns finalize handler, falling back to that of the parent class.
+    #
+    def self.finalize_handler
+      defined?(@finalize_handler) ? @finalize_handler : superclass.finalize_handler
+    end
+
+    ##
+    # Returns minify library name, falling back to that of the parent class.
+    #
+    def self.minify_lib
+      defined?(@minify_lib) ? @minify_lib : superclass.minify_lib
+    end
+
+    ##
+    # Returns minify handler, falling back to that of the parent class.
+    #
+    def self.minify_handler
+      defined?(@minify_handler) ? @minify_handler : superclass.minify_handler
     end
 
     ##
