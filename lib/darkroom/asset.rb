@@ -523,13 +523,13 @@ class Darkroom
     private
 
     ##
-    # Requires any libraries necessary for compiling and minifying the asset based on its type. Raises a
-    # MissingLibraryError if library cannot be loaded.
+    # Requires any libraries necessary for compiling, finalizing, and minifying the asset based on its type.
+    # Raises a MissingLibraryError if a library cannot be loaded.
     #
     # Darkroom does not explicitly depend on any libraries necessary for asset compilation or minification,
     # since not every app will use every kind of asset or use minification. It is instead up to each app
-    # using Darkroom to specify any needed compilation and minification libraries as direct dependencies
-    # (e.g. specify +gem('terser')+ in the app's Gemfile if JavaScript minification is desired).
+    # using Darkroom to specify any needed compilation, finalization, and minification libraries as direct
+    # dependencies (e.g. add +gem('terser')+ to the app's Gemfile if JavaScript minification is desired).
     #
     def require_libs
       begin
@@ -539,12 +539,19 @@ class Darkroom
       end
 
       begin
+        require(@delegate.finalize_lib) if @delegate.finalize_lib
+      rescue LoadError
+        finalize_load_error = true
+      end
+
+      begin
         require(@delegate.minify_lib) if @delegate.minify_lib && @minify
       rescue LoadError
         minify_load_error = true
       end
 
       raise(MissingLibraryError.new(@delegate.compile_lib, 'compile', @extension)) if compile_load_error
+      raise(MissingLibraryError.new(@delegate.finalize_lib, 'finalize', @extension)) if finalize_load_error
       raise(MissingLibraryError.new(@delegate.minify_lib, 'minify', @extension)) if minify_load_error
     end
 

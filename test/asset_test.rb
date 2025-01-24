@@ -48,6 +48,20 @@ class AssetTest < Minitest::Test
     Darkroom.register('.dummy-compile', nil)
   end
 
+  test('requires finalize library if delegate specifies one') do
+    Darkroom.register('.dummy-finalize', 'text/dummy-finalize') do
+      finalize(lib: 'dummy_finalize')
+    end
+
+    refute(defined?(DummyFinalize), 'Expected DummyFinalize to be undefined before asset is initialized.')
+
+    new_asset('/app.dummy-finalize')
+
+    assert(defined?(DummyFinalize), 'Expected DummyFinalize to be defined after asset is initialized.')
+  ensure
+    Darkroom.register('.dummy-finalize', nil)
+  end
+
   test('requires minify library if delegate specifies one and minification is enabled') do
     Darkroom.register('.dummy-minify', 'text/dummy-minify') do
       minify(lib: 'dummy_minify')
@@ -77,6 +91,21 @@ class AssetTest < Minitest::Test
       'adding gem(\'bad_compile\') to your Gemfile]', error.to_s)
   ensure
     Darkroom.register('.bad-compile', nil)
+  end
+
+  test('raises MissingLibraryError if finalize library is not available') do
+    Darkroom.register('.bad-finalize', 'text/bad-finalize') do
+      finalize(lib: 'bad_finalize')
+    end
+
+    error = assert_raises(Darkroom::MissingLibraryError) do
+      new_asset('/app.bad-finalize')
+    end
+
+    assert_equal('Cannot finalize .bad-finalize file(s): bad_finalize library not available [hint: try ' \
+      'adding gem(\'bad_finalize\') to your Gemfile]', error.to_s)
+  ensure
+    Darkroom.register('.bad-finalize', nil)
   end
 
   test('raises MissingLibraryError if minification is enabled and minify library is missing') do
