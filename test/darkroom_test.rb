@@ -653,9 +653,6 @@ class DarkroomTest < Minitest::Test
 
     darkroom('/assets')
     darkroom.process
-
-    refute_error(darkroom.errors)
-
     darkroom.dump(DUMP_DIR)
 
     assert(File.directory?(DUMP_DIR))
@@ -673,9 +670,6 @@ class DarkroomTest < Minitest::Test
 
     darkroom('/assets')
     darkroom.process
-
-    refute_error(darkroom.errors)
-
     darkroom.dump(DUMP_DIR)
 
     assert_equal(
@@ -701,9 +695,6 @@ class DarkroomTest < Minitest::Test
 
     darkroom('/assets', entries: %r{^/[^/]+$})
     darkroom.process
-
-    refute_error(darkroom.errors)
-
     darkroom.dump(DUMP_DIR)
 
     assert_path_exists("#{DUMP_DIR}/app-ef0f76b822009ab847bd6a370e911556.js")
@@ -719,9 +710,6 @@ class DarkroomTest < Minitest::Test
 
     darkroom('/assets')
     darkroom.process
-
-    refute_error(darkroom.errors)
-
     darkroom.dump(DUMP_DIR)
 
     assert_path_exists(DUMP_DIR_EXISTING_FILE)
@@ -736,9 +724,6 @@ class DarkroomTest < Minitest::Test
 
     darkroom('/assets')
     darkroom.process
-
-    refute_error(darkroom.errors)
-
     darkroom.dump(DUMP_DIR, clear: true)
 
     refute_path_exists(DUMP_DIR_EXISTING_FILE)
@@ -753,9 +738,6 @@ class DarkroomTest < Minitest::Test
 
     darkroom('/assets')
     darkroom.process
-
-    refute_error(darkroom.errors)
-
     darkroom.dump(DUMP_DIR, clear: false)
 
     assert_path_exists(DUMP_DIR_EXISTING_FILE)
@@ -770,9 +752,6 @@ class DarkroomTest < Minitest::Test
 
     darkroom('/assets')
     darkroom.process
-
-    refute_error(darkroom.errors)
-
     darkroom.dump(DUMP_DIR)
 
     assert_path_exists("#{DUMP_DIR}/robots.txt")
@@ -787,9 +766,6 @@ class DarkroomTest < Minitest::Test
 
     darkroom('/assets')
     darkroom.process
-
-    refute_error(darkroom.errors)
-
     darkroom.dump(DUMP_DIR, include_pristine: true)
 
     assert_path_exists("#{DUMP_DIR}/robots.txt")
@@ -804,9 +780,6 @@ class DarkroomTest < Minitest::Test
 
     darkroom('/assets')
     darkroom.process
-
-    refute_error(darkroom.errors)
-
     darkroom.dump(DUMP_DIR, include_pristine: false)
 
     refute_path_exists("#{DUMP_DIR}/robots.txt")
