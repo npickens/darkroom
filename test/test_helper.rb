@@ -2,6 +2,7 @@
 
 require('fileutils')
 require('minitest/autorun')
+require('minitest/reporters')
 
 module Minitest
   def self.plugin_index_init(options)
@@ -11,6 +12,8 @@ module Minitest
   end
 
   register_plugin('index')
+
+  Reporters.use!(Reporters::ProgressReporter.new)
 end
 
 module TestHelper
