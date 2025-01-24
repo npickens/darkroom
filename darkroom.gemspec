@@ -26,5 +26,5 @@ Gem::Specification.new('darkroom', version) do |spec|
 
   spec.add_dependency('base64', '~> 0.2')
   spec.add_development_dependency('bundler', '~> 2.0')
-  spec.add_development_dependency('minitest', '~> 5.21')
+  spec.add_development_dependency('minitest', '~> 5.24')
 end
