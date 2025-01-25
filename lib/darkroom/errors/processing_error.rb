@@ -13,7 +13,7 @@ class Darkroom
     # [errors] Error or array of errors.
     #
     def initialize(errors)
-      @errors = Array(errors).freeze
+      @errors = Array(errors)
 
       super("Errors were encountered while processing assets:\n  #{@errors.map(&:to_s).join("\n  ")}")
     end
