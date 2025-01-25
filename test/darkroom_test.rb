@@ -640,18 +640,11 @@ class DarkroomTest < Minitest::Test
   end
 
   test('#dump creates target directory if it does not exist') do
-    write_files(
-      '/assets/app.js' => "console.log('Hello')",
-      '/assets/app.css' => 'body { background: white; }',
-    )
+    refute_path_exists(DUMP_DIR)
 
-    FileUtils.rm_rf(DUMP_DIR)
-
-    darkroom('/assets')
-    darkroom.process
     darkroom.dump(DUMP_DIR)
 
-    assert(File.directory?(DUMP_DIR))
+    assert_path_exists(DUMP_DIR)
   ensure
     FileUtils.rm_rf(DUMP_DIR)
   end
