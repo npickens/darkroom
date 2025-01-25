@@ -855,6 +855,15 @@ class AssetTest < Minitest::Test
       TEXT
       asset.error
     )
+
+    expected_errors = [
+      '#<Darkroom::AssetNotFoundError: /bad-import.js:1: Asset not found: /bad1.js>',
+      '#<Darkroom::AssetNotFoundError: /bad-import.js:2: Asset not found: /bad2.js>',
+    ]
+
+    asset.error.each.with_index do |error, i|
+      assert_error(expected_errors[i], error)
+    end
   end
 
   ##########################################################################################################

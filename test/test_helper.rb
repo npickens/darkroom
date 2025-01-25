@@ -91,7 +91,7 @@ module TestHelper
 
   def assert_error(*expected, actual)
     expected = expected.flatten.join("\n")
-    actual = Array(actual).map { |e| "#<#{e.class}: #{e.message}>" }.join("\n")
+    actual = [actual].flatten.map { |e| "#<#{e.class}: #{e.message}>" }.join("\n")
 
     assert_equal(expected, actual)
   end

@@ -5,6 +5,8 @@ class Darkroom
   # Error class used to wrap all accumulated errors encountered during asset processing.
   #
   class ProcessingError < StandardError
+    include(Enumerable)
+
     ##
     # Creates a new instance.
     #
