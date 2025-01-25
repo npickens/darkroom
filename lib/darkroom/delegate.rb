@@ -10,6 +10,9 @@ class Darkroom
   #           * +content+ - Content to minify.
   #
   class Delegate
+    IMPORT_REGEX_CAPTURES = %w[quote path].freeze
+    REFERENCE_REGEX_CAPTURES = %w[quote path quoted entity format].freeze
+
     @content_type = nil
     @parsers = nil
     @compile_lib = nil
@@ -101,6 +104,8 @@ class Darkroom
     #            third values as integers representing the start and end indexes of the match to replace.
     #
     def self.import(regex, &handler)
+      validate_regex!(:import, regex, IMPORT_REGEX_CAPTURES)
+
       parse(:import, regex, &handler)
     end
 
@@ -121,6 +126,8 @@ class Darkroom
     #            values as integers representing the start and end indexes of the match to replace.
     #
     def self.reference(regex, &handler)
+      validate_regex!(:reference, regex, REFERENCE_REGEX_CAPTURES)
+
       parse(:reference, regex, &handler)
     end
 
@@ -226,6 +233,25 @@ class Darkroom
       parsers&.each do |kind, (regex, handler)|
         yield(kind, regex, handler)
       end
+    end
+
+    ##
+    # Raises an exception if a regex does not have the required named captures.
+    #
+    # [name] Name of the regex (used in the exception message).
+    # [regex] Regex to validate.
+    # [required_named_captures] Array of required named captures (as strings).
+    #
+    def self.validate_regex!(name, regex, required_named_captures)
+      missing = (required_named_captures - regex.named_captures.keys)
+
+      return if missing.empty?
+
+      name = name.to_s.capitalize
+      plural = missing.size != 1
+      missing_str = missing.join(', ')
+
+      raise("#{name} regex is missing required named capture#{'s' if plural}: #{missing_str}")
     end
   end
 end

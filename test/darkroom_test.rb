@@ -59,26 +59,22 @@ class DarkroomTest < Minitest::Test
   test('.register accepts one extension, a content type, and a block') do
     delegate = Darkroom.register('.ext', 'text/ext') do
       content_type('text/extra')
-      import(/import/)
     end
 
     assert_operator(delegate, :<, Darkroom::Delegate)
     assert_equal(delegate, Darkroom.delegate('.ext'))
     assert_equal('text/extra', delegate.content_type)
-    assert_equal(/import/, delegate.regex(:import))
   end
 
   test('.register accepts multiple extensions, a content type, and a block') do
     delegate = Darkroom.register('.ext1', '.ext2', 'text/ext') do
       content_type('text/extra')
-      import(/import/)
     end
 
     assert_operator(delegate, :<, Darkroom::Delegate)
     assert_equal(delegate, Darkroom.delegate('.ext1'))
     assert_equal(delegate, Darkroom.delegate('.ext2'))
     assert_equal('text/extra', delegate.content_type)
-    assert_equal(/import/, delegate.regex(:import))
   end
 
   test('.register accepts one extension and a Delegate subclass') do
@@ -100,23 +96,23 @@ class DarkroomTest < Minitest::Test
 
   test('.register accepts one extension, a Delegate subclass, and a block') do
     delegate = Darkroom.register('.ext', Ext) do
-      import(/import/)
+      content_type('text/extra')
     end
 
     assert_operator(delegate, :<, Ext)
     assert_equal(delegate, Darkroom.delegate('.ext'))
-    assert_equal('text/ext', delegate.content_type)
+    assert_equal('text/extra', delegate.content_type)
   end
 
   test('.register accepts multiple extensions, a Delegate subclass, and a block') do
     delegate = Darkroom.register('.ext1', '.ext2', Ext) do
-      import(/import/)
+      content_type('text/extra')
     end
 
     assert_operator(delegate, :<, Ext)
     assert_equal(delegate, Darkroom.delegate('.ext1'))
     assert_equal(delegate, Darkroom.delegate('.ext2'))
-    assert_equal('text/ext', delegate.content_type)
+    assert_equal('text/extra', delegate.content_type)
   end
 
   ##########################################################################################################
