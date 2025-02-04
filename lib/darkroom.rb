@@ -1,8 +1,6 @@
 # frozen_string_literal: true
 
-require('darkroom/asset')
 require('darkroom/darkroom')
-require('darkroom/delegate')
 require('darkroom/version')
 
 require('darkroom/delegates/css_delegate')

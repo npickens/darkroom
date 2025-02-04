@@ -3,6 +3,7 @@
 require('set')
 
 require_relative('asset')
+require_relative('delegate')
 require_relative('errors/asset_not_found_error')
 require_relative('errors/duplicate_asset_error')
 require_relative('errors/invalid_path_error')
