@@ -21,7 +21,7 @@ Gem::Specification.new('darkroom', version) do |spec|
     'source_code_uri' => "https://github.com/npickens/darkroom/tree/#{version}",
   }
 
-  spec.required_ruby_version = '>= 2.5.8'
+  spec.required_ruby_version = '>= 3.0.0'
   spec.required_rubygems_version = '>= 2.0.0'
 
   spec.add_dependency('base64', '~> 0.2')
