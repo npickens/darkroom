@@ -12,6 +12,7 @@ class Darkroom
   class Delegate
     IMPORT_REGEX_CAPTURES = %w[quote path].freeze
     REFERENCE_REGEX_CAPTURES = %w[quote path quoted entity format].freeze
+    LIB_REQUIRES = [:compile, :finalize, :minify].freeze
 
     @content_type = nil
     @parsers = nil

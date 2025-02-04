@@ -4,6 +4,7 @@ require('base64')
 require('digest')
 require('set')
 
+require_relative('delegate')
 require_relative('errors/asset_error')
 require_relative('errors/asset_not_found_error')
 require_relative('errors/circular_reference_error')
@@ -537,27 +538,16 @@ class Darkroom
     # dependencies (e.g. add +gem('terser')+ to the app's Gemfile if JavaScript minification is desired).
     #
     def require_libs
-      begin
-        require(@delegate.compile_lib) if @delegate.compile_lib
-      rescue LoadError
-        compile_load_error = true
-      end
+      Delegate::LIB_REQUIRES.each do |need|
+        next if need == :minify && !@minify
 
-      begin
-        require(@delegate.finalize_lib) if @delegate.finalize_lib
-      rescue LoadError
-        finalize_load_error = true
+        begin
+          lib = @delegate.send(:"#{need}_lib")
+          require(lib) if lib
+        rescue LoadError
+          raise(MissingLibraryError.new(lib, need, @extension), cause: nil)
+        end
       end
-
-      begin
-        require(@delegate.minify_lib) if @delegate.minify_lib && @minify
-      rescue LoadError
-        minify_load_error = true
-      end
-
-      raise(MissingLibraryError.new(@delegate.compile_lib, 'compile', @extension)) if compile_load_error
-      raise(MissingLibraryError.new(@delegate.finalize_lib, 'finalize', @extension)) if finalize_load_error
-      raise(MissingLibraryError.new(@delegate.minify_lib, 'minify', @extension)) if minify_load_error
     end
 
     ##
