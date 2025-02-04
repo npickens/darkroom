@@ -11,11 +11,11 @@ class Darkroom
     # Creates a new instance.
     #
     # [library] Name of the library that's missing.
-    # [need] Reason the library is needed ('pre-process', 'post-process', or 'minify').
+    # [need] Reason the library is needed ('compile', 'finalize', or 'minify').
     # [extension] Extension of the type of asset that needs the library.
     #
     def initialize(library, need, extension)
-      super("Cannot #{need} #{extension} file(s): #{library} library not available [hint: try adding " \
+      super("Cannot #{need} #{extension} files: '#{library}' library not available [hint: try adding " \
         "gem('#{library}') to your Gemfile]")
 
       @library = library

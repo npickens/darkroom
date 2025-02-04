@@ -87,7 +87,7 @@ class AssetTest < Minitest::Test
       new_asset('/app.bad-compile')
     end
 
-    assert_equal('Cannot compile .bad-compile file(s): bad_compile library not available [hint: try ' \
+    assert_equal('Cannot compile .bad-compile files: \'bad_compile\' library not available [hint: try ' \
       'adding gem(\'bad_compile\') to your Gemfile]', error.to_s)
   ensure
     Darkroom.register('.bad-compile', nil)
@@ -102,7 +102,7 @@ class AssetTest < Minitest::Test
       new_asset('/app.bad-finalize')
     end
 
-    assert_equal('Cannot finalize .bad-finalize file(s): bad_finalize library not available [hint: try ' \
+    assert_equal('Cannot finalize .bad-finalize files: \'bad_finalize\' library not available [hint: try ' \
       'adding gem(\'bad_finalize\') to your Gemfile]', error.to_s)
   ensure
     Darkroom.register('.bad-finalize', nil)
@@ -123,7 +123,7 @@ class AssetTest < Minitest::Test
       new_asset('/app.bad-minify', minify: true)
     end
 
-    assert_equal('Cannot minify .bad-minify file(s): bad_minify library not available [hint: try ' \
+    assert_equal('Cannot minify .bad-minify files: \'bad_minify\' library not available [hint: try ' \
       'adding gem(\'bad_minify\') to your Gemfile]', error.to_s)
   ensure
     Darkroom.register('.bad-minify', nil)
