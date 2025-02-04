@@ -9,9 +9,7 @@ require_relative('errors/duplicate_asset_error')
 require_relative('errors/invalid_path_error')
 require_relative('errors/processing_error')
 
-##
 # Main class providing fast, lightweight, and straightforward web asset management.
-#
 class Darkroom
   DEFAULT_MINIFIED = /(\.|-)min\.\w+$/.freeze
   TRAILING_SLASHES = %r{/+$}.freeze
@@ -25,13 +23,13 @@ class Darkroom
 
   class << self; attr_accessor(:javascript_iife) end
 
-  ##
-  # Registers an asset delegate.
+  # Public: Register an asset Delegate.
   #
-  # [*args] One or more file extension(s) to associate with this delegate, optionally followed by either an
-  #         HTTP MIME type string or a Delegate subclass.
-  # [&block] Delegate definition or extension.
+  # args  - One or more String file extensions to associate with this delegate, optionally followed by
+  #         either an HTTP MIME type String or a Delegate subclass.
+  # block - Block to call that defines or extends the Delegate.
   #
+  # Returns the Delegate class.
   def self.register(*args, &block)
     last_arg = args.pop unless args.last.kind_of?(String) && args.last[0] == '.'
     extensions = args
@@ -53,40 +51,44 @@ class Darkroom
     delegate
   end
 
-  ##
-  # Returns the delegate associated with a file extension.
+  # Public: Get the Delegate associated with a file extension.
   #
-  # [extension] File extension of the desired delegate.
+  # extension - String file extension of the desired delegate (e.g. '.js')
   #
+  # Returns the Delegate class.
   def self.delegate(extension)
     @@delegates[extension]
   end
 
-  ##
-  # Utility method that prints a warning with file and line number of a deprecated call.
+  # Internal: Print a warning with the file and line number of a deprecated call.
   #
+  # message - String deprecation message.
+  #
+  # Returns nothing.
   def self.deprecated(message)
     location = caller_locations(2, 1).first
 
     warn("#{location.path}:#{location.lineno}: #{message}")
   end
 
-  ##
-  # Creates a new instance.
+  # Public: Create a new instance.
   #
-  # [*load_paths] One or more paths where assets are located on disk.
-  # [host:] Host(s) to prepend to paths (useful when serving from a CDN in production). If multiple hosts
-  #         are specified, they will be round-robined within each thread for each call to +#asset_path+.
-  # [hosts:] Alias of +host:+.
-  # [prefix:] Prefix to prepend to asset paths (e.g. +/assets+).
-  # [pristine:] Path(s) that should not include prefix and for which unversioned form should be provided by
-  #             default (e.g. +/favicon.ico+).
-  # [entries:] String, regex, or array of strings and regexes specifying entry point paths / path patterns.
-  # [minify:] Boolean specifying whether or not to minify assets.
-  # [minified:] String, regex, or array of strings and regexes specifying paths of assets that are already
-  #             minified and thus should be skipped for minification.
-  # [min_process_interval:] Minimum time required between one run of asset processing and another.
-  #
+  # load_paths            - One or more String paths where assets are located on disk.
+  # host:                 - String host or Array of String hosts to prepend to paths (useful when serving
+  #                         from a CDN in production). If multiple hosts are specified, they will be round-
+  #                         robined within each thread for each call to #asset_path.
+  # hosts:                - String or Array of Strings (alias of host:).
+  # prefix:               - String prefix to prepend to asset paths (e.g. '/assets').
+  # pristine:             - String, Array of String, or Set of String paths that should not include the
+  #                         prefix and for which the unversioned form should be provided by default (e.g.
+  #                         '/favicon.ico').
+  # entries:              - String, Regexp, or Array of String and/or Regexp specifying entry point paths /
+  #                         path patterns.
+  # minify:               - Boolean specifying if assets that support it should be minified.
+  # minified:             - String, Regexp, or Array of String and/or Regexp specifying paths of assets that
+  #                         are already minified and thus shouldn't be minified.
+  # min_process_interval: - Numeric minimum number of seconds required between one run of asset processing
+  #                         and another.
   def initialize(*load_paths, host: nil, hosts: nil, prefix: nil, pristine: nil, entries: nil,
                  minify: false, minified: DEFAULT_MINIFIED, min_process_interval: MIN_PROCESS_INTERVAL)
     @load_paths = load_paths.map { |load_path| File.expand_path(load_path) }
@@ -115,11 +117,19 @@ class Darkroom
     Thread.current[:darkroom_host_index] = -1 unless @hosts.empty?
   end
 
-  ##
-  # Walks all load paths and refreshes any assets that have been modified on disk since the last call to
-  # this method. Returns false if processing was skipped due to previous call happening less than
-  # min_process_interval ago or because another thread was already processing; returns true otherwise.
+  # Public: Walk all load paths and refresh any assets that have been modified on disk since the last call
+  # to this method. Processing is skipped if either a) a previous call to this method happened
+  # less than min_process_interval seconds ago or b) another thread is currently executing this method.
   #
+  # A mutex is used to ensure that, say, multiple web request threads do not trample each other. If the
+  # mutex is locked when this method is called, it will wait until the mutex is released to ensure that the
+  # caller does not then start working with stale / invalid Asset objects due to the work of the other
+  # thread's active call to #process being incomplete.
+  #
+  # If any errors are encountered during processing, they must be checked for manually afterward via #error
+  # or #errors. If a raise is preferred, use #process! instead.
+  #
+  # Returns boolean indicating if processing actually happened (true) or was skipped (false).
   def process
     return false if Time.now.to_f - @last_processed_at < @min_process_interval
 
@@ -180,52 +190,53 @@ class Darkroom
     end
   end
 
-  ##
-  # Calls #process. If processing was skipped, returns false. If processing was performed, raises an
-  # exception if any errors were encountered and returns true otherwise.
+  # Public: Call #process but raise an error if there were errors.
   #
+  # Returns boolean indicating if processing actually happened (true) or was skipped (false).
+  # Raises ProcessingError if processing actually happened from this call and error(s) were encountered.
   def process!
     result = process
 
     result && @error ? raise(@error) : result
   end
 
-  ##
-  # Returns boolean indicating whether or not there were any errors encountered the last time assets were
-  # processed.
+  # Public: Check if there were any errors encountered the last time assets were processed.
   #
+  # Returns the boolean result.
   def error?
     !!@error
   end
 
-  ##
-  # Returns an Asset object, given its external path. An external path includes any prefix and and can be
-  # either the versioned or unversioned form of the asset path (i.e. how an HTTP request for the asset comes
-  # in). For example, to get the Asset object with path +/js/app.js+ when prefix is +/assets+:
+  # Public: Get an Asset object, given its external path. An external path includes any prefix and can be
+  # either the versioned or unversioned form (i.e. how an HTTP request for the asset comes in).
   #
-  #   darkroom.asset('/assets/js/app.<hash>.js')
-  #   darkroom.asset('/assets/js/app.js')
+  # Examples
   #
-  # [path] External path of the asset.
+  #   # Suppose the asset's internal path is '/js/app.js' and the prefix is '/assets'.
+  #   darkroom.asset('/assets/js/app-<hash>.js') # => #<Darkroom::Asset [...]>
+  #   darkroom.asset('/assets/js/app.js')        # => #<Darkroom::Asset [...]>
   #
+  # path - String external path of the asset.
+  #
+  # Returns the Asset object if it exists or nil otherwise.
   def asset(path)
     @manifest_versioned[path] || @manifest_unversioned[path]
   end
 
-  ##
-  # Returns the external asset path, given its internal path. An external path includes any prefix and and
-  # can be either the versioned or unversioned form of the asset path (i.e. how an HTTP request for the
-  # asset comes in). For example, to get the external path for the Asset object with path +/js/app.js+ when
-  # prefix is +/assets+:
+  # Public: Get the external asset path, given its internal path. An external path includes any prefix and
+  # can be either the versioned or unversioned form (i.e. how an HTTP request for the asset comes in).
   #
-  #   darkroom.asset_path('/js/app.js')                   # => /assets/js/app.<hash>.js
-  #   darkroom.asset_path('/js/app.js', versioned: false) # => /assets/js/app.js
+  # path       - String internal path of the asset.
+  # versioned: - Boolean specifying either the versioned or unversioned path to be returned.
   #
-  # Raises an AssetNotFoundError if the asset doesn't exist.
+  # Examples
   #
-  # [path] Internal path of the asset.
-  # [versioned:] Boolean indicating whether the versioned or unversioned path should be returned.
+  #   # Suppose the asset's internal path is '/js/app.js' and the prefix is '/assets'.
+  #   darkroom.asset_path('/js/app.js')                   # => "/assets/js/app-<hash>.js"
+  #   darkroom.asset_path('/js/app.js', versioned: false) # => "/assets/js/app.js"
   #
+  # Returns the String external asset path.
+  # Raises AssetNotFoundError if the asset doesn't exist.
   def asset_path(path, versioned: !@pristine.include?(path))
     asset = @manifest[path] or raise(AssetNotFoundError.new(path))
 
@@ -239,39 +250,42 @@ class Darkroom
     "#{host}#{versioned ? asset.path_versioned : asset.path_unversioned}"
   end
 
-  ##
-  # Returns an asset's subresource integrity string. Raises an AssetNotFoundError if the asset doesn't
-  # exist.
+  # Public: Get an asset's subresource integrity string.
   #
-  # [path] Internal path of the asset.
-  # [algorithm] Hash algorithm to use to generate the integrity string (see Asset#integrity).
+  # path      - String internal path of the asset.
+  # algorithm - Symbol hash algorithm name to use to generate the integrity string (must be one of
+  #             :sha256, :sha384, :sha512).
   #
+  # Returns the asset's subresource integrity String.
+  # Raises AssetNotFoundError if the asset doesn't exist.
   def asset_integrity(path, algorithm = nil)
     asset = @manifest[path] or raise(AssetNotFoundError.new(path))
 
     algorithm ? asset.integrity(algorithm) : asset.integrity
   end
 
-  ##
-  # Returns the asset from the manifest hash associated with the given path.
+  # Public: Get the Asset object from the manifest Hash associated with the given path.
   #
-  # [path] Internal path of the asset.
+  # path - String internal path of the asset.
   #
+  # Returns the Asset object if it exists or nil otherwise.
   def manifest(path)
     @manifest[path]
   end
 
-  ##
-  # Writes assets to disk. This is useful when deploying to a production environment where assets will be
-  # uploaded to and served from a CDN or proxy server.
+  # Public: Write assets to disk. This is useful when deploying to a production environment where assets
+  # will be uploaded to and served from a CDN or proxy server. Note that #process must be called manually
+  # before calling this method.
   #
-  # [dir] Directory to write the assets to.
-  # [clear:] Boolean indicating whether or not the existing contents of the directory should be deleted
-  #          before performing the dump.
-  # [include_pristine:] Boolean indicating whether or not to include pristine assets (when dumping for the
+  # dir               - String directory path to write the assets to.
+  # clear:            - Boolean indicating if the existing contents of the directory should be deleted
+  #                     before writing files.
+  # include_pristine: - Boolean indicating if pristine assets should be included (when dumping for the
   #                     purpose of uploading to a CDN, assets such as /robots.txt and /favicon.ico don't
   #                     need to be included).
   #
+  # Returns nothing.
+  # Raises ProcessingError if errors were encountered during the last #process run.
   def dump(dir, clear: false, include_pristine: true)
     raise(@error) if @error
 
@@ -292,9 +306,9 @@ class Darkroom
     end
   end
 
-  ##
-  # Returns high-level object info string.
+  # Public: Get a high-level object info string about this Darkroom instance.
   #
+  # Returns the String.
   def inspect
     "#<#{self.class} " \
       "@entries=#{@entries.inspect}, " \
@@ -313,11 +327,11 @@ class Darkroom
 
   private
 
-  ##
-  # Returns boolean indicating whether or not the provided path is an entry point.
+  # Internal: Check if an asset's path indicates that it's an entry point.
   #
-  # [path] Path to check.
+  # path - String asset path to check.
   #
+  # Returns the boolean result.
   def entry?(path)
     if @pristine.include?(path) || @entries.empty?
       true
@@ -328,11 +342,11 @@ class Darkroom
     end
   end
 
-  ##
-  # Returns boolean indicating whether or not the asset with the provided path is already minified.
+  # Internal: Check if an asset's path indicates that it's already minified.
   #
-  # [path] Path to check.
+  # path - String asset path to check.
   #
+  # Returns the boolean result.
   def minified?(path)
     @minified.any? do |minified|
       path == minified || (minified.kind_of?(Regexp) && path.match?(minified))

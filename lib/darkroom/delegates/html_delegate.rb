@@ -4,9 +4,7 @@ require_relative('../asset')
 require_relative('../delegate')
 
 class Darkroom
-  ##
   # Delegate for handling HTML-specific asset processing.
-  #
   class HTMLDelegate < Delegate
     REFERENCE_REGEX = /
       <(?<tag>a|area|audio|base|embed|iframe|img|input|link|script|source|track|video)\s+[^>]*

@@ -4,9 +4,7 @@ require_relative('html_delegate')
 require_relative('javascript_delegate')
 
 class Darkroom
-  ##
   # Delegate for handling HTX-specific asset processing.
-  #
   class HTXDelegate < HTMLDelegate
     compile(lib: 'htx', delegate: JavaScriptDelegate) do |parse_data:, path:, own_content:|
       module_supported = false

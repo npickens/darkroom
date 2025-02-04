@@ -1,20 +1,16 @@
 # frozen_string_literal: true
 
 class Darkroom
-  ##
   # General error class used for errors encountered while processing an asset.
-  #
   class AssetError < StandardError
     attr_reader(:detail, :source_path, :source_line_num)
 
-    ##
-    # Creates a new instance.
+    # Public: Create a new instance.
     #
-    # [message] Description of the error.
-    # [detail] Additional detail about the error.
-    # [source_path] Path of the asset that contains the error.
-    # [source_line_num] Line number in the asset where the error is located.
-    #
+    # message         - String description of the error.
+    # detail          - String additional error detail.
+    # source_path     - String path of the asset that contains the error.
+    # source_line_num - Integer line number in the asset file where the error was located.
     def initialize(message, detail, source_path = nil, source_line_num = nil)
       super("#{"#{source_path}:#{source_line_num || '?'}: " if source_path}#{message}: #{detail}")
 

@@ -5,9 +5,7 @@ require_relative('../asset')
 require_relative('../delegate')
 
 class Darkroom
-  ##
   # Delegate for handling JavaScript-specific asset processing.
-  #
   class JavaScriptDelegate < Delegate
     IDENTIFIER_REGEX = /[_$a-zA-Z][_$a-zA-Z0-9]*/.freeze
     COMMA_REGEX = /,/.freeze

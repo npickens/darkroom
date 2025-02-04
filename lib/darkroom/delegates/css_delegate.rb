@@ -4,9 +4,7 @@ require_relative('../asset')
 require_relative('../delegate')
 
 class Darkroom
-  ##
   # Delegate for handling CSS-specific asset processing.
-  #
   class CSSDelegate < Delegate
     IMPORT_REGEX = /
       (?<=^|;)[^\S\n]*

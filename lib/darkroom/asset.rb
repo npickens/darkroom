@@ -13,9 +13,7 @@ require_relative('errors/processing_error')
 require_relative('errors/unrecognized_extension_error')
 
 class Darkroom
-  ##
   # Represents an asset.
-  #
   class Asset
     EXTENSION_REGEX = /(?=\.\w+)/.freeze
     DEFAULT_QUOTE = '\''
@@ -39,18 +37,16 @@ class Darkroom
 
     attr_reader(:errors, :path, :path_unversioned)
 
-    ##
-    # Creates a new instance.
+    # Public: Create a new instance.
     #
-    # [file] Path of file on disk.
-    # [path] Path this asset will be referenced by (e.g. /js/app.js).
-    # [darkroom] Darkroom instance that the asset is a member of.
-    # [prefix:] Prefix to apply to unversioned and versioned paths.
-    # [entry:] Boolean indicating whether or not the asset is an entry point (i.e. accessible externally).
-    # [minify:] Boolean specifying whether or not the asset should be minified when processed.
-    # [intermediate:] Boolean indicating whether or not the asset exists solely to provide an intermediate
-    #                 form (e.g. compiled) to another asset instance.
-    #
+    # path          - String path this asset will be referenced by (e.g. /js/app.js).
+    # file          - String absolute path of file on disk.
+    # darkroom      - Darkroom instance that the asset is a member of.
+    # prefix:       - String prefix to apply to unversioned and versioned paths.
+    # entry:        - Boolean specifying if the asset is an entry point (i.e. accessible externally).
+    # minify:       - Boolean specifying if the asset should be minified when processed.
+    # intermediate: - Boolean specifying if the asset exists solely to provide an intermediate form (e.g.
+    #                 compiled) for another Asset instance.
     def initialize(path, file, darkroom, prefix: nil, entry: true, minify: false, intermediate: false)
       @path = path
       @dir = File.dirname(path)
@@ -81,12 +77,13 @@ class Darkroom
       clear
     end
 
-    ##
-    # Processes the asset if modified since the last run (see #modified? for how modification is
-    # determined). File is read from disk, references are substituted (if supported), content is compiled
-    # (if required), imports are prefixed to its content (if supported), and content is minified
-    # (if supported and enabled and the asset is an entry point).
+    # Public: Process the asset if it's been modified since the last run (see #modified? for how
+    # modification is determined). The asset file is read from disk, references are substituted (if
+    # supported for the asset type), content is compiled (if required), imports are prefixed to the asset's
+    # own content (if supported), and content is minified (if supported and enabled and the asset is an
+    # entry point).
     #
+    # Returns nothing.
     def process
       return if ran?(:process)
 
@@ -94,16 +91,16 @@ class Darkroom
       content if entry?
     end
 
-    ##
-    # Returns the HTTP MIME type string.
+    # Public: Get the HTTP MIME type string for this asset.
     #
+    # Returns the String content type from the asset's Delegate.
     def content_type
       @delegate.content_type
     end
 
-    ##
-    # Returns boolean indicating whether or not the asset is binary.
+    # Public: Check if the asset's content is binary.
     #
+    # Returns the boolean result.
     def binary?
       return @binary if defined?(@binary)
 
@@ -112,65 +109,65 @@ class Darkroom
       @binary = type != 'text' && !subtype.include?('json') && !subtype.include?('xml')
     end
 
-    ##
-    # Returns boolean indicating whether or not the asset is a font.
+    # Public: Check if the asset is a font.
     #
+    # Returns the boolean result.
     def font?
       defined?(@is_font) ? @is_font : (@is_font = content_type.start_with?('font/'))
     end
 
-    ##
-    # Returns boolean indicating whether or not the asset is an image.
+    # Public: Check if the asset is an image.
     #
+    # Returns the boolean result.
     def image?
       defined?(@is_image) ? @is_image : (@is_image = content_type.start_with?('image/'))
     end
 
-    ##
-    # Returns boolean indicating whether or not the asset is an entry point.
+    # Public: Check if the asset is an entry point.
     #
+    # Returns the boolean result.
     def entry?
       @entry
     end
 
-    ##
-    # Returns boolean indicating whether or not an error was encountered the last time the asset was
-    # processed.
+    # Public: Check if one or more errors were encountered the last time the asset was processed.
     #
+    # Returns the boolean result.
     def error?
       @errors && !@errors.empty?
     end
 
-    ##
-    # Returns ProcessingError wrapper of all errors if any exist, or nil if there are none.
+    # Public: Get a single error wrapper object for all errors.
     #
+    # Returns a ProcessingError if one or more errors exit or nil otherwise.
     def error
       @error ||= error? ? ProcessingError.new(@errors) : nil
     end
 
-    ##
-    # Returns hash of content.
+    # Public: Get an MD5 hash of the asset's content.
     #
+    # Returns the String hash.
     def fingerprint
       content
 
       @fingerprint
     end
 
-    ##
-    # Returns versioned path.
+    # Public: Get the versioned path of the asset (includes the fingerprint).
     #
+    # Returns the String versioned path.
     def path_versioned
       content
 
       @path_versioned
     end
 
-    ##
-    # Returns appropriate HTTP headers.
+    # Public: Get the asset's HTTP headers.
     #
-    # [versioned:] Uses Cache-Control header with max-age if +true+ and ETag header if +false+.
+    # versioned: - Boolean indicating if this is for the versioned or unversioned asset path. If true,
+    #              a Cache-Control header with max-age is included; if false, an ETag header is used.
     #
+    # Returns a Hash of String HTTP header names and String values.
     def headers(versioned: true)
       {
         'Content-Type' => content_type,
@@ -179,12 +176,13 @@ class Darkroom
       }.compact!
     end
 
-    ##
-    # Returns subresource integrity string.
+    # Public: Get a subresource integrity string (SHA digest).
     #
-    # [algorithm] Hash algorithm to use to generate the integrity string (one of +:sha256+, +:sha384+, or
-    #             +:sha512+).
+    # algorithm - Symbol hash algorithm name to use to generate the integrity string (must be one of
+    #             :sha256, :sha384, :sha512).
     #
+    # Returns the String SHA digest.
+    # Raises RuntimeError if the request algorithm is not valid.
     def integrity(algorithm = :sha384)
       @integrity[algorithm] ||= "#{algorithm}-#{Base64.strict_encode64(
         case algorithm
@@ -196,11 +194,11 @@ class Darkroom
       )}".freeze
     end
 
-    ##
-    # Returns full asset content.
+    # Public: Get the full asset content, including imports and asset reference content substitutions.
     #
-    # [minified:] Boolean indicating whether or not to return minified version if it is available.
+    # minified: - Boolean specifying if the minified version is desired.
     #
+    # Returns the String asset content, minified if requested (and the asset is minifiable).
     def content(minified: @minify)
       unless ran?(:content)
         compile
@@ -251,9 +249,9 @@ class Darkroom
       @content_minified.freeze
     end
 
-    ##
-    # Returns high-level object info string.
+    # Public: Get a high-level object info string about this Asset instance.
     #
+    # Returns the String.
     def inspect
       "#<#{self.class} " \
         "@entry=#{@entry.inspect}, " \
@@ -272,10 +270,10 @@ class Darkroom
 
     protected
 
-    ##
-    # Returns true if the asset or any of its dependencies were modified since last processed, or if an
+    # Internal: Check if the asset or any of its dependencies were modified since last processed, or if an
     # error was recorded during the last processing run.
     #
+    # Returns the boolean result.
     def modified?
       @modified_key == @darkroom.process_key ? (return @modified) : @modified_key = @darkroom.process_key
 
@@ -293,9 +291,9 @@ class Darkroom
       end
     end
 
-    ##
-    # Clears content, dependencies, and errors so asset is ready for (re)processing.
+    # Internal: Clear content, dependencies, and errors so asset is ready for (re)processing.
     #
+    # Returns nothing.
     def clear
       return if ran?(:clear)
 
@@ -319,9 +317,9 @@ class Darkroom
       @errors = []
     end
 
-    ##
-    # Reads the asset file into memory.
+    # Internal: Read the asset file into memory.
     #
+    # Returns nothing.
     def read
       return if ran?(:read)
 
@@ -340,9 +338,9 @@ class Darkroom
       end
     end
 
-    ##
-    # Parses own content to build list of imports and references.
+    # Internal: Parse the asset's own content to build the lists of imports and references.
     #
+    # Returns nothing.
     def parse
       return if ran?(:parse)
 
@@ -366,18 +364,18 @@ class Darkroom
       end
     end
 
-    ##
-    # Returns direct dependencies (ones explicitly specified in the asset's own content.)
+    # Internal: Get direct dependencies (ones explicitly specified in the asset's own content).
     #
+    # Returns an Array of Asset objects.
     def own_dependencies
       parse
 
       @own_dependencies
     end
 
-    ##
-    # Returns all dependencies (including dependencies of dependencies).
+    # Internal: Get all dependencies (including dependencies of dependencies).
     #
+    # Returns an Array of Asset objects.
     def dependencies
       unless ran?(:dependencies)
         parse
@@ -387,18 +385,18 @@ class Darkroom
       @dependencies
     end
 
-    ##
-    # Returns direct imports (ones explicitly specified in the asset's own content.)
+    # Internal: Get direct imports (ones explicitly specified in the asset's own content).
     #
+    # Returns an Array of Asset objects.
     def own_imports
       parse
 
       @own_imports
     end
 
-    ##
-    # Returns all imports (including imports of imports).
+    # Internal: Get all imports (including imports of imports).
     #
+    # Returns an Array of Asset objects.
     def imports
       unless ran?(:imports)
         parse
@@ -408,9 +406,9 @@ class Darkroom
       @imports
     end
 
-    ##
-    # Performs import and reference substitutions based on parse matches.
+    # Internal: Perform import and reference substitutions based on parse matches.
     #
+    # Returns nothing.
     def substitute
       return if ran?(:substitute)
 
@@ -494,9 +492,9 @@ class Darkroom
       end
     end
 
-    ##
-    # Compiles the asset if compilation is supported for the asset's type.
+    # Internal: Compile the asset if compilation is supported for the asset's type.
     #
+    # Returns nothing.
     def compile
       return if ran?(:compile)
 
@@ -517,9 +515,9 @@ class Darkroom
       end
     end
 
-    ##
-    # Returns the processed content of the asset without dependencies concatenated.
+    # Internal: Get the processed content of the asset without dependencies concatenated.
     #
+    # Returns the String result.
     def own_content
       compile
 
@@ -528,15 +526,16 @@ class Darkroom
 
     private
 
-    ##
-    # Requires any libraries necessary for compiling, finalizing, and minifying the asset based on its type.
-    # Raises a MissingLibraryError if a library cannot be loaded.
+    # Internal: Require any libraries necessary for compiling, finalizing, and minifying the asset based on
+    # its type.
     #
-    # Darkroom does not explicitly depend on any libraries necessary for asset compilation or minification,
-    # since not every app will use every kind of asset or use minification. It is instead up to each app
-    # using Darkroom to specify any needed compilation, finalization, and minification libraries as direct
-    # dependencies (e.g. add +gem('terser')+ to the app's Gemfile if JavaScript minification is desired).
+    # Darkroom does not explicitly depend on any libraries necessary for asset compilation, finalization, or
+    # minification. This is because not every app will use every kind of asset or use minification. It is
+    # instead up to each app using Darkroom to specify any needed libraries as direct dependencies (e.g. add
+    # gem('terser') to the app's Gemfile if JavaScript minification is desired).
     #
+    # Returns nothing.
+    # Raises MissingLibraryError if a library cannot be loaded.
     def require_libs
       Delegate::LIB_REQUIRES.each do |need|
         next if need == :minify && !@minify
@@ -550,11 +549,11 @@ class Darkroom
       end
     end
 
-    ##
-    # Returns boolean indicating if a method has already been run during the current round of processing.
+    # Internal: Check if a method has already been run during the current round of processing.
     #
-    # [name] Name of the method.
+    # name - Symbol name of the method.
     #
+    # Returns the boolean result.
     def ran?(name)
       modified?
 
@@ -566,11 +565,11 @@ class Darkroom
       end
     end
 
-    ##
-    # Utility method used by #dependencies and #imports to recursively build arrays.
+    # Internal: Recursively build an array of Asset objects (used by #dependencies and #imports).
     #
-    # [name] Name of the array to accumulate (:dependencies or :imports).
+    # name - Symbol name of the array to accumulate (:dependencies or :imports).
     #
+    # Returns an Array of Asset objects.
     def accumulate(name)
       done = Set.new
       assets = [self]
@@ -588,12 +587,13 @@ class Darkroom
       assets
     end
 
-    ##
-    # Utility method to create a parse error of the appropriate class and append it to the errors array.
+    # Internal: Create a parse error of the appropriate class and append it to the errors array.
     #
-    # [error] Error type (symbol) or error message (string).
-    # [match] MatchData object for where the parse error occurred.
+    # error - Symbol error type or String error message.
+    # match - MatchData object for where the parse error occurred.
     #
+    # Returns nothing.
+    # Raises RuntimeError if error is not a String or recognized Symbol error name.
     def add_parse_error(error, match)
       klass = AssetError
       args = [match[0].strip]
