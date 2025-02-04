@@ -190,7 +190,7 @@ class DarkroomTest < Minitest::Test
       '/spa ce.js',
     ].sort
 
-    write_files(paths.map { |path| ["/assets#{path}", '[...]'] }.to_h)
+    write_files(paths.to_h { |path| ["/assets#{path}", '[...]'] })
 
     darkroom('/assets')
     darkroom.process
