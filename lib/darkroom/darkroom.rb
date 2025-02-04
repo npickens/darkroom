@@ -133,7 +133,7 @@ class Darkroom
       found = {}
 
       @load_paths.each do |load_path|
-        Dir.glob(File.join(load_path, @@glob)).sort.each do |file|
+        Dir.glob(File.join(load_path, @@glob)).each do |file|
           path = file.sub(load_path, '')
 
           if (index = path.index(Asset::INVALID_PATH_REGEX))

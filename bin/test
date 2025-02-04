@@ -9,6 +9,6 @@ BASE_DIR = Dir.pwd.freeze
 LIB_NAME = File.basename(Dir[File.join(BASE_DIR, '*.gemspec')].first, '.gemspec').freeze
 TEST_GLOB = File.join(BASE_DIR, "{.,#{"#{LIB_NAME}-*"}}", 'test', '**', '*_test.rb').freeze
 
-Dir[TEST_GLOB].sort.each do |file|
+Dir[TEST_GLOB].each do |file|
   require(file)
 end
