@@ -2,7 +2,11 @@
 
 ## Upcoming (Unreleased)
 
-* Nothing yet
+* **Require Ruby 3.0.0 or later**
+* Make ProcessingError enumerable
+* **Ensure import and reference regexes have the required named captures**
+* Gracefully handle invalid reference entities
+* **Fix delegate finalize library not getting required**
 
 ## 0.0.9 (2025 January 21)
 
