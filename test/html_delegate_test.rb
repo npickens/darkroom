@@ -1,8 +1,6 @@
 # frozen_string_literal: true
 
-require('darkroom')
-require('minitest/autorun')
-require_relative('asset_test')
+require_relative('test_helper')
 
 class HTMLDelegateTest < Minitest::Test
   include(TestHelper)

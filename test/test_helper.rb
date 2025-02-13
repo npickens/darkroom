@@ -1,5 +1,9 @@
 # frozen_string_literal: true
 
+ENV['BUNDLE_GEMFILE'] = File.join(File.dirname(__dir__), 'Gemfile')
+
+require('bundler/setup')
+require('darkroom')
 require('fileutils')
 require('minitest/autorun')
 require('minitest/reporters')

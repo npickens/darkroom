@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require('darkroom')
-require('minitest/autorun')
 require_relative('asset_test')
 
 class DelegateTest < Minitest::Test
