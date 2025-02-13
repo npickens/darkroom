@@ -2,6 +2,7 @@
 
 ## Upcoming (Unreleased)
 
+* Include a few more instance variables in `Asset#inspect`
 * **Require Ruby 3.0.0 or later**
 * Make ProcessingError enumerable
 * **Ensure import and reference regexes have the required named captures**

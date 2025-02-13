@@ -1021,13 +1021,15 @@ class AssetTest < Minitest::Test
     asset.process
 
     assert_inspect('#<Darkroom::Asset ' \
+      '@delegate=Darkroom::JavaScriptDelegate, ' \
+      '@dir="/", ' \
       '@entry=true, ' \
-      '@errors=[#<Darkroom::AssetNotFoundError: /bad-import.js:1: Asset not found: ' \
-        '/does-not-exist.js>], ' \
+      '@errors=[#<Darkroom::AssetNotFoundError: /bad-import.js:1: Asset not found: /does-not-exist.js>], ' \
       '@extension=".js", ' \
       "@file=\"#{full_path(path)}\", " \
       '@fingerprint="5f3acf6b7220af7a522fab7b95e47333", ' \
       '@minify=false, ' \
+      '@modified=true, ' \
       "@mtime=#{File.mtime(full_path(path)).inspect}, " \
       '@path="/bad-import.js", ' \
       '@path_unversioned="/static/bad-import.js", ' \

@@ -254,12 +254,15 @@ class Darkroom
     # Returns the String.
     def inspect
       "#<#{self.class} " \
+        "@delegate=#{@delegate.inspect}, " \
+        "@dir=#{@dir.inspect}, " \
         "@entry=#{@entry.inspect}, " \
         "@errors=#{@errors.inspect}, " \
         "@extension=#{@extension.inspect}, " \
         "@file=#{@file.inspect}, " \
         "@fingerprint=#{@fingerprint.inspect}, " \
         "@minify=#{@minify.inspect}, " \
+        "@modified=#{@modified.inspect}, " \
         "@mtime=#{@mtime.inspect}, " \
         "@path=#{@path.inspect}, " \
         "@path_unversioned=#{@path_unversioned.inspect}, " \
