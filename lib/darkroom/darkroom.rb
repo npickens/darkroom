@@ -60,17 +60,6 @@ class Darkroom
     @@delegates[extension]
   end
 
-  # Internal: Print a warning with the file and line number of a deprecated call.
-  #
-  # message - String deprecation message.
-  #
-  # Returns nothing.
-  def self.deprecated(message)
-    location = caller_locations(2, 1).first
-
-    warn("#{location.path}:#{location.lineno}: #{message}")
-  end
-
   # Public: Create a new instance.
   #
   # load_paths            - One or more String paths where assets are located on disk.
