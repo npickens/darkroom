@@ -450,6 +450,19 @@ class AssetTest < Minitest::Test
     assert_error('#<RuntimeError: [HTX Error]>', asset.errors)
   end
 
+  test('registers an error when finalization raises an exception') do
+    Darkroom.register('.dummy-finalize', 'text/dummy-finalize') do
+      finalize do |parse_data:, path:, content:|
+        raise('[Finalize Error]')
+      end
+    end
+
+    asset = new_asset('/template.dummy-finalize', '<div>${this.hello}</div>')
+    asset.process
+
+    assert_error('#<RuntimeError: [Finalize Error]>', asset.errors)
+  end
+
   test('registers an error when minification raises an exception') do
     asset = new_asset('/app.js', "console.log('Hello')", minify: true)
 
