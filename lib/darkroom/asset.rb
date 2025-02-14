@@ -552,7 +552,8 @@ class Darkroom
       end
     end
 
-    # Internal: Check if a method has already been run during the current round of processing.
+    # Internal: Check if a method has already been run during the current round of processing and mark it as
+    # having been run if not.
     #
     # name - Symbol name of the method.
     #
