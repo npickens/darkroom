@@ -12,7 +12,7 @@ class DelegateTest < Minitest::Test
       end
     end
 
-    assert_error('#<RuntimeError: Import regex is missing required named captures: quote, path>', error)
+    assert_error('#<RuntimeError: Import regex is missing required named capture: path>', error)
   end
   test('validates reference regex to ensure required named captures are present') do
     error = assert_raises(RuntimeError) do

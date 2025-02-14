@@ -3,7 +3,7 @@
 class Darkroom
   # Holds asset type-specific information and functionality.
   class Delegate
-    IMPORT_REGEX_CAPTURES = %w[quote path].freeze
+    IMPORT_REGEX_CAPTURES = %w[path].freeze
     REFERENCE_REGEX_CAPTURES = %w[quote path quoted entity format].freeze
     LIB_REQUIRES = [:compile, :finalize, :minify].freeze
 

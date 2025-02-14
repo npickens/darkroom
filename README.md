@@ -360,7 +360,7 @@ Darkroom.register('.ext1', '.ext2', '...') do
   #   parse_data: - Hash for storing arbitrary data across calls to this and other handlers.
   #   match:      - MatchData object from the match against the regex.
   #   asset:      - Asset object of the asset being imported.
-  import(/import #{Asset::QUOTED_PATH_REGEX.source};/) do |parse_data:, match:, asset:|
+  import(/import '(?<path>[^']+)';/) do |parse_data:, match:, asset:|
     parse_data[:imports] ||= []          # Accumulate and use arbitrary parse data.
     parse_data[:imports] << match[:path] # Use the MatchData object of the regex match.
 
