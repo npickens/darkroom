@@ -357,8 +357,8 @@ Darkroom.register('.ext1', '.ext2', '...') do
   # ...
 
   # The (optional) block is passed three keyword arguments:
-  #   parse_data: - Hash for storing data across calls to this and other parse handlers.
-  #   match:      - MatchData object from the match against the provided regex.
+  #   parse_data: - Hash for storing arbitrary data across calls to this and other handlers.
+  #   match:      - MatchData object from the match against the regex.
   #   asset:      - Asset object of the asset being imported.
   import(/import #{Asset::QUOTED_PATH_REGEX.source};/) do |parse_data:, match:, asset:|
     parse_data[:imports] ||= []          # Accumulate and use arbitrary parse data.
@@ -403,10 +403,11 @@ Darkroom.register('.ext1', '.ext2', '...') do
   reference_regex = /ref=#{Asset::REFERENCE_REGEX.source}/x
 
   # The (optional) block is passed four keyword arguments:
-  #   parse_data: - Hash for storing data across calls to this and other parse handlers.
-  #   match:      - MatchData object from the match against the provided regex.
-  #   asset:      - Asset object of the asset being referenced.
-  #   format:     - Format of the reference (see Asset::REFERENCE_FORMATS).
+  #
+  # parse_data: - Hash for storing arbitrary data across calls to this and other handlers.
+  # match:      - MatchData object from the match against the regex.
+  # asset:      - Asset object of the asset being referenced.
+  # format:     - String format of the reference (see Asset::REFERENCE_FORMATS).
   reference(reference_regex) do |parse_data:, match:, asset:, format:|
     parse_data[:refs] ||= []          # Accumulate and use arbitrary parse data.
     parse_data[:refs] << match[:path] # Use the MatchData object of the regex match.
@@ -438,8 +439,9 @@ Darkroom.register('.ext1', '.ext2', '...') do
   # ...
 
   # The block is passed two keyword arguments:
-  #   parse_data: - Hash for storing data across calls to this and other parse handlers.
-  #   match:      - MatchData object from the match against the provided regex.
+  #
+  # parse_data: - Hash for storing arbitrary data across calls to this and other handlers.
+  # match:      - MatchData object from the match against the regex.
   parse(:exports, /export (?<name>.+)/) do |parse_data:, match:|
     parse_data[:exports] ||= []          # Accumulate and use arbitrary parse data.
     parse_data[:exports] << match[:name] # Use the MatchData object of the regex match.
@@ -472,9 +474,10 @@ Darkroom.register('.ext1', '.ext2', '...') do
   # ...
 
   # The block is passed three keyword arguments:
-  #   parse_data:  - Hash of data collected during parsing.
-  #   path:        - Path of the asset being compiled.
-  #   own_content: - Asset's own content (without imports).
+  #
+  # parse_data:  - Hash for storing arbitrary data across calls to this and other handlers.
+  # path:        - String path of the asset.
+  # own_content: - String own content (without imports) of the asset.
   compile(lib: 'compile_lib', delegate: SomeDelegate) do |parse_data:, path:, own_content:|
     CompileLib.compile(own_content)
   end
@@ -492,9 +495,10 @@ Darkroom.register('.ext1', '.ext2', '...') do
   # ...
 
   # The block is passed three keyword arguments:
-  #   parse_data: - Hash of data collected during parsing.
-  #   path:       - Path of the asset being finalized.
-  #   content:    - Asset's compiled content (with imports prepended).
+  #
+  # parse_data: - Hash for storing arbitrary data across calls to this and other handlers.
+  # path:       - String path of the asset.
+  # content:    - String content of the compiled asset (with imports prepended).
   finalize(lib: 'finalize_lib') do |parse_data:, path:, content:|
     FinalizeLib.finalize(content)
   end
@@ -512,9 +516,10 @@ Darkroom.register('.ext1', '.ext2', '...') do
   # ...
 
   # The block is passed three keyword arguments:
-  #   parse_data: - Hash of data collected during parsing.
-  #   path:       - Path of the asset being finalized.
-  #   content:    - Asset's finalized content.
+  #
+  # parse_data: - Hash for storing arbitrary data across calls to this and other handlers.
+  # path:       - String oath of the asset being minified.
+  # content:    - string content of the finalized asset.
   minify(lib: 'minify_lib') do |parse_data:, path:, content:|
     MinifyLib.compress(content)
   end
