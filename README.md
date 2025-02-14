@@ -469,6 +469,10 @@ end
 Compilation allows for a library to require (optional), a delegate to use after compilation (optional), and
 a block that returns the compiled version of the asset's own content.
 
+Passing a delegate will cause the asset to be treated as if it is that type once it has been compiled. For
+example, HTX templates use `delegate: JavaScriptDelegate` because they get compiled to JavaScript and thus
+should be treated as JavaScript files post compilation.
+
 ```ruby
 Darkroom.register('.ext1', '.ext2', '...') do
   # ...
