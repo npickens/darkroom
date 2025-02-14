@@ -291,8 +291,8 @@ replaced appropriately.
 
 ## Extending
 
-Darkroom is extensible. Support for arbitrary file types can be added by specifying one or more extensions
-and a content type:
+Darkroom is extensible, allowing support for any kind of asset to be added. This is done most simply by
+specifying one or more extensions and a content type:
 
 ```ruby
 Darkroom.register('.ext1', '.ext2', '...', 'content/type')
@@ -300,7 +300,7 @@ Darkroom.register('.ext1', '.ext2', '...', 'content/type')
 
 ### DSL
 
-For more advanced functionality, the DSL can be used one of three ways. With a block:
+For more advanced functionality, a DSL is provided which can be used one of three ways. With a block:
 
 ```ruby
 Darkroom.register('.ext1', '.ext2', '...') do
