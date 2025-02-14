@@ -602,8 +602,6 @@ class Darkroom
       args = [match[0].strip]
 
       case error
-      when String
-        message = error
       when :not_found
         path = match[:path]
         delegate = Darkroom.delegate(File.extname(path)) if path
@@ -623,7 +621,7 @@ class Darkroom
       when :format_not_base64
         message = 'Base64 encoding is required for binary assets'
       else
-        raise("Unrecognized parse error type: #{error.inspect}")
+        message = error.to_s
       end
 
       args.unshift(message) if message
