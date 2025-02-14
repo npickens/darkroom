@@ -75,7 +75,8 @@ darkroom = Darkroom.new('app/assets', 'vendor/assets', '...',
   minify: true,                      # Minify assets that can be minified
   minified: /(\.|-)min\.\w+$/,       # Files to skip minification on when minify: true; can
                                      #   be a string, regex, or array of such
-  min_process_interval: 1,           # Minimum time that must elapse between process calls
+  min_process_interval: 1,           # Minimum seconds that must elapse between process
+                                     #   calls (otherwise processing is skipped)
 )
 ```
 
