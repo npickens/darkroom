@@ -23,11 +23,24 @@ class Darkroom
 
   class << self; attr_accessor(:javascript_iife) end
 
-  # Public: Register an asset Delegate.
+  # Public: Register a delegate for handling a specific kind of asset.
   #
   # args  - One or more String file extensions to associate with this delegate, optionally followed by
   #         either an HTTP MIME type String or a Delegate subclass.
   # block - Block to call that defines or extends the Delegate.
+  #
+  # Examples
+  #
+  #   Darkroom.register('.ext1', '.ext2', 'content/type')
+  #   Darkroom.register('.ext', MyDelegateSubclass)
+  #
+  #   Darkroom.register('.scss', 'text/css') do
+  #     compile(lib: 'sassc') { ... }
+  #   end
+  #
+  #   Darkroom.register('.scss', SCSSDelegate) do
+  #     # Modifications/overrides of the SCSSDelegate class...
+  #   end
   #
   # Returns the Delegate class.
   def self.register(*args, &block)
