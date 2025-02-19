@@ -4,7 +4,7 @@ version = File.read(File.join(__dir__, 'VERSION')).strip.freeze
 
 Gem::Specification.new('darkroom', version) do |spec|
   spec.authors       = ['Nate Pickens']
-  spec.summary       = 'A fast, lightweight, and straightforward web asset management library.'
+  spec.summary       = 'A simple and straightforward web asset management library.'
   spec.description   = 'Darkroom provides web asset compilation, bundling, and minification without any ' \
                        'external tools, manifest files, or special comment syntax. CSS and JavaScript ' \
                        'bundles are automatically generated based on import statements native to each ' \

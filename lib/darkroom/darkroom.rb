@@ -9,7 +9,7 @@ require_relative('errors/duplicate_asset_error')
 require_relative('errors/invalid_path_error')
 require_relative('errors/processing_error')
 
-# Main class providing fast, lightweight, and straightforward web asset management.
+# Main class providing simple and straightforward web asset management.
 class Darkroom
   DEFAULT_MINIFIED = /(\.|-)min\.\w+$/.freeze
   TRAILING_SLASHES = %r{/+$}.freeze
