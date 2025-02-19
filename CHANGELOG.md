@@ -2,6 +2,10 @@
 
 ## Upcoming (Unreleased)
 
+* Nothing yet
+
+## 0.0.10 (2025 February 19)
+
 * Include a few more instance variables in `Asset#inspect`
 * **Require Ruby 3.0.0 or later**
 * Make ProcessingError enumerable
