@@ -1,32 +1,24 @@
 # Darkroom
 
-Darkroom is a fast, lightweight, and straightforward web asset management library. Processed assets are all
-stored in and served directly from memory rather than being written to disk (though a dump to disk can be
-performed for upload to a CDN or proxy server in production environments); this keeps asset management
-simple and performant in development. Darkroom also supports asset bundling for CSS and JavaScript using
-each language's native import statement syntax.
+Darkroom is a simple and straightforward web asset management and bundling library written entirely in Ruby.
+It is designed to be used directly within a Ruby web server process—no external dependencies or process
+management is needed.
 
-The following file types are supported out of the box, though support for others can be added (see the
-[Extending](#extending) section):
-
-| Name       | Content Type     | Extension(s) |
-|------------|------------------|--------------|
-| APNG       | image/apng       | .apng        |
-| AVIF       | image/avif       | .avif        |
-| CSS        | text/css         | .css         |
-| GIF        | image/gif        | .gif         |
-| HTML       | text/html        | .htm, .html  |
-| HTX        | text/javascript  | .htx         |
-| ICO        | image/x-icon     | .ico         |
-| JavaScript | text/javascript  | .js          |
-| JPEG       | image/jpeg       | .jpg, .jpeg  |
-| JSON       | application/json | .json        |
-| PNG        | image/png        | .png         |
-| SVG        | image/svg+xml    | .svg         |
-| Text       | text/plain       | .txt         |
-| WebP       | image/webp       | .webp        |
-| WOFF       | font/woff        | .woff        |
-| WOFF2      | font/woff2       | .woff2       |
+* **Asset Bundling** — CSS and JavaScript assets are bundled using each language's native import statement
+  syntax.
+  * `@import '/header.css';` includes the contents of header.css in a CSS asset.
+  * `import '/api.js'` includes the contents of api.js in a JavaScript asset.
+* **Asset References** — Asset paths are versioned with a URL query parameter.
+  * `<img src='/logo.svg?asset-path'>` gets replaced with `<img src='/logo-[fingerprint].svg'>`.
+* **Asset Inlining** — Certain kinds of assets (e.g. images in HTML documents) can be inlined using a URL
+  query parameter.
+  * `<img src='/logo.svg?asset-content=utf8'>` gets replaced with
+    `<img src='data:image/svg+xml;utf8,<svg>[...]</svg>'>`.
+* **JavaScript Modules** — JavaScript bundles can (optionally) encapsulate the content of each file with
+  imports defined as local variables to mimic native ES6 modules within a single file.
+* **In-Memory** — Processed assets are all stored in and served directly from memory to avoid the issues
+  that generally ensue from writing to and managing files on disk. Assets can however be dumped to disk for
+  upload to a CDN or proxy server in production environments.
 
 ## Installation
 
@@ -291,7 +283,28 @@ replaced appropriately.
 
 ## Extending
 
-Darkroom is extensible, allowing support for any kind of asset to be added. This is done most simply by
+The following file types are supported out of the box:
+
+| Name       | Content Type     | Extension(s) |
+|------------|------------------|--------------|
+| APNG       | image/apng       | .apng        |
+| AVIF       | image/avif       | .avif        |
+| CSS        | text/css         | .css         |
+| GIF        | image/gif        | .gif         |
+| HTML       | text/html        | .htm, .html  |
+| HTX        | text/javascript  | .htx         |
+| ICO        | image/x-icon     | .ico         |
+| JavaScript | text/javascript  | .js          |
+| JPEG       | image/jpeg       | .jpg, .jpeg  |
+| JSON       | application/json | .json        |
+| PNG        | image/png        | .png         |
+| SVG        | image/svg+xml    | .svg         |
+| Text       | text/plain       | .txt         |
+| WebP       | image/webp       | .webp        |
+| WOFF       | font/woff        | .woff        |
+| WOFF2      | font/woff2       | .woff2       |
+
+But Darkroom is extensible, allowing support for any kind of asset to be added. This is done most simply by
 specifying one or more extensions and a content type:
 
 ```ruby
