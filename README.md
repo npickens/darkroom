@@ -51,6 +51,8 @@ To create and start using a Darkroom instance, specify one or more load paths (a
 optional):
 
 ```ruby
+Darkroom.javascript_iife = true      # Use IIFEs to emulate ES6-style JavaScript modules
+
 darkroom = Darkroom.new('app/assets', 'vendor/assets', '...',
   hosts: [                           # Hosts to prepend to asset paths (useful in production
     'https://cname1.cdn.com',        #   when assets are served from a CDN with multiple
@@ -134,101 +136,120 @@ asset.integrity(:sha512)        # => "sha512-[hash]"
 
 ## Asset Bundling
 
-CSS and JavaScript assets specify their dependencies by way of each language's native import statement. Each
-import statement is replaced with the content of the imported asset. Example:
-
-```css
-/* Unprocessed /header.css */
-header { background: #f1f1f1; }
-```
-
-```css
-/* Unprocessed /app.css */
-@import '/header.css';
-
-body { background: #fff; }
-```
-
-```css
-/* Processed /app.css */
-header { background: #f1f1f1; }
-
-body { background: #fff; }
-```
+JavaScript and CSS assets specify their dependencies by way of each language's native import statement. Each
+import statement is replaced with the content of the imported asset.
 
 Imported assets can also contain import statements, and those assets are all included in the base asset.
 Imports can even be cyclical. If `asset-a.css` imports `asset-b.css` and vice-versa, each asset will simply
 contain the content of both of those assets (though order will be different as an asset's own content always
 comes after any imported assets' contents).
 
-By default, JavaScript files are concatenated in the same way that CSS files are. Example:
+### JavaScript - Single Scope
 
-```javascript
-// Unprocessed /api.js
-function API() { console.log('API called!') }
-```
+By default, JavaScript bundles are a simple concatenation of files. Imports should all be "side effect"
+style and result in all code using one shared scope:
 
-```javascript
-// Unprocessed /app.js
-import '/api.js'
+* **/api.js** (raw file)
+  ```javascript
+  function API() {
+    console.log('API called!')
+  }
+  ```
+* **/app.js** (raw file)
+  ```javascript
+  import '/api.js'
 
-API()
-```
+  API()
+  ```
+* **/app.js** (processed)
+  ```javascript
+  function API() {
+    console.log('API called!')
+  }
 
-```javascript
-// Processed /app.js
-function API() { console.log('API called!') }
+  API()
+  ```
 
-API()
-```
+### JavaScript - Modules
 
 Alternatively, setting `Darkroom.javascript_iife = true` will cause JavaScript assets to be compiled to a
-series of IIFEs that provide the same encapsulation as native ES6 modules (indentation is not quite as
-pretty as shown here, but has been altered here for readability):
+series of IIFEs that provide the same encapsulation as native ES6 modules. In this case, objects must be
+explicitly exported to be importable and named (rather than side effect) imports used:
 
-```javascript
-// Unprocessed /api.js
-export function API() { console.log('API called!') }
-```
+* **/api.js** (raw file)
+  ```javascript
+  export function API() {
+    console.log('API called!')
+  }
+  ```
+* **/app.js** (raw file)
+  ```javascript
+  import {API} from '/api.js'
 
-```javascript
-// Unprocessed /app.js
-import {API} from '/api.js'
+  API()
+  ```
+* **/app.js** (processed)
+  ```javascript
+  ((...bundle) => {
+    const modules = {}
+    const setters = []
+    const $import = (name, setter) =>
+      modules[name] ? setter(modules[name]) : setters.push([setter, name])
 
-API()
-```
+    for (const [name, def] of bundle)
+      modules[name] = def($import)
 
-```javascript
-// Processed /app.js
-((...bundle) => {
-  const modules = {}
-  const setters = []
-  const $import = (name, setter) =>
-    modules[name] ? setter(modules[name]) : setters.push([setter, name])
+    for (const [setter, name] of setters)
+      setter(modules[name])
+  })(
+    ['/api.js', $import => {
+      function API() {
+        console.log('API called!')
+      }
 
-  for (const [name, def] of bundle)
-    modules[name] = def($import)
+      return Object.seal({
+        API: API,
+      })
+    }],
 
-  for (const [setter, name] of setters)
-    setter(modules[name])
-})(
-  ['/api.js', $import => {
-    function API() { console.log('API called!') }
+    ['/app.js', $import => {
+      let API; $import('/api.js', m => API = m.API)
 
-    return Object.seal({
-      API: API,
-    })
-  }],
+      API()
 
-  ['/app.js', $import => {
-    let API; $import('/api.js', m => API = m.API)
+      return Object.seal({})
+    }],
+  )
+  ```
 
-    API()
+### CSS
 
-    return Object.seal({})
-  }],
-)
-```
+CSS imports are always just a simple concatenation.
+
+* **/header.css** (raw file)
+  ```css
+  header {
+    background: #f1f1f1;
+  }
+  ```
+* **/app.css** (raw file)
+  ```css
+  @import '/header.css';
+
+  body {
+    background: #fff;
+  }
+  ```
+* **/app.css** (processed)
+  ```css
+  header {
+    background: #f1f1f1;
+  }
+
+  body {
+    background: #fff;
+  }
+  ```
 
 ## Asset References
 
