@@ -11,8 +11,8 @@ require_relative('errors/processing_error')
 
 # Main class providing simple and straightforward web asset management.
 class Darkroom
-  DEFAULT_MINIFIED = /(\.|-)min\.\w+$/.freeze
-  TRAILING_SLASHES = %r{/+$}.freeze
+  DEFAULT_MINIFIED = /(\.|-)min\.\w+$/
+  TRAILING_SLASHES = %r{/+$}
   PRISTINE = Set.new(%w[/favicon.ico /mask-icon.svg /humans.txt /robots.txt]).freeze
   MIN_PROCESS_INTERVAL = 0.5
 

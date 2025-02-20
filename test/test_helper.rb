@@ -27,7 +27,7 @@ module TestHelper
   DUMMY_LIBS_DIR = File.join(TEST_DIR, 'dummy_libs').freeze
   TMP_DIR = File.join(TEST_DIR, 'tmp').freeze
 
-  INSPECT_SPLIT = /@(?=\w+=)/.freeze
+  INSPECT_SPLIT = /@(?=\w+=)/
   INSPECT_JOIN = "\n@"
 
   $LOAD_PATH.unshift(DUMMY_LIBS_DIR)

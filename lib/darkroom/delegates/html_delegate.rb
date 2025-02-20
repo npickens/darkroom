@@ -9,7 +9,7 @@ class Darkroom
     REFERENCE_REGEX = /
       <(?<tag>a|area|audio|base|embed|iframe|img|input|link|script|source|track|video)\s+[^>]*
       (?<attr>href|src)=#{Asset::REFERENCE_REGEX.source}[^>]*>
-    /x.freeze
+    /x
 
     content_type('text/html')
 

@@ -15,17 +15,17 @@ require_relative('errors/unrecognized_extension_error')
 class Darkroom
   # Represents an asset.
   class Asset
-    EXTENSION_REGEX = /(?=\.\w+)/.freeze
+    EXTENSION_REGEX = /(?=\.\w+)/
     DEFAULT_QUOTE = '\''
     DISALLOWED_PATH_CHARS = '\'"`=<>? '
-    INVALID_PATH_REGEX = /[#{DISALLOWED_PATH_CHARS}]/.freeze
-    PATH_REGEX = /(?<path>[^#{DISALLOWED_PATH_CHARS}]*)/.freeze
-    QUOTED_PATH_REGEX = /(?<quote>['"])#{PATH_REGEX.source}\k<quote>/.freeze
+    INVALID_PATH_REGEX = /[#{DISALLOWED_PATH_CHARS}]/
+    PATH_REGEX = /(?<path>[^#{DISALLOWED_PATH_CHARS}]*)/
+    QUOTED_PATH_REGEX = /(?<quote>['"])#{PATH_REGEX.source}\k<quote>/
     REFERENCE_REGEX = /
       (?<quote>['"]?)
         (?<quoted>#{PATH_REGEX.source}\?asset-(?<entity>path|content)(=(?<format>\w*))?)
       \k<quote>
-    /x.freeze
+    /x
 
     BUILT_IN_PARSE_KINDS = [:import, :reference].freeze
 

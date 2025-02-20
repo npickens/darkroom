@@ -7,8 +7,8 @@ require_relative('../delegate')
 class Darkroom
   # Delegate for handling JavaScript-specific asset processing.
   class JavaScriptDelegate < Delegate
-    IDENTIFIER_REGEX = /[_$a-zA-Z][_$a-zA-Z0-9]*/.freeze
-    COMMA_REGEX = /,/.freeze
+    IDENTIFIER_REGEX = /[_$a-zA-Z][_$a-zA-Z0-9]*/
+    COMMA_REGEX = /,/
     QUOTED_REGEX = /
       (?<quoted>
         (?<quote>['"])(?:
@@ -16,7 +16,7 @@ class Darkroom
           (?!\k<quote>).
         )*\k<quote>
       )
-    /x.freeze
+    /x
 
     content_type('text/javascript')
 
@@ -35,14 +35,14 @@ class Darkroom
         \s+from\s+
       )?#{Asset::QUOTED_PATH_REGEX.source}
       [^\S\n]*;?[^\S\n]*(\n|\Z)
-    /x.freeze
+    /x
 
     IMPORT_ITEM_REGEX = /
       \s*
       (?<name>#{IDENTIFIER_REGEX.source}|#{QUOTED_REGEX.source}(?=\s+as\s+))
       (\s+as\s+(?<alias>#{IDENTIFIER_REGEX.source}))?
       \s*
-    /x.freeze
+    /x
 
     import(IMPORT_REGEX) do |parse_data:, match:, asset:|
       items = []
@@ -82,14 +82,14 @@ class Darkroom
         \{(?<named>.+?)\}
         [^\S\n]*;?[^\S\n]*(\n|\Z)
       )
-    /x.freeze
+    /x
 
     EXPORT_ITEM_REGEX = /
       \s*
       (?<name>#{IDENTIFIER_REGEX.source})
       (\s+as\s+(?<alias>#{IDENTIFIER_REGEX.source}|#{QUOTED_REGEX.source}))?
       \s*
-    /x.freeze
+    /x
 
     parse(:export, EXPORT_REGEX) do |parse_data:, match:|
       items = (parse_data[:exports] ||= [])

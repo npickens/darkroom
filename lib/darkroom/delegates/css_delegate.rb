@@ -10,9 +10,9 @@ class Darkroom
       (?<=^|;)[^\S\n]*
       @import\s+#{Asset::QUOTED_PATH_REGEX.source}
       [^\S\n]*;[^\S\n]*(\n|\Z)
-    /x.freeze
+    /x
 
-    REFERENCE_REGEX = /url\(\s*#{Asset::REFERENCE_REGEX.source}\s*\)/x.freeze
+    REFERENCE_REGEX = /url\(\s*#{Asset::REFERENCE_REGEX.source}\s*\)/x
 
     content_type('text/css')
 
