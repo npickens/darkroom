@@ -161,6 +161,22 @@ class AssetTest < Minitest::Test
     assert_equal("[import]\n\n[compiled]", asset.content)
   end
 
+  test('finalizes content if implemented in delegate') do
+    Darkroom.register('.finalize') do
+      finalize do |parse_data:, path:, content:|
+        '[finalized]'
+      end
+    end
+
+    asset = new_asset('/template.finalize', 'not finalized')
+    asset.process
+
+    refute_error(asset.errors)
+    assert_equal('[finalized]', asset.content)
+  ensure
+    Darkroom.register('.finalize', nil)
+  end
+
   test('minifies content if implemented in delegate and minification is enabled') do
     content = 'body { background: white; }'
     asset = new_asset('/app.css', content, minify: true)
