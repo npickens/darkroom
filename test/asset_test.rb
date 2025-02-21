@@ -132,21 +132,19 @@ class AssetTest < Minitest::Test
   ##########################################################################################################
 
   test('compiles content if implemented in delegate') do
-    path = '/template.htx'
-    content = '<div>${this.hello}</div>'
-    asset = new_asset(path, content)
-
-    HTX.stub(:compile, lambda do |*args|
-      assert_equal(path, args[0])
-      assert_equal(content, args[1])
-
-      '[compiled]'
-    end) do
-      asset.process
+    Darkroom.register('.compile') do
+      compile do |parse_data:, path:, own_content:|
+        '[compiled]'
+      end
     end
+
+    asset = new_asset('/template.compile', 'not compiled')
+    asset.process
 
     refute_error(asset.errors)
     assert_equal('[compiled]', asset.content)
+  ensure
+    Darkroom.register('.compile', nil)
   end
 
   test('processes using compiled delegate if one is implemented') do

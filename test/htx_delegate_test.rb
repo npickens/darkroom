@@ -6,8 +6,26 @@ class HTXDelegateTest < Minitest::Test
   include(TestHelper)
 
   ##########################################################################################################
-  ## Compile Handler                                                                                      ##
+  ## Compile                                                                                              ##
   ##########################################################################################################
+
+  test('compiles content using the HTX library') do
+    path = '/template.htx'
+    content = '<div>${this.hello}</div>'
+    asset = new_asset(path, content)
+
+    HTX.stub(:compile, lambda do |*args|
+      assert_equal(path, args[0])
+      assert_equal(content, args[1])
+
+      '[compiled]'
+    end) do
+      asset.process
+    end
+
+    refute_error(asset.errors)
+    assert_equal('[compiled]', asset.content)
+  end
 
   test('does not pass :as_module argument to HTX.compile if HTX::VERSION is undefined') do
     asset = new_asset('/template.htx', '<div>${this.hello}</div>')
