@@ -2,7 +2,7 @@
 
 ## Upcoming (Unreleased)
 
-* Nothing yet
+* Cache return value of `Asset#headers` to improve performance
 
 ## 0.0.10 (2025 February 19)
 

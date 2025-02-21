@@ -169,11 +169,14 @@ class Darkroom
     #
     # Returns a Hash of String HTTP header names and String values.
     def headers(versioned: true)
-      {
-        'Content-Type' => content_type,
-        'Cache-Control' => ('public, max-age=31536000' if versioned),
-        'ETag' => ("\"#{fingerprint}\"" unless versioned),
-      }.compact!
+      @headers[versioned] ||=
+        {'Content-Type' => content_type}.merge!(
+          if versioned
+            {'Cache-Control' => 'public, max-age=31536000'}
+          else
+            {'ETag' => %("#{fingerprint}")}
+          end
+        )
     end
 
     # Public: Get a subresource integrity string (SHA digest).
@@ -314,6 +317,7 @@ class Darkroom
 
       @fingerprint = nil
       @path_versioned = nil
+      @headers = {}
       @integrity = {}
 
       @error = nil
