@@ -29,7 +29,10 @@ class AssetTest < Minitest::Test
       new_asset('/app.undefined')
     end
 
-    assert_equal('File extension not recognized: /app.undefined', error.to_s)
+    assert_error(
+      '#<Darkroom::UnrecognizedExtensionError: File extension not recognized: /app.undefined>',
+      error
+    )
   end
 
   test('requires compile library if delegate specifies one') do
