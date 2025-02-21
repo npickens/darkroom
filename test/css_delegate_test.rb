@@ -147,15 +147,34 @@ class CSSDelegateTest < Minitest::Test
   end
 
   ##########################################################################################################
-  ## Helpers                                                                                              ##
+  ## Minify                                                                                               ##
   ##########################################################################################################
 
-  def new_asset(*)
-    asset = super
-    asset.process
+  test('minifies content using the SassC library') do
+    content = 'body { background: white; }'
+    asset = new_asset('/app.css', content, minify: true)
+    sassc_mock = Minitest::Mock.new
 
-    asset
+    def sassc_mock.render
+      '[minified]'
+    end
+
+    SassC::Engine.stub(:new, lambda do |*args|
+      assert_equal(content, args[0])
+      assert_equal({style: :compressed}, args[1])
+
+      sassc_mock
+    end) do
+      asset.process
+    end
+
+    refute_error(asset.errors)
+    assert_equal('[minified]', asset.content)
   end
+
+  ##########################################################################################################
+  ## Helpers                                                                                              ##
+  ##########################################################################################################
 
   def import_path(content)
     content.match(Darkroom::CSSDelegate.regex(:import))&.[](:path)

@@ -176,25 +176,25 @@ class AssetTest < Minitest::Test
   end
 
   test('minifies content if implemented in delegate and minification is enabled') do
-    content = 'body { background: white; }'
-    asset = new_asset('/app.css', content, minify: true)
-    sassc_mock = Minitest::Mock.new
-
-    def sassc_mock.render
-      '[minified]'
+    Darkroom.register('.minify') do
+      minify do |parse_data:, path:, content:|
+        '[minified]'
+      end
     end
 
-    SassC::Engine.stub(:new, lambda do |*args|
-      assert_equal(content, args[0])
-      assert_equal({style: :compressed}, args[1])
+    asset1 = new_asset('/template.minify', 'not minified')
+    asset2 = new_asset('/template.minify', 'not minified', minify: true)
 
-      sassc_mock
-    end) do
-      asset.process
-    end
+    asset1.process
+    asset2.process
 
-    refute_error(asset.errors)
-    assert_equal('[minified]', asset.content)
+    refute_error(asset1.errors)
+    refute_error(asset2.errors)
+
+    assert_equal('not minified', asset1.content)
+    assert_equal('[minified]', asset2.content)
+  ensure
+    Darkroom.register('.minify', nil)
   end
 
   test('merges imported content with own content when referenced by absolute path') do
