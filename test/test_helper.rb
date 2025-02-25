@@ -10,18 +10,6 @@ require('fileutils')
 require('minitest/autorun')
 require('minitest/reporters')
 
-module Minitest
-  def self.plugin_index_init(options)
-    return unless options[:filter].to_i.to_s == options[:filter]
-
-    options[:filter] = "/^test_#{options[:filter]}: /"
-  end
-
-  register_plugin('index')
-
-  Reporters.use!(Reporters::ProgressReporter.new)
-end
-
 module TestHelper
   TEST_DIR = __dir__.freeze
   DUMMY_LIBS_DIR = File.join(TEST_DIR, 'dummy_libs').freeze
@@ -130,4 +118,16 @@ module TestHelper
       1
     end
   end
+end
+
+module Minitest
+  def self.plugin_index_init(options)
+    return unless options[:filter].to_i.to_s == options[:filter]
+
+    options[:filter] = "/^test_#{options[:filter]}: /"
+  end
+
+  register_plugin('index')
+
+  Reporters.use!(Reporters::ProgressReporter.new)
 end
