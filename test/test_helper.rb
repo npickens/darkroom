@@ -8,6 +8,7 @@ require('bundler/setup')
 require('darkroom')
 require('fileutils')
 require('minitest/autorun')
+require('minitest/minitest_reporter_plugin')
 require('minitest/reporters')
 
 module TestHelper
@@ -123,11 +124,12 @@ end
 module Minitest
   ENV['MT_NO_PLUGINS'] = '1'
 
+  register_plugin('index')
+  extensions << 'minitest_reporter'
+
   def self.plugin_index_init(options)
     options[:filter]&.sub!(/^\d+$/, '/^test_\0: /')
   end
-
-  register_plugin('index')
 
   Reporters.use!(Reporters::ProgressReporter.new)
 end
