@@ -1,12 +1,12 @@
 # frozen_string_literal: true
 
-require('darkroom/darkroom')
-require('darkroom/version')
+require_relative('darkroom/darkroom')
+require_relative('darkroom/version')
 
-require('darkroom/delegates/css_delegate')
-require('darkroom/delegates/html_delegate')
-require('darkroom/delegates/htx_delegate')
-require('darkroom/delegates/javascript_delegate')
+require_relative('darkroom/delegates/css_delegate')
+require_relative('darkroom/delegates/html_delegate')
+require_relative('darkroom/delegates/htx_delegate')
+require_relative('darkroom/delegates/javascript_delegate')
 
 Darkroom.register('.apng', 'image/apng')
 Darkroom.register('.avif', 'image/avif')
