@@ -2,6 +2,7 @@
 
 ## Upcoming (Unreleased)
 
+* Add option to include gzipped versions when writing files to disk
 * Cache return value of `Asset#headers` to improve performance
 
 ## 0.0.10 (2025 February 19)

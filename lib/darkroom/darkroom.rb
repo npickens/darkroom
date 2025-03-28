@@ -285,26 +285,42 @@ class Darkroom
   # include_pristine: - Boolean indicating if pristine assets should be included (when dumping for the
   #                     purpose of uploading to a CDN, assets such as /robots.txt and /favicon.ico don't
   #                     need to be included).
+  # gzip:             - Boolean indicating if gzipped versions of non-binary assets should be generated (in
+  #                     addition to non-gzipped versions).
   #
   # Returns nothing.
   # Raises ProcessingError if errors were encountered during the last #process run.
-  def dump(dir, clear: false, include_pristine: true)
+  def dump(dir, clear: false, include_pristine: true, gzip: false)
     raise(@error) if @error
 
     require('fileutils')
+    require('zlib') if gzip
 
     dir = File.expand_path(dir)
 
     FileUtils.mkdir_p(dir)
     Dir.each_child(dir) { |child| FileUtils.rm_rf(File.join(dir, child)) } if clear
 
-    @manifest_versioned.each do |path, asset|
-      next if @pristine.include?(asset.path) && !include_pristine
+    @manifest_versioned.each do |path_versioned, asset|
+      is_pristine = @pristine.include?(asset.path)
+      file_path = File.join(dir, is_pristine ? asset.path_unversioned : path_versioned)
 
-      file_path = File.join(dir, @pristine.include?(asset.path) ? asset.path_unversioned : path)
+      next if is_pristine && !include_pristine
 
       FileUtils.mkdir_p(File.dirname(file_path))
       File.write(file_path, asset.content)
+
+      if gzip && !asset.binary?
+        mtime = File.mtime(file_path)
+        file_path_gz = "#{file_path}.gz"
+
+        Zlib::GzipWriter.open(file_path_gz) do |file|
+          file.mtime = mtime.to_i
+          file.write(asset.content)
+        end
+
+        File.utime(File.atime(file_path_gz), mtime, file_path_gz)
+      end
     end
   end
 

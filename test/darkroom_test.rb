@@ -774,6 +774,76 @@ class DarkroomTest < Minitest::Test
     FileUtils.rm_rf(DUMP_DIR)
   end
 
+  test('#dump does not include gzipped version of non-binary assets by default') do
+    write_files('/assets/app.js' => "console.log('Hello')")
+
+    setup_dump_dir
+
+    darkroom('/assets')
+    darkroom.process
+    darkroom.dump(DUMP_DIR)
+
+    assert_empty(Dir["#{DUMP_DIR}/**/*.gz"])
+  ensure
+    FileUtils.rm_rf(DUMP_DIR)
+  end
+
+  test('#dump does not include gzipped version of non-binary assets if `gzip` option is false') do
+    write_files('/assets/app.js' => "console.log('Hello')")
+
+    setup_dump_dir
+
+    darkroom('/assets')
+    darkroom.process
+    darkroom.dump(DUMP_DIR, gzip: false)
+
+    assert_empty(Dir["#{DUMP_DIR}/**/*.gz"])
+  ensure
+    FileUtils.rm_rf(DUMP_DIR)
+  end
+
+  test('#dump includes gzipped version of non-binary assets if `gzip` option is true') do
+    write_files('/assets/app.js' => "console.log('Hello')")
+
+    setup_dump_dir
+
+    darkroom('/assets')
+    darkroom.process
+    darkroom.dump(DUMP_DIR, gzip: true)
+
+    assert_path_exists("#{DUMP_DIR}/app-ef0f76b822009ab847bd6a370e911556.js.gz")
+  ensure
+    FileUtils.rm_rf(DUMP_DIR)
+  end
+
+  test('#dump sets the mtime header and filesystem mtime of a gzipped file to the filesystem mtime of ' \
+       'its non-gzipped version') do
+    write_files('/assets/app.js' => "console.log('Hello')")
+
+    setup_dump_dir
+
+    darkroom('/assets')
+    darkroom.process
+
+    file_write = File.method(:write)
+    mtime = Time.utc(2025)
+
+    File.stub(:write, lambda do |path, content|
+      file_write.call(path, content)
+      File.utime(File.atime(path), mtime, path)
+    end) do
+      darkroom.dump(DUMP_DIR, gzip: true)
+    end
+
+    Zlib::GzipReader.open("#{DUMP_DIR}/app-ef0f76b822009ab847bd6a370e911556.js.gz") do |file|
+      assert_equal(mtime, file.mtime)
+    end
+
+    assert_equal(mtime, File.mtime("#{DUMP_DIR}/app-ef0f76b822009ab847bd6a370e911556.js.gz"))
+  ensure
+    FileUtils.rm_rf(DUMP_DIR)
+  end
+
   ##########################################################################################################
   ## #inspect                                                                                             ##
   ##########################################################################################################
