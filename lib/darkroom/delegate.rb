@@ -220,7 +220,7 @@ class Darkroom
     #
     #           parse_data: - Hash for storing arbitrary data across calls to this and other handlers.
     #           path:       - String oath of the asset being minified.
-    #           content:    - string content of the finalized asset.
+    #           content:    - String content of the finalized asset.
     #
     #           Returns a String which is used as the minified version of the asset's content.
     #           Raises StandardError when an error is encountered.

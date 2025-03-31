@@ -557,7 +557,7 @@ Darkroom.register('.ext1', '.ext2', '...') do
   #
   # parse_data: - Hash for storing arbitrary data across calls to this and other handlers.
   # path:       - String oath of the asset being minified.
-  # content:    - string content of the finalized asset.
+  # content:    - String content of the finalized asset.
   minify(lib: 'minify_lib') do |parse_data:, path:, content:|
     MinifyLib.compress(content)
   end
