@@ -2,6 +2,7 @@
 
 ## Upcoming (Unreleased)
 
+* **Remove `Asset#error` method (use `Asset#errors` instead)**
 * Add option to include gzipped versions when writing files to disk
 * Cache return value of `Asset#headers` to improve performance
 

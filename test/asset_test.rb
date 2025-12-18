@@ -861,37 +861,27 @@ class AssetTest < Minitest::Test
   end
 
   ##########################################################################################################
-  ## #error                                                                                               ##
+  ## #errors                                                                                              ##
   ##########################################################################################################
 
-  test('#error returns nil if there were no errors during processing') do
+  test('#errors returns empty array if there were no errors during processing') do
     asset = new_asset('/app.js', "console.log('Hello')")
     asset.process
 
-    assert_nil(asset.error)
+    assert_empty(asset.errors)
   end
 
-  test('#error returns ProcessingError if there were one or more errors during processing') do
+  test('#errors returns array of errors if there were one or more errors during processing') do
     asset = new_asset('/bad-import.js', "import '/bad1.js'\nimport '/bad2.js'")
     asset.process
 
     assert_error(
       <<~TEXT.strip,
-        #<Darkroom::ProcessingError: Errors were encountered while processing assets:
-          /bad-import.js:1: Asset not found: /bad1.js
-          /bad-import.js:2: Asset not found: /bad2.js>
+        #<Darkroom::AssetNotFoundError: /bad-import.js:1: Asset not found: /bad1.js>
+        #<Darkroom::AssetNotFoundError: /bad-import.js:2: Asset not found: /bad2.js>
       TEXT
-      asset.error
+      asset.errors
     )
-
-    expected_errors = [
-      '#<Darkroom::AssetNotFoundError: /bad-import.js:1: Asset not found: /bad1.js>',
-      '#<Darkroom::AssetNotFoundError: /bad-import.js:2: Asset not found: /bad2.js>',
-    ]
-
-    asset.error.each.with_index do |error, i|
-      assert_error(expected_errors[i], error)
-    end
   end
 
   ##########################################################################################################

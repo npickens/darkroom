@@ -9,7 +9,6 @@ require_relative('errors/asset_error')
 require_relative('errors/asset_not_found_error')
 require_relative('errors/circular_reference_error')
 require_relative('errors/missing_library_error')
-require_relative('errors/processing_error')
 require_relative('errors/unrecognized_extension_error')
 
 class Darkroom
@@ -135,13 +134,6 @@ class Darkroom
     # Returns the boolean result.
     def error?
       @errors && !@errors.empty?
-    end
-
-    # Public: Get a single error wrapper object for all errors.
-    #
-    # Returns a ProcessingError if one or more errors exit or nil otherwise.
-    def error
-      @error ||= error? ? ProcessingError.new(@errors) : nil
     end
 
     # Public: Get an MD5 hash of the asset's content.
