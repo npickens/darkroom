@@ -14,15 +14,16 @@ class Darkroom
       super("Errors were encountered while processing assets:\n  #{@errors.map(&:to_s).join("\n  ")}")
     end
 
-    # Public: Iterate over each error.
+    # Public: When a block is given, iterate over the errors array, passing each error to the block. When a
+    # block is not given, return a new Enumerator.
     #
     # block - Block to call and pass each error to.
     #
     # Yields each error to the provided block.
     #
-    # Returns Enumerator object.
+    # Returns the errors Array if a block is given or a new Enumerator if no block is given.
     def each(&block)
-      @errors.each(&block)
+      block ? @errors.each(&block) : to_enum(:each)
     end
   end
 end
