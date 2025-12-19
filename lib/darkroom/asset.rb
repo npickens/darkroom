@@ -593,7 +593,6 @@ class Darkroom
     # match - MatchData object for where the parse error occurred.
     #
     # Returns nothing.
-    # Raises RuntimeError if error is not a String or recognized Symbol error name.
     def add_parse_error(error, match)
       klass = AssetError
       args = [match[0].strip]
